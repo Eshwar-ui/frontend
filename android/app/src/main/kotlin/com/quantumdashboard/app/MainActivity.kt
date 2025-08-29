@@ -1,4 +1,4 @@
-package com.example.quantum_dashboard
+package com.quantumdashboard.app
 
 import io.flutter.embedding.android.FlutterActivity
 
