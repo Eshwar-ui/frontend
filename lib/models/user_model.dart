@@ -4,17 +4,25 @@ class Employee {
   final String firstName;
   final String lastName;
   final String email;
-  final String role;
-  final String department;
-  final String designation;
-  final DateTime joinDate;
-  final double salary;
-  final String phone;
-  final String address;
-  final bool isActive;
-  final DateTime createdAt;
-  final DateTime updatedAt;
-  final String? profilePhoto;
+  final String mobile;
+  final DateTime dateOfBirth;
+  final DateTime joiningDate;
+  final String password;
+  final String profileImage;
+  final String? department;
+  final String? designation;
+  final String? gender;
+  final String? grade;
+  final String? role;
+  final String? report;
+  final String? address;
+  final String? bankname;
+  final String? accountnumber;
+  final String? ifsccode;
+  final String? PANno;
+  final String? UANno;
+  final String? ESIno;
+  final String? fathername;
 
   Employee({
     required this.id,
@@ -22,66 +30,83 @@ class Employee {
     required this.firstName,
     required this.lastName,
     required this.email,
-    required this.role,
-    required this.department,
-    required this.designation,
-    required this.joinDate,
-    required this.salary,
-    required this.phone,
-    required this.address,
-    required this.isActive,
-    required this.createdAt,
-    required this.updatedAt,
-    this.profilePhoto,
+    required this.mobile,
+    required this.dateOfBirth,
+    required this.joiningDate,
+    required this.password,
+    required this.profileImage,
+    this.department,
+    this.designation,
+    this.gender,
+    this.grade,
+    this.role,
+    this.report,
+    this.address,
+    this.bankname,
+    this.accountnumber,
+    this.ifsccode,
+    this.PANno,
+    this.UANno,
+    this.ESIno,
+    this.fathername,
   });
 
   factory Employee.fromJson(Map<String, dynamic> json) {
-    if (json == null) {
-      throw ArgumentError('json must not be null');
-    }
-
     // Handle both 'id' and '_id' field names
     final id = json['id'] as String? ?? json['_id'] as String?;
     final employeeId = json['employeeId'] as String?;
     final firstName = json['firstName'] as String?;
     final lastName = json['lastName'] as String?;
     final email = json['email'] as String?;
-    final role = json['role'] as String?;
+    final mobile = json['mobile'] as String?;
+    final dateOfBirthString = json['dateOfBirth'] as String?;
+    final joiningDateString = json['joiningDate'] as String?;
+    final password = json['password'] as String?;
+    final profileImage = json['profileImage'] as String?;
     final department = json['department'] as String?;
     final designation = json['designation'] as String?;
-    final joinDateString = json['joinDate'] as String?;
-    final salary = json['salary'] as num?;
-    final phone = json['phone'] as String?;
+    final gender = json['gender'] as String?;
+    final grade = json['grade'] as String?;
+    final role = json['role'] as String?;
+    final report = json['report'] as String?;
     final address = json['address'] as String?;
-    final isActive = json['isActive'] as bool?;
-    final createdAtString = json['createdAt'] as String?;
-    final updatedAtString = json['updatedAt'] as String?;
-    final profilePhoto = json['profilePhoto'] as String?;
+    final bankname = json['bankname'] as String?;
+    final accountnumber = json['accountnumber'] as String?;
+    final ifsccode = json['ifsccode'] as String?;
+    final PANno = json['PANno'] as String?;
+    final UANno = json['UANno'] as String?;
+    final ESIno = json['ESIno'] as String?;
+    final fathername = json['fathername'] as String?;
 
-    // Provide default values for missing required fields
     return Employee(
       id: id ?? '',
       employeeId: employeeId ?? '',
-      firstName: firstName ?? 'Unknown',
-      lastName: lastName ?? 'Employee',
+      firstName: firstName ?? '',
+      lastName: lastName ?? '',
       email: email ?? '',
-      role: role ?? 'employee',
-      department: department ?? 'Unknown',
-      designation: designation ?? 'Unknown',
-      joinDate: joinDateString != null 
-          ? DateTime.parse(joinDateString) 
+      mobile: mobile ?? '',
+      dateOfBirth: dateOfBirthString != null 
+          ? _parseDate(dateOfBirthString) 
           : DateTime.now(),
-      salary: salary?.toDouble() ?? 0.0,
-      phone: phone ?? '',
-      address: address ?? '',
-      isActive: isActive ?? true,
-      createdAt: createdAtString != null
-          ? DateTime.parse(createdAtString)
+      joiningDate: joiningDateString != null 
+          ? _parseDate(joiningDateString) 
           : DateTime.now(),
-      updatedAt: updatedAtString != null
-          ? DateTime.parse(updatedAtString)
-          : DateTime.now(),
-      profilePhoto: profilePhoto,
+      password: password ?? '',
+      profileImage: profileImage ?? '',
+      department: department,
+      designation: designation,
+      gender: gender,
+      grade: grade,
+      role: role,
+      report: report,
+      address: address,
+      bankname: bankname,
+      accountnumber: accountnumber,
+      ifsccode: ifsccode,
+      PANno: PANno,
+      UANno: UANno,
+      ESIno: ESIno,
+      fathername: fathername,
     );
   }
 
@@ -92,19 +117,69 @@ class Employee {
       'firstName': firstName,
       'lastName': lastName,
       'email': email,
-      'role': role,
+      'mobile': mobile,
+      'dateOfBirth': dateOfBirth.toIso8601String(),
+      'joiningDate': joiningDate.toIso8601String(),
+      'password': password,
+      'profileImage': profileImage,
       'department': department,
       'designation': designation,
-      'joinDate': joinDate.toIso8601String(),
-      'salary': salary,
-      'phone': phone,
+      'gender': gender,
+      'grade': grade,
+      'role': role,
+      'report': report,
       'address': address,
-      'isActive': isActive,
-      'createdAt': createdAt.toIso8601String(),
-      'updatedAt': updatedAt.toIso8601String(),
-      'profilePhoto': profilePhoto,
+      'bankname': bankname,
+      'accountnumber': accountnumber,
+      'ifsccode': ifsccode,
+      'PANno': PANno,
+      'UANno': UANno,
+      'ESIno': ESIno,
+      'fathername': fathername,
     };
   }
 
   String get fullName => '$firstName $lastName';
+
+  // Helper method to parse date from various formats
+  static DateTime _parseDate(dynamic dateValue) {
+    print('UserModel: Parsing date value: $dateValue (type: ${dateValue.runtimeType})');
+    try {
+      // If it's already a DateTime object, return it
+      if (dateValue is DateTime) {
+        print('UserModel: Date is already DateTime, returning as-is');
+        return dateValue;
+      }
+      
+      // If it's a String, try to parse it
+      if (dateValue is String) {
+        print('UserModel: Date is String, attempting to parse');
+        // Try parsing as ISO format first (for backward compatibility)
+        try {
+          return DateTime.parse(dateValue);
+        } catch (e) {
+          // If ISO parsing fails, try parsing "dd-MM-yyyy" format
+          try {
+            final parts = dateValue.split('-');
+            if (parts.length == 3) {
+              final day = int.parse(parts[0]);
+              final month = int.parse(parts[1]);
+              final year = int.parse(parts[2]);
+              return DateTime(year, month, day);
+            }
+          } catch (e) {
+            print('Error parsing date string: $dateValue, using current date as fallback');
+            return DateTime.now();
+          }
+        }
+      }
+      
+      // If it's neither DateTime nor String, return current date
+      print('Unexpected date type: ${dateValue.runtimeType}, using current date as fallback');
+      return DateTime.now();
+    } catch (e) {
+      print('Error parsing date: $dateValue, using current date as fallback');
+      return DateTime.now();
+    }
+  }
 }

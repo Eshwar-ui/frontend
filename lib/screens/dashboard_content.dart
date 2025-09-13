@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/models/attendance_model.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
-import 'package:quantum_dashboard/services/attendance_service.dart';
+import 'package:quantum_dashboard/providers/attendance_provider.dart';
 import 'package:quantum_dashboard/utils/constants.dart';
 import 'package:quantum_dashboard/utils/text_styles.dart';
 import 'package:quantum_dashboard/widgets/custom_button.dart';
@@ -19,71 +19,127 @@ class DashboardContent extends StatefulWidget {
 }
 
 class _DashboardContentState extends State<DashboardContent> {
-  final AttendanceService _attendanceService = AttendanceService();
   Attendance? _todayAttendance;
+  List<Attendance> _todayPunches = [];
   bool _isLoading = false;
   bool _isCheckedIn = false;
 
   @override
   void initState() {
     super.initState();
-    _getTodayAttendance();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _getTodayAttendance();
+    });
   }
 
   Future<void> _getTodayAttendance() async {
-    setState(() {
-      _isLoading = true;
-    });
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final attendanceProvider = Provider.of<AttendanceProvider>(context, listen: false);
+    final user = authProvider.user;
+    
+    if (user == null) return;
+    
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
+    
     try {
-      final attendance = await _attendanceService.getTodayAttendance();
-      setState(() {
-        _todayAttendance = attendance;
-        if (_todayAttendance != null && _todayAttendance!.checkIns.isNotEmpty) {
-          final lastCheckIn = _todayAttendance!.checkIns.last;
-          _isCheckedIn = lastCheckIn.checkOutTime == null;
-        } else {
-          _isCheckedIn = false;
-        }
-      });
+      // Get today's punches
+      await attendanceProvider.getPunches(user.employeeId);
+      
+      // Find today's attendance record
+      final today = DateTime.now();
+      final todayPunches = attendanceProvider.punches.where((punch) {
+        return punch.punchIn.year == today.year &&
+               punch.punchIn.month == today.month &&
+               punch.punchIn.day == today.day;
+      }).toList();
+      
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _todayPunches = todayPunches;
+              if (todayPunches.isNotEmpty) {
+                _todayAttendance = todayPunches.first;
+                // Check if the last punch is a punch in (meaning user is checked in)
+                final lastPunch = todayPunches.last;
+                _isCheckedIn = lastPunch.punchOut == null;
+              } else {
+                _todayAttendance = null;
+                _isCheckedIn = false;
+              }
+              _isLoading = false;
+            });
+          }
+        });
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
     }
   }
 
   Future<void> _toggleCheckInOut() async {
-    setState(() {
-      _isLoading = true;
-    });
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final attendanceProvider = Provider.of<AttendanceProvider>(context, listen: false);
+    final user = authProvider.user;
+    
+    if (user == null) return;
+    
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
+    
     try {
-      Attendance? attendance;
+      Map<String, dynamic> result;
       if (_isCheckedIn) {
-        attendance = await _attendanceService.checkOut();
+        result = await attendanceProvider.punchOut(user.employeeId, user.fullName);
       } else {
-        attendance = await _attendanceService.checkIn();
+        result = await attendanceProvider.punchIn(user.employeeId, user.fullName);
       }
-      setState(() {
-        _todayAttendance = attendance;
-        if (_todayAttendance != null && _todayAttendance!.checkIns.isNotEmpty) {
-          final lastCheckIn = _todayAttendance!.checkIns.last;
-          _isCheckedIn = lastCheckIn.checkOutTime == null;
-        } else {
-          _isCheckedIn = false;
+      
+      if (result['success'] != false) {
+        // Refresh today's attendance
+        await _getTodayAttendance();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['message'] ?? 'Action completed successfully')),
+          );
         }
-      });
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['message'] ?? 'Action failed')),
+          );
+        }
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -93,13 +149,43 @@ class _DashboardContentState extends State<DashboardContent> {
     return formatter.format(now);
   }
 
-  String _formatDuration(double milliseconds) {
-    final duration = Duration(milliseconds: milliseconds.toInt());
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
-    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-    return "${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
+  String? _getFirstCheckInTime() {
+    if (_todayAttendance == null) {
+      return null;
+    }
+    return DateFormat.jm().format(_todayAttendance!.punchIn.toLocal());
   }
+
+  // Calculate total working time for today
+  double _getTotalWorkingTime() {
+    double totalWorkingTime = 0.0;
+    for (var punch in _todayPunches) {
+      totalWorkingTime += punch.totalWorkingTime;
+    }
+    return totalWorkingTime;
+  }
+
+  // Calculate total break time for today
+  double _getTotalBreakTime() {
+    double totalBreakTime = 0.0;
+    for (var punch in _todayPunches) {
+      totalBreakTime += punch.breakTime;
+    }
+    return totalBreakTime;
+  }
+
+  // Calculate net working time (working time - break time)
+  double _getNetWorkingTime() {
+    return _getTotalWorkingTime() - _getTotalBreakTime();
+  }
+
+  // Format time in hours and minutes
+  String _formatTime(double seconds) {
+    final hours = (seconds / 3600).floor();
+    final minutes = ((seconds % 3600) / 60).floor();
+    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}';
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -112,7 +198,12 @@ class _DashboardContentState extends State<DashboardContent> {
         builder: (context, authProvider, child) {
           final user = authProvider.user;
           if (user == null) {
-            return Center(child: CircularProgressIndicator());
+            return Center(
+              child: LoadingDotsAnimation(
+                color: Color(0xFF1976D2),
+                size: 10,
+              ),
+            );
           }
           return Padding(
             padding: EdgeInsets.all(16),
@@ -129,7 +220,7 @@ class _DashboardContentState extends State<DashboardContent> {
                         style: AppTextStyles.body,
                       ),
                       SizedBox(width: 10),
-                      LoadingDotsAnimation(),
+                      LoadingDotsAnimation(color: _isCheckedIn? Colors.green.shade300 : Colors.red.shade300,),
                     ],
                   ),
                 ),
@@ -163,11 +254,11 @@ class _DashboardContentState extends State<DashboardContent> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '${user.firstName} ${user.lastName}',
+                                '${user.firstName}${user.lastName}',
                                 style: AppTextStyles.subheading,
                               ),
                               Text(
-                                'Employee ID: ${user.employeeId ?? 'N/A'}',
+                                '${user.designation}',
                                 style: AppTextStyles.caption,
                               ),
                             ],
@@ -180,14 +271,13 @@ class _DashboardContentState extends State<DashboardContent> {
                         children: [
                           _employeeDetails(
                             title: 'Employee ID',
-                            value: user.employeeId ?? 'N/A',
+                            value: user.employeeId,
                           ),
                           Container(width: 1, height: 50, color: Colors.grey),
                           _employeeDetails(
                             title: 'Joining Date',
-                            value: user.joinDate != null
-                                ? DateFormat.yMMMd().format(user.joinDate!)
-                                : 'N/A',
+                            value: user.joiningDate.toLocal().toString().split(' ')[0],
+                            // value: DateFormat.yMMMd().format(user.joiningDate),
                           ),
                           Container(width: 1, height: 50, color: Colors.grey),
                           _employeeDetails(
@@ -222,11 +312,25 @@ class _DashboardContentState extends State<DashboardContent> {
                           ],
                         ),
                       ),
+                      // First check-in time text
+                      if (_getFirstCheckInTime() != null) ...[
+                        SizedBox(height: 8),
+                        Text(
+                          'You started your day at ${_getFirstCheckInTime()}',
+                          style: AppTextStyles.body.copyWith(
+                            color: Colors.black,fontWeight: FontWeight.bold,fontSize: 18,
+                            // fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
                       SizedBox(height: 24),
 
                       // Check In Button
                       if (_isLoading)
-                        CircularProgressIndicator()
+                        LoadingDotsAnimation(
+                          color: Color(0xFF1976D2),
+                          size: 8,
+                        )
                       else
                         CustomButton(
                           text: _isCheckedIn ? 'Check Out' : 'Check In',
@@ -249,9 +353,7 @@ class _DashboardContentState extends State<DashboardContent> {
                                   ),
                                 ),
                                 TextSpan(
-                                  text: _formatDuration(
-                                    _todayAttendance?.totalWorkingTime ?? 0,
-                                  ),
+                                  text: _todayAttendance?.formattedWorkingTime ?? '00:00:00',
                                   style: AppTextStyles.caption.copyWith(
                                     color: theme.colorScheme.primary,
                                     fontWeight: FontWeight.bold,
@@ -272,9 +374,7 @@ class _DashboardContentState extends State<DashboardContent> {
                                   ),
                                 ),
                                 TextSpan(
-                                  text: _formatDuration(
-                                    _todayAttendance?.totalBreakTime ?? 0,
-                                  ),
+                                  text: _todayAttendance?.formattedBreakTime ?? '00:00:00',
                                   style: AppTextStyles.caption.copyWith(
                                     color: theme.colorScheme.primary,
                                     fontWeight: FontWeight.bold,
@@ -286,6 +386,8 @@ class _DashboardContentState extends State<DashboardContent> {
                         ],
                       ),
                       SizedBox(height: 24),
+
+                      
 
                       // Today Activities
                       Text('Today Activities', style: AppTextStyles.subheading),
@@ -303,44 +405,68 @@ class _DashboardContentState extends State<DashboardContent> {
   }
 
   Widget _buildTimeline() {
-    if (_todayAttendance == null || _todayAttendance!.checkIns.isEmpty) {
+    if (_todayPunches.isEmpty) {
       return Center(child: Text('No activities yet.'));
     }
-    return Column(
-      children: _todayAttendance!.checkIns.map((checkIn) {
-        return Column(
-          children: [
-            TimelineTile(
-              alignment: TimelineAlign.start,
-              indicatorStyle: IndicatorStyle(width: 20, color: Colors.blue),
-              beforeLineStyle: const LineStyle(
-                color: Colors.grey,
-                thickness: 2,
-              ),
-              endChild: Padding(
-                padding: EdgeInsets.all(8.0),
-                child: Text(
-                  'Check In at ${DateFormat.jm().format(checkIn.checkInTime.toLocal())}',
-                  style: TextStyle(fontSize: 14),
-                ),
-              ),
-            ),
-            if (checkIn.checkOutTime != null)
-              TimelineTile(
-                alignment: TimelineAlign.start,
-                indicatorStyle: IndicatorStyle(width: 20, color: Colors.blue),
-                beforeLineStyle: LineStyle(color: Colors.grey, thickness: 2),
-                endChild: Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: Text(
-                    'Check Out at ${DateFormat.jm().format(checkIn.checkOutTime!.toLocal())}',
-                    style: TextStyle(fontSize: 14),
+    
+    return SingleChildScrollView(
+      child: Column(
+        children: _todayPunches.asMap().entries.map((entry) {
+          final index = entry.key;
+          final punch = entry.value;
+          final isLast = index == _todayPunches.length - 1;
+          
+          return Column(
+            children: [
+              // Punch In
+              Padding(
+                padding: const EdgeInsets.only(left: 2.0, bottom: 12),
+                child: TimelineTile(
+                  alignment: TimelineAlign.start,
+                  indicatorStyle: IndicatorStyle(
+                    width: 12, 
+                    color: Colors.lightBlue.shade400
+                  ),
+                  beforeLineStyle: LineStyle(
+                    color: Colors.grey,
+                    thickness: isLast ? 0 : 2,
+                  ),
+                  endChild: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
+                    child: Text(
+                      'Punch In at ${DateFormat.jm().format(punch.punchIn.toLocal())}',
+                      style: TextStyle(fontSize: 16),
+                    ),
                   ),
                 ),
               ),
-          ],
-        );
-      }).toList(),
+              // Punch Out (if exists)
+              if (punch.punchOut != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: TimelineTile(
+                    alignment: TimelineAlign.start,
+                    indicatorStyle: IndicatorStyle(
+                      width: 16, 
+                      color: Colors.blue
+                    ),
+                    beforeLineStyle: LineStyle(
+                      color: Colors.grey, 
+                      thickness: isLast ? 0 : 2
+                    ),
+                    endChild: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
+                      child: Text(
+                        'Punch Out at ${DateFormat.jm().format(punch.punchOut!.toLocal())}',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        }).toList(),
+      ),
     );
   }
 }

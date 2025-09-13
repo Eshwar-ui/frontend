@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/models/holiday_model.dart';
-import 'package:quantum_dashboard/services/holiday_service.dart';
+import 'package:quantum_dashboard/providers/holiday_provider.dart';
 import 'package:quantum_dashboard/utils/text_styles.dart';
 import 'package:quantum_dashboard/widgets/custom_floating_container.dart';
 
@@ -10,113 +11,15 @@ class HolidaysScreen extends StatefulWidget {
 }
 
 class _HolidaysScreenState extends State<HolidaysScreen> {
-  final HolidayService _holidayService = HolidayService();
-  List<Holiday> _holidays = [];
-  List<Holiday> _filteredHolidays = [];
-  bool _isLoading = true;
-  String? _errorMessage;
   int _selectedYear = DateTime.now().year;
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    _loadHolidays();
-  }
-
-  Future<void> _loadHolidays() async {
-    try {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
-
-      final holidays = await _holidayService.getHolidays();
-      setState(() {
-        _holidays = holidays;
-        _filteredHolidays = holidays;
-        _isLoading = false;
-      });
-      _filterHolidays();
-    } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
-    }
-  }
-
-  void _filterHolidays() {
-    setState(() {
-      _filteredHolidays = _holidays.where((holiday) {
-        final matchesYear = holiday.year == _selectedYear;
-        final matchesSearch =
-            _searchQuery.isEmpty ||
-            holiday.holidayName.toLowerCase().contains(
-              _searchQuery.toLowerCase(),
-            ) ||
-            holiday.day.toLowerCase().contains(_searchQuery.toLowerCase());
-        return matchesYear && matchesSearch;
-      }).toList();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<HolidayProvider>(context, listen: false).getHolidays();
     });
-  }
-
-  Widget _buildYearSelector() {
-    return Container(
-      padding: EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Text(
-            'Year: ',
-            style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
-          ),
-          DropdownButton<int>(
-            value: _selectedYear,
-            items: List.generate(5, (index) {
-              final year = DateTime.now().year - 2 + index;
-              return DropdownMenuItem(
-                value: year,
-                child: Text(year.toString()),
-              );
-            }),
-            onChanged: (int? newYear) {
-              if (newYear != null) {
-                setState(() {
-                  _selectedYear = newYear;
-                });
-                _filterHolidays();
-              }
-            },
-          ),
-          SizedBox(width: 20),
-          Expanded(
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search holidays...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-              ),
-              onChanged: (value) {
-                _searchQuery = value;
-                _filterHolidays();
-              },
-            ),
-          ),
-          SizedBox(width: 16),
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: _loadHolidays,
-            tooltip: 'Refresh',
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildHolidayCard(Holiday holiday) {
@@ -134,7 +37,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      holiday.holidayName,
+                      holiday.title,
                       style: AppTextStyles.subheading.copyWith(
                         fontWeight: FontWeight.bold,
                         fontSize: 20,
@@ -166,17 +69,19 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                   Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
                   SizedBox(width: 8),
                   Text(
-                    holiday.date,
+                    // Format the DateTime to a readable string
+                    "${holiday.date.day.toString().padLeft(2, '0')}-${holiday.date.month.toString().padLeft(2, '0')}-${holiday.date.year}",
                     style: AppTextStyles.body.copyWith(
                       color: Colors.grey[700],
                       fontWeight: FontWeight.w500,
                     ),
                   ),
+
                   Spacer(),
                   Icon(Icons.person, size: 16, color: Colors.grey[600]),
                   SizedBox(width: 8),
                   Text(
-                    'Posted by ${holiday.postBy}',
+                    'Posted by ${holiday.action}',
                     style: AppTextStyles.body.copyWith(
                       color: Colors.blue[700],
                       fontWeight: FontWeight.w500,
@@ -192,8 +97,8 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     );
   }
 
-  Widget _buildHolidaysList() {
-    if (_filteredHolidays.isEmpty) {
+  Widget _buildHolidaysList(List<Holiday> filteredHolidays) {
+    if (filteredHolidays.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -213,15 +118,15 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
 
     return ListView.builder(
       padding: EdgeInsets.symmetric(vertical: 8),
-      itemCount: _filteredHolidays.length,
+      itemCount: filteredHolidays.length,
       itemBuilder: (context, index) {
-        return _buildHolidayCard(_filteredHolidays[index]);
+        return _buildHolidayCard(filteredHolidays[index]);
       },
     );
   }
 
-  Widget _buildCompactTable() {
-    if (_filteredHolidays.isEmpty) {
+  Widget _buildCompactTable(List<Holiday> filteredHolidays) {
+    if (filteredHolidays.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -292,18 +197,18 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
             ),
           ),
         ],
-        rows: _filteredHolidays.map((holiday) {
+        rows: filteredHolidays.map((holiday) {
           return DataRow(
             cells: [
               DataCell(
                 Text(
-                  holiday.sNo.toString(),
+                  holiday.id.toString(),
                   style: AppTextStyles.body.copyWith(fontSize: 12),
                 ),
               ),
               DataCell(
                 Text(
-                  holiday.holidayName,
+                  holiday.title,
                   style: AppTextStyles.body.copyWith(
                     fontWeight: FontWeight.w500,
                     fontSize: 12,
@@ -313,7 +218,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               ),
               DataCell(
                 Text(
-                  holiday.date,
+                  holiday.formattedDate,
                   style: AppTextStyles.body.copyWith(fontSize: 12),
                 ),
               ),
@@ -336,7 +241,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               ),
               DataCell(
                 Text(
-                  holiday.postBy,
+                  holiday.action,
                   style: AppTextStyles.body.copyWith(
                     color: Colors.blue[700],
                     fontWeight: FontWeight.w500,
@@ -362,48 +267,79 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           SizedBox(height: 12),
           // _buildYearSelector(),
           Expanded(
-            child: _isLoading
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('Loading holidays...', style: AppTextStyles.body),
-                      ],
-                    ),
-                  )
-                : _errorMessage != null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.error_outline, size: 64, color: Colors.red),
-                        SizedBox(height: 16),
-                        Text(
-                          'Error loading holidays',
-                          style: AppTextStyles.body.copyWith(color: Colors.red),
+            child: Consumer<HolidayProvider>(
+              builder: (context, holidayProvider, child) {
+                // Compute filtered holidays without calling setState
+                final filteredHolidays = holidayProvider.holidays.where((
+                  holiday,
+                ) {
+                  final matchesYear = holiday.year == _selectedYear;
+                  final matchesSearch =
+                      _searchQuery.isEmpty ||
+                      holiday.title.toLowerCase().contains(
+                        _searchQuery.toLowerCase(),
+                      ) ||
+                      holiday.day.toLowerCase().contains(
+                        _searchQuery.toLowerCase(),
+                      );
+                  return matchesYear && matchesSearch;
+                }).toList();
+
+                return holidayProvider.isLoading
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 16),
+                            Text(
+                              'Loading holidays...',
+                              style: AppTextStyles.body,
+                            ),
+                          ],
                         ),
-                        SizedBox(height: 8),
-                        Text(
-                          _errorMessage!,
-                          style: AppTextStyles.body.copyWith(
-                            color: Colors.red,
-                            fontSize: 12,
-                          ),
-                          textAlign: TextAlign.center,
+                      )
+                    : holidayProvider.error != null
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 64,
+                              color: Colors.red,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Error loading holidays',
+                              style: AppTextStyles.body.copyWith(
+                                color: Colors.red,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              holidayProvider.error!,
+                              style: AppTextStyles.body.copyWith(
+                                color: Colors.red,
+                                fontSize: 12,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () {
+                                holidayProvider.getHolidays();
+                              },
+                              child: Text('Retry'),
+                            ),
+                          ],
                         ),
-                        SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _loadHolidays,
-                          child: Text('Retry'),
-                        ),
-                      ],
-                    ),
-                  )
-                : isTablet
-                ? _buildCompactTable()
-                : _buildHolidaysList(),
+                      )
+                    : isTablet
+                    ? _buildCompactTable(filteredHolidays)
+                    : _buildHolidaysList(filteredHolidays);
+              },
+            ),
           ),
         ],
       ),

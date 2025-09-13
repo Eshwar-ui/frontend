@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:quantum_dashboard/services/auth_service.dart';
+import 'package:provider/provider.dart';
+import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/utils/text_styles.dart';
-import 'package:quantum_dashboard/widgets/custom_button.dart';
 import 'package:quantum_dashboard/widgets/custom_floating_container.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
@@ -13,7 +13,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _authService = AuthService();
 
   bool _isLoading = false;
   bool _obscureNewPassword = true;
@@ -66,8 +65,20 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     });
 
     try {
-      final result = await _authService.changePassword(
+      final authProvider = context.read<AuthProvider>();
+      final user = authProvider.user;
+      
+      if (user == null) {
+        setState(() {
+          _errorMessage = 'User not found. Please login again.';
+        });
+        return;
+      }
+
+      final result = await authProvider.changePassword(
+        user.employeeId,
         _newPasswordController.text,
+        _confirmPasswordController.text,
       );
 
       if (result['success']) {

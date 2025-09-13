@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/providers/navigation_provider.dart';
 import 'package:quantum_dashboard/screens/profile_screen.dart';
+import 'package:quantum_dashboard/services/credential_storage_service.dart';
 import 'package:quantum_dashboard/utils/constants.dart';
 import 'package:quantum_dashboard/utils/text_styles.dart';
 import 'package:quantum_dashboard/widgets/custom_button.dart';
@@ -16,15 +17,54 @@ class AppDrawer extends StatelessWidget {
     return Drawer(
       child: Consumer2<NavigationProvider, AuthProvider>(
         builder: (context, navigationProvider, authProvider, child) {
-          return ListView(
-            shrinkWrap: false,
-            padding: EdgeInsets.zero,
+          return Column(
             children: <Widget>[
+              Expanded(
+                child: ListView(
+                  shrinkWrap: false,
+                  padding: EdgeInsets.zero,
+                  children: <Widget>[
               DrawerHeader(
                 curve: Curves.easeInOutBack,
                 padding: const EdgeInsets.all(20),
                 child: Image.asset(AppAssets.quantumLogoV),
               ),
+              if (authProvider.isAdmin) ...[
+                // Divider(color: Colors.grey[300], thickness: 1),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Text(
+                    authProvider.isAdmin ? 'ADMIN PANEL' : 'HR PANEL',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ),
+                _buildDrawerItem(
+                  context: context,
+                  navigationProvider: navigationProvider,
+                  page: NavigationPage.AdminEmployees,
+                  icon: Icons.people,
+                  title: 'Manage Employees',
+                ),
+                _buildDrawerItem(
+                  context: context,
+                  navigationProvider: navigationProvider,
+                  page: NavigationPage.AdminLeaveRequests,
+                  icon: Icons.assignment,
+                  title: 'Leave Requests',
+                ),
+                _buildDrawerItem(
+                  context: context,
+                  navigationProvider: navigationProvider,
+                  page: NavigationPage.AdminHolidays,
+                  icon: Icons.calendar_today,
+                  title: 'Manage Holidays',
+                ),
+                Divider(color: Colors.grey[300], thickness: 1),
+              ],
               _buildDrawerItem(
                 context: context,
                 navigationProvider: navigationProvider,
@@ -62,35 +102,7 @@ class AppDrawer extends StatelessWidget {
               ),
               
               // Admin-only sections (includes HR)
-              if (authProvider.isAdmin) ...[
-                Divider(color: Colors.grey[300], thickness: 1),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Text(
-                    authProvider.isHR ? 'HR PANEL' : 'ADMIN PANEL',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ),
-                _buildDrawerItem(
-                  context: context,
-                  navigationProvider: navigationProvider,
-                  page: NavigationPage.AdminEmployees,
-                  icon: Icons.people,
-                  title: 'Manage Employees',
-                ),
-                _buildDrawerItem(
-                  context: context,
-                  navigationProvider: navigationProvider,
-                  page: NavigationPage.AdminLeaveRequests,
-                  icon: Icons.assignment,
-                  title: 'Leave Requests',
-                ),
-                Divider(color: Colors.grey[300], thickness: 1),
-              ],
+              
               
               _buildDrawerItem(
                 context: context,
@@ -99,7 +111,10 @@ class AppDrawer extends StatelessWidget {
                 icon: AppAssets.changepasswordIcon,
                 title: 'Change Password',
               ),
-              SizedBox(height: MediaQuery.of(context).size.height * 0.1),
+                  ],
+                ),
+              ),
+              // Profile and other buttons at the bottom
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: CustomButton(
@@ -111,6 +126,16 @@ class AppDrawer extends StatelessWidget {
                       context,
                       MaterialPageRoute(builder: (context) => ProfileScreen()),
                     );
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                child: CustomButton(
+                  icon: Icons.settings,
+                  text: 'Settings',
+                  onPressed: () {
+                    _showSettingsDialog(context);
                   },
                 ),
               ),
@@ -166,5 +191,109 @@ class AppDrawer extends StatelessWidget {
         Navigator.pop(context); // Close the drawer
       },
     );
+  }
+
+  void _showSettingsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Settings'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Saved Credentials',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 8),
+              FutureBuilder<Map<String, dynamic>?>(
+                future: CredentialStorageService.getSavedCredentials(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData && snapshot.data != null) {
+                    final credentials = snapshot.data!;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Email: ${credentials['email']}'),
+                        Text(
+                          'Last login: ${_formatLastLogin(credentials['lastLogin'])}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            ElevatedButton(
+                              onPressed: () async {
+                                await CredentialStorageService.clearCredentials();
+                                Navigator.of(context).pop();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Saved credentials cleared'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                              ),
+                              child: Text('Clear'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
+                              child: Text('Close'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  } else {
+                    return Column(
+                      children: [
+                        Text('No saved credentials found'),
+                        SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          child: Text('Close'),
+                        ),
+                      ],
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatLastLogin(DateTime? lastLogin) {
+    if (lastLogin == null) return 'Unknown';
+    
+    final now = DateTime.now();
+    final difference = now.difference(lastLogin);
+    
+    if (difference.inDays > 0) {
+      return '${difference.inDays} day(s) ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} hour(s) ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} minute(s) ago';
+    } else {
+      return 'Just now';
+    }
   }
 }

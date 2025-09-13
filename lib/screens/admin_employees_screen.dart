@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
-import 'package:quantum_dashboard/services/employee_service.dart';
+import 'package:quantum_dashboard/providers/employee_provider.dart';
 import 'package:quantum_dashboard/utils/text_styles.dart';
 
 class AdminEmployeesScreen extends StatefulWidget {
@@ -11,26 +11,16 @@ class AdminEmployeesScreen extends StatefulWidget {
 }
 
 class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
-  final EmployeeService _employeeService = EmployeeService();
-  late Future<List<Employee>> _employeesFuture;
-
   @override
   void initState() {
     super.initState();
-    _loadEmployees();
-  }
-
-  void _loadEmployees() {
-    setState(() {
-      _employeesFuture = _employeeService.getAllEmployees().catchError((error) {
-        print('Error loading employees in screen: $error');
-        throw error;
-      });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<EmployeeProvider>(context, listen: false).getAllEmployees();
     });
   }
 
   void _refreshEmployees() {
-    _loadEmployees();
+    Provider.of<EmployeeProvider>(context, listen: false).getAllEmployees();
   }
 
   @override
@@ -108,14 +98,13 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
 
           // Employee List
           Expanded(
-            child: FutureBuilder<List<Employee>>(
-              future: _employeesFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+            child: Consumer<EmployeeProvider>(
+              builder: (context, employeeProvider, child) {
+                if (employeeProvider.isLoading) {
                   return Center(child: CircularProgressIndicator());
                 }
                 
-                if (snapshot.hasError) {
+                if (employeeProvider.error != null) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -128,7 +117,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                         ),
                         SizedBox(height: 8),
                         Text(
-                          '${snapshot.error}',
+                          employeeProvider.error!,
                           style: AppTextStyles.body,
                           textAlign: TextAlign.center,
                         ),
@@ -142,7 +131,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                   );
                 }
                 
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                if (employeeProvider.employees.isEmpty) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -183,7 +172,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
 
                 return RefreshIndicator(
                   onRefresh: () async => _refreshEmployees(),
-                  child: _buildEmployeeList(snapshot.data!),
+                  child: _buildEmployeeList(employeeProvider.employees),
                 );
               },
             ),
@@ -253,21 +242,21 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                     ],
                   ),
                 ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: employee.isActive ? Colors.green : Colors.red,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    employee.isActive ? 'Active' : 'Inactive',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+                // Container(
+                //   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                //   decoration: BoxDecoration(
+                //     color: employee.status == 'active' ? Colors.green : Colors.red,
+                //     borderRadius: BorderRadius.circular(12),
+                //   ),
+                //   child: Text(
+                //     employee.status == 'active' ? 'Active' : 'Inactive',
+                //     style: TextStyle(
+                //       color: Colors.white,
+                //       fontSize: 10,
+                //       fontWeight: FontWeight.bold,
+                //     ),
+                //   ),
+                // ),
               ],
             ),
             SizedBox(height: 12),
@@ -285,7 +274,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                   child: _buildInfoItem(
                     icon: Icons.work,
                     label: 'Role',
-                    value: employee.role.toUpperCase(),
+                    value: employee.role?.toUpperCase() ?? 'N/A',
                   ),
                 ),
               ],
@@ -297,7 +286,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                   child: _buildInfoItem(
                     icon: Icons.business,
                     label: 'Department',
-                    value: employee.department,
+                    value: employee.department ?? 'N/A',
                   ),
                 ),
                 SizedBox(width: 12),
@@ -305,7 +294,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                   child: _buildInfoItem(
                     icon: Icons.badge,
                     label: 'Designation',
-                    value: employee.designation,
+                    value: employee.designation??'N/A',
                   ),
                 ),
               ],
@@ -427,14 +416,25 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
 
   Future<void> _deleteEmployee(Employee employee) async {
     try {
-      await _employeeService.deleteEmployee(employee.id);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Employee deleted successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      _refreshEmployees();
+      final employeeProvider = Provider.of<EmployeeProvider>(context, listen: false);
+      final result = await employeeProvider.deleteEmployee(employee.employeeId);
+      
+      if (result['success'] != false) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Employee deleted successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _refreshEmployees();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Error deleting employee'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -458,7 +458,6 @@ class AddEmployeeDialog extends StatefulWidget {
 
 class _AddEmployeeDialogState extends State<AddEmployeeDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _employeeService = EmployeeService();
   
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
@@ -679,29 +678,44 @@ class _AddEmployeeDialogState extends State<AddEmployeeDialog> {
     setState(() => _isLoading = true);
 
     try {
-      await _employeeService.addEmployee(
-        employeeId: _employeeIdController.text.trim(),
-        firstName: _firstNameController.text.trim(),
-        lastName: _lastNameController.text.trim(),
-        email: _emailController.text.trim(),
-        role: _selectedRole,
-        department: _departmentController.text.trim(),
-        designation: _designationController.text.trim(),
-        joinDate: _joinDate,
-        salary: double.parse(_salaryController.text.trim()),
-        phone: _phoneController.text.trim(),
-        address: _addressController.text.trim(),
-      );
-
-      Navigator.pop(context);
-      widget.onEmployeeAdded();
+      final employeeProvider = Provider.of<EmployeeProvider>(context, listen: false);
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Employee added successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      final employeeData = {
+        'employeeId': _employeeIdController.text.trim(),
+        'firstName': _firstNameController.text.trim(),
+        'lastName': _lastNameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'mobile': _phoneController.text.trim(),
+        'dateOfBirth': DateTime.now().subtract(Duration(days: 25 * 365)), // Default age 25
+        'joiningDate': _joinDate,
+        'password': 'defaultPassword123', // Default password
+        'profileImage': '',
+        'department': _departmentController.text.trim().isEmpty ? null : _departmentController.text.trim(),
+        'designation': _designationController.text.trim().isEmpty ? null : _designationController.text.trim(),
+        'role': _selectedRole,
+        'address': _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
+      };
+
+      final result = await employeeProvider.addEmployee(employeeData);
+
+      if (result['success'] != false) {
+        Navigator.pop(context);
+        widget.onEmployeeAdded();
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Employee added successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Error adding employee'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -742,7 +756,6 @@ class EditEmployeeDialog extends StatefulWidget {
 
 class _EditEmployeeDialogState extends State<EditEmployeeDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _employeeService = EmployeeService();
   
   late TextEditingController _firstNameController;
   late TextEditingController _lastNameController;
@@ -763,13 +776,13 @@ class _EditEmployeeDialogState extends State<EditEmployeeDialog> {
     _firstNameController = TextEditingController(text: widget.employee.firstName);
     _lastNameController = TextEditingController(text: widget.employee.lastName);
     _emailController = TextEditingController(text: widget.employee.email);
-    _phoneController = TextEditingController(text: widget.employee.phone);
-    _addressController = TextEditingController(text: widget.employee.address);
-    _salaryController = TextEditingController(text: widget.employee.salary.toString());
-    _departmentController = TextEditingController(text: widget.employee.department);
-    _designationController = TextEditingController(text: widget.employee.designation);
-    _selectedRole = widget.employee.role;
-    _isActive = widget.employee.isActive;
+    _phoneController = TextEditingController(text: widget.employee.mobile);
+    _addressController = TextEditingController(text: widget.employee.address ?? '');
+    _salaryController = TextEditingController(text: '0'); // Salary field removed from model
+    _departmentController = TextEditingController(text: widget.employee.department ?? '');
+    _designationController = TextEditingController(text: widget.employee.designation ?? '');
+    _selectedRole = widget.employee.role ?? 'employee';
+    _isActive = true; // isActive field removed from model
   }
 
   @override
@@ -973,31 +986,39 @@ class _EditEmployeeDialogState extends State<EditEmployeeDialog> {
     setState(() => _isLoading = true);
 
     try {
-      await _employeeService.updateEmployee(
-        widget.employee.id,
-        {
-          'firstName': _firstNameController.text.trim(),
-          'lastName': _lastNameController.text.trim(),
-          'email': _emailController.text.trim(),
-          'role': _selectedRole,
-          'department': _departmentController.text.trim(),
-          'designation': _designationController.text.trim(),
-          'salary': double.parse(_salaryController.text.trim()),
-          'phone': _phoneController.text.trim(),
-          'address': _addressController.text.trim(),
-          'isActive': _isActive,
-        },
-      );
-
-      Navigator.pop(context);
-      widget.onEmployeeUpdated();
+      final employeeProvider = Provider.of<EmployeeProvider>(context, listen: false);
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Employee updated successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      final employeeData = {
+        'firstName': _firstNameController.text.trim(),
+        'lastName': _lastNameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'mobile': _phoneController.text.trim(),
+        'department': _departmentController.text.trim().isEmpty ? null : _departmentController.text.trim(),
+        'designation': _designationController.text.trim().isEmpty ? null : _designationController.text.trim(),
+        'role': _selectedRole,
+        'address': _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
+      };
+
+      final result = await employeeProvider.updateEmployee(widget.employee.employeeId, employeeData);
+
+      if (result['success'] != false) {
+        Navigator.pop(context);
+        widget.onEmployeeUpdated();
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Employee updated successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Error updating employee'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

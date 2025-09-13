@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:quantum_dashboard/models/leave_model.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
-import 'package:quantum_dashboard/services/leave_service.dart';
+import 'package:quantum_dashboard/providers/leave_provider.dart';
 import 'package:quantum_dashboard/utils/text_styles.dart';
 
 class AdminLeaveRequestsScreen extends StatefulWidget {
@@ -12,27 +12,18 @@ class AdminLeaveRequestsScreen extends StatefulWidget {
 }
 
 class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
-  final LeaveService _leaveService = LeaveService();
-  late Future<List<Leave>> _leaveRequestsFuture;
   String _selectedStatus = 'all';
 
   @override
   void initState() {
     super.initState();
-    _loadLeaveRequests();
-  }
-
-  void _loadLeaveRequests() {
-    setState(() {
-      _leaveRequestsFuture = _leaveService.getAllLeaveRequests().catchError((error) {
-        print('Error loading leave requests: $error');
-        throw error;
-      });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<LeaveProvider>(context, listen: false).getAllLeaves();
     });
   }
 
   void _refreshLeaveRequests() {
-    _loadLeaveRequests();
+    Provider.of<LeaveProvider>(context, listen: false).getAllLeaves();
   }
 
   List<Leave> _filterLeaveRequests(List<Leave> leaves) {
@@ -138,14 +129,13 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
 
           // Leave Requests List
           Expanded(
-            child: FutureBuilder<List<Leave>>(
-              future: _leaveRequestsFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+            child: Consumer<LeaveProvider>(
+              builder: (context, leaveProvider, child) {
+                if (leaveProvider.isLoading) {
                   return Center(child: CircularProgressIndicator());
                 }
                 
-                if (snapshot.hasError) {
+                if (leaveProvider.error != null) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -158,7 +148,7 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
                         ),
                         SizedBox(height: 8),
                         Text(
-                          '${snapshot.error}',
+                          leaveProvider.error!,
                           style: AppTextStyles.body,
                           textAlign: TextAlign.center,
                         ),
@@ -172,7 +162,7 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
                   );
                 }
                 
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                if (leaveProvider.leaves.isEmpty) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -193,7 +183,7 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
                   );
                 }
 
-                final filteredLeaves = _filterLeaveRequests(snapshot.data!);
+                final filteredLeaves = _filterLeaveRequests(leaveProvider.leaves);
                 
                 if (filteredLeaves.isEmpty) {
                   return Center(
@@ -344,8 +334,8 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
               SizedBox(height: 16),
             ],
 
-            // Admin Comments (if any)
-            if (leave.adminComments?.isNotEmpty ?? false) ...[
+            // Admin Action (if any)
+            if (leave.action.isNotEmpty && leave.action != '-') ...[
               Container(
                 padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -360,7 +350,7 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
                         Icon(Icons.admin_panel_settings, size: 16, color: Colors.grey[600]),
                         SizedBox(width: 4),
                         Text(
-                          'Admin Comments',
+                          'Admin Action',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
@@ -371,7 +361,7 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      leave.adminComments!,
+                      leave.action,
                       style: TextStyle(fontSize: 12),
                     ),
                   ],
@@ -505,11 +495,8 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
 
   Future<void> _quickApprove(Leave leave) async {
     try {
-      await _leaveService.updateLeaveStatus(
-        leave.id,
-        'approved',
-        'Quick approved by admin',
-      );
+      final leaveProvider = Provider.of<LeaveProvider>(context, listen: false);
+      await leaveProvider.updateLeaveStatus(leave.id, 'approved');
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -541,7 +528,6 @@ class StatusUpdateDialog extends StatefulWidget {
 }
 
 class _StatusUpdateDialogState extends State<StatusUpdateDialog> {
-  final _leaveService = LeaveService();
   final _commentsController = TextEditingController();
   
   String _selectedStatus = 'pending';
@@ -550,7 +536,7 @@ class _StatusUpdateDialogState extends State<StatusUpdateDialog> {
   void initState() {
     super.initState();
     _selectedStatus = widget.leave.status;
-    _commentsController.text = widget.leave.adminComments ?? '';
+    _commentsController.text = widget.leave.action;
   }
 
   @override
@@ -646,10 +632,10 @@ class _StatusUpdateDialogState extends State<StatusUpdateDialog> {
 
   Future<void> _updateStatus() async {
     try {
-      await _leaveService.updateLeaveStatus(
+      final leaveProvider = Provider.of<LeaveProvider>(context, listen: false);
+      await leaveProvider.updateLeaveStatus(
         widget.leave.id,
         _selectedStatus,
-        _commentsController.text.trim(),
       );
 
       Navigator.pop(context);

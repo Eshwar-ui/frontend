@@ -8,11 +8,15 @@ class HolidayService extends ApiService {
   
   // Get all holidays
   Future<List<Holiday>> getHolidays() async {
-    final uri = Uri.parse('${ApiService.baseUrl}/api/holidays');
+    final uri = Uri.parse('${ApiService.baseUrl}/api/get-holidays');
+    print('HolidayService: Fetching holidays from: $uri');
     
     final response = await http.get(uri, headers: await getHeaders());
+    print('HolidayService: Response status: ${response.statusCode}');
+    print('HolidayService: Response body: ${response.body}');
 
     final data = handleResponse(response);
+    print('HolidayService: Parsed data: $data');
     
     // The API returns a list directly
     if (data is List) {
@@ -22,6 +26,7 @@ class HolidayService extends ApiService {
           holidays.add(Holiday.fromJson(item));
         }
       }
+      print('HolidayService: Successfully parsed ${holidays.length} holidays');
       return holidays;
     } else {
       throw Exception('Expected List but got ${data.runtimeType}');
@@ -35,59 +40,53 @@ class HolidayService extends ApiService {
   }
 
   // Add holiday (Admin only)
-  Future<Holiday> addHoliday({
-    required String holidayName,
+  Future<Map<String, dynamic>> addHoliday({
+    required String title,
     required String date,
-    required String day,
-    required String postBy,
+    required String action,
   }) async {
     final response = await http.post(
-      Uri.parse('${ApiService.baseUrl}/api/holidays'),
+      Uri.parse('${ApiService.baseUrl}/api/add-holiday'),
       headers: await getHeaders(),
       body: json.encode({
-        'Holiday Name': holidayName,
-        'Date': date,
-        'Day': day,
-        'Post By': postBy,
+        'title': title,
+        'date': date,
+        'action': action,
       }),
     );
 
     final data = handleResponse(response);
-    if (data is Map<String, dynamic> && data.containsKey('holiday')) {
-      return Holiday.fromJson(data['holiday'] as Map<String, dynamic>);
-    } else {
-      throw Exception('Unexpected response format for add holiday');
-    }
+    return data;
   }
 
   // Update holiday (Admin only)
-  Future<Holiday> updateHoliday(String holidayId, Map<String, dynamic> updates) async {
+  Future<Map<String, dynamic>> updateHoliday(String holidayId, {
+    required String title,
+    required String date,
+    required String day,
+  }) async {
     final response = await http.put(
-      Uri.parse('${ApiService.baseUrl}/api/holidays/$holidayId'),
+      Uri.parse('${ApiService.baseUrl}/api/update-holiday/$holidayId'),
       headers: await getHeaders(),
-      body: json.encode(updates),
+      body: json.encode({
+        'title': title,
+        'date': date,
+        'day': day,
+      }),
     );
 
     final data = handleResponse(response);
-    if (data is Map<String, dynamic> && data.containsKey('holiday')) {
-      return Holiday.fromJson(data['holiday'] as Map<String, dynamic>);
-    } else {
-      throw Exception('Unexpected response format for update holiday');
-    }
+    return data;
   }
 
   // Delete holiday (Admin only)
-  Future<bool> deleteHoliday(String holidayId) async {
+  Future<Map<String, dynamic>> deleteHoliday(String holidayId) async {
     final response = await http.delete(
-      Uri.parse('${ApiService.baseUrl}/api/holidays/$holidayId'),
+      Uri.parse('${ApiService.baseUrl}/api/delete-holiday/$holidayId'),
       headers: await getHeaders(),
     );
 
     final data = handleResponse(response);
-    if (data is Map<String, dynamic> && data.containsKey('message')) {
-      return data['message'] != null;
-    } else {
-      throw Exception('Unexpected response format for delete holiday');
-    }
+    return data;
   }
 }

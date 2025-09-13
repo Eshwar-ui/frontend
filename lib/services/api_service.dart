@@ -36,18 +36,27 @@ class ApiService {
 
   // Handle API response
   dynamic handleResponse(http.Response response) {
+    print('API Response Status: ${response.statusCode}');
+    print('API Response Body: ${response.body}');
+    print('API Response Headers: ${response.headers}');
+
     try {
       final data = json.decode(response.body);
-      
+
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return data;
       } else {
-        final errorMessage = data is Map ? data['message'] ?? 'Error: HTTP ${response.statusCode}' : 'Error: HTTP ${response.statusCode}';
+        final errorMessage = data is Map
+            ? data['message'] ?? 'Error: HTTP ${response.statusCode}'
+            : 'Error: HTTP ${response.statusCode}';
         throw Exception(errorMessage);
       }
     } catch (e) {
       if (e is FormatException) {
-        throw Exception('Invalid response format. Server might be unreachable or returned invalid data.');
+        print('Failed to parse response body as JSON: ${response.body}');
+        throw Exception(
+          'Invalid response format. Server returned: ${response.body.length > 200 ? response.body.substring(0, 200) + "..." : response.body}',
+        );
       }
       rethrow;
     }

@@ -1,19 +1,29 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'dart:io' show Platform;
 
 class NetworkConfig {
   // Production backend URL (deployed on Render)
-  static const String _productionUrl = 'https://quantum-dashboard-backend.onrender.com';
-  
+  // Try the subdomain approach first
+  static const String _productionUrl = 'https://quantumworks.space';
+  // Alternative options:
+  // static const String _productionUrl = 'https://quantumworks.space:4444';
+  // static const String _productionUrl = 'https://quantum-dashboard-backend.onrender.com';
+
   // Development settings (for local development)
-  static const String _devMachineIp = '10.0.2.2'; // Android emulator default
-  static const int _serverPort = 5000;
-  
+  static const String _devMachineIp =
+      '10.113.181.233'; // Android emulator default
+  // static const String _devMachineIp = '10.0.2.2';
+  static const int _serverPort = 4444; // Backend runs on port 4444
+
   // Set to true to use production backend, false for local development
-  static const bool _useProductionBackend = true;
+  static const bool _useProductionBackend = false;
 
   // Whether the app is using production backend
   static bool get isUsingProduction => _useProductionBackend;
+
+  // Whether to show development/debug UI elements
+  // This should be false in production builds
+  static bool get showDebugUI => kDebugMode && !_useProductionBackend;
 
   // Get the appropriate base URL based on configuration and platform
   static String get baseUrl {
@@ -21,7 +31,7 @@ class NetworkConfig {
     if (_useProductionBackend) {
       return _productionUrl;
     }
-    
+
     // Local development configuration
     if (kIsWeb) {
       // Web applications use localhost
@@ -39,7 +49,8 @@ class NetworkConfig {
       return 'http://localhost:$_serverPort';
     }
   }
-  
+
   // Helper method to switch between production and development
-  static String get currentEnvironment => _useProductionBackend ? 'Production' : 'Development';
+  static String get currentEnvironment =>
+      _useProductionBackend ? 'Production' : 'Development';
 }

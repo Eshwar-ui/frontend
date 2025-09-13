@@ -61,16 +61,17 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> changePassword(
-    String newPassword, {
-    String? currentPassword,
-  }) async {
+    String employeeId,
+    String newPassword,
+    String confirmPassword,
+  ) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      print('AuthProvider: Attempting password change');
-      final result = await _authService.changePassword(newPassword, currentPassword: currentPassword);
+      print('AuthProvider: Attempting password change for $employeeId');
+      final result = await _authService.changePassword(employeeId, newPassword, confirmPassword);
       _isLoading = false;
       print('AuthProvider: Password change result - $result');
       notifyListeners();
@@ -104,16 +105,13 @@ class AuthProvider with ChangeNotifier {
     return _user;
   }
 
-  // Check if user has admin role (including HR)
-  bool get isAdmin => _user?.role == 'admin' || _user?.role == 'hr';
-
-  // Check if user has HR role  
-  bool get isHR => _user?.role == 'hr';
+  // Check if user has admin role (QWIT-1001 is admin)
+  bool get isAdmin => _user?.employeeId == 'QWIT-1001';
 
   // Check if user has employee role
-  bool get isEmployee => _user?.role == 'employee';
+  bool get isEmployee => _user?.employeeId != 'QWIT-1001';
 
-  // Check if user has admin privileges (admin or HR)
+  // Check if user has admin privileges
   bool get hasAdminPrivileges => isAdmin;
 
   // Debug method to print current state

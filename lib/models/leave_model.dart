@@ -3,29 +3,27 @@ import 'package:quantum_dashboard/models/user_model.dart';
 class Leave {
   final String id;
   final String employeeId;
-  final String leaveType;
-  final DateTime startDate;
-  final DateTime endDate;
+  final String type;
+  final DateTime from;
+  final DateTime to;
   final String reason;
   final String status;
   final int days;
-  final DateTime createdAt;
-  final String? rejectionReason;
-  final String? adminComments;
+  final String actionBy;
+  final String action;
   final Employee? employee;
 
   Leave({
     required this.id,
     required this.employeeId,
-    required this.leaveType,
-    required this.startDate,
-    required this.endDate,
+    required this.type,
+    required this.from,
+    required this.to,
     required this.reason,
     required this.status,
     required this.days,
-    required this.createdAt,
-    this.rejectionReason,
-    this.adminComments,
+    required this.actionBy,
+    required this.action,
     this.employee,
   });
 
@@ -40,10 +38,11 @@ class Leave {
     }
     return 'Unknown Employee';
   }
-  DateTime get fromDate => startDate;
-  DateTime get toDate => endDate;
-  DateTime get appliedDate => createdAt;
+  DateTime get fromDate => from;
+  DateTime get toDate => to;
+  DateTime get appliedDate => from; // Using from date as applied date
   int get totalDays => days;
+  String get leaveType => type; // Alias for compatibility
 
   factory Leave.fromJson(Map<String, dynamic> json) {
     // Safe employee parsing
@@ -63,20 +62,61 @@ class Leave {
     }
 
     return Leave(
-      id: json['_id'] ?? json['id'],
+      id: json['_id'] ?? json['id'] ?? '',
       employeeId: json['employeeId'] is String 
           ? json['employeeId'] 
           : (json['employeeId'] is Map ? json['employeeId']['_id'] ?? json['employeeId']['id'] : ''),
-      leaveType: json['leaveType'] ?? '',
-      startDate: DateTime.parse(json['startDate']),
-      endDate: DateTime.parse(json['endDate']),
+      type: json['type'] ?? '',
+      from: _parseDate(json['from']),
+      to: _parseDate(json['to']),
       reason: json['reason'] ?? '',
-      status: json['status'] ?? 'pending',
+      status: json['status'] ?? 'New',
       days: json['days'] ?? 0,
-      createdAt: DateTime.parse(json['createdAt']),
-      rejectionReason: json['rejectionReason'],
-      adminComments: json['adminComments'],
+      actionBy: json['actionBy'] ?? 'HR',
+      action: json['action'] ?? '-',
       employee: employee,
     );
+  }
+
+  // Helper method to parse date from various formats
+  static DateTime _parseDate(dynamic dateValue) {
+    print('LeaveModel: Parsing date value: $dateValue (type: ${dateValue.runtimeType})');
+    try {
+      // If it's already a DateTime object, return it
+      if (dateValue is DateTime) {
+        print('LeaveModel: Date is already DateTime, returning as-is');
+        return dateValue;
+      }
+      
+      // If it's a String, try to parse it
+      if (dateValue is String) {
+        print('LeaveModel: Date is String, attempting to parse');
+        // Try parsing as ISO format first (for backward compatibility)
+        try {
+          return DateTime.parse(dateValue);
+        } catch (e) {
+          // If ISO parsing fails, try parsing "dd-MM-yyyy" format
+          try {
+            final parts = dateValue.split('-');
+            if (parts.length == 3) {
+              final day = int.parse(parts[0]);
+              final month = int.parse(parts[1]);
+              final year = int.parse(parts[2]);
+              return DateTime(year, month, day);
+            }
+          } catch (e) {
+            print('Error parsing date string: $dateValue, using current date as fallback');
+            return DateTime.now();
+          }
+        }
+      }
+      
+      // If it's neither DateTime nor String, return current date
+      print('Unexpected date type: ${dateValue.runtimeType}, using current date as fallback');
+      return DateTime.now();
+    } catch (e) {
+      print('Error parsing date: $dateValue, using current date as fallback');
+      return DateTime.now();
+    }
   }
 }

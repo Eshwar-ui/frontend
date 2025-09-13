@@ -2,6 +2,19 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 
 class LoadingDotsAnimation extends StatefulWidget {
+  final Color? color;
+  final double? size;
+  final int? dotCount;
+  final Duration? duration;
+
+  const LoadingDotsAnimation({
+    Key? key,
+    this.color,
+    this.size,
+    this.dotCount,
+    this.duration,
+  }) : super(key: key);
+
   @override
   _LoadingDotsAnimationState createState() => _LoadingDotsAnimationState();
 }
@@ -15,7 +28,7 @@ class _LoadingDotsAnimationState extends State<LoadingDotsAnimation>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: widget.duration ?? const Duration(milliseconds: 1000),
     )..repeat();
   }
 
@@ -27,9 +40,12 @@ class _LoadingDotsAnimationState extends State<LoadingDotsAnimation>
 
   @override
   Widget build(BuildContext context) {
+    final dotCount = widget.dotCount ?? 3;
+    final dotSize = widget.size ?? 6.0;
+    
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: List.generate(3, (index) {
+      children: List.generate(dotCount, (index) {
         return AnimatedBuilder(
           animation: _controller,
           builder: (context, child) {
@@ -42,19 +58,19 @@ class _LoadingDotsAnimationState extends State<LoadingDotsAnimation>
               child: child,
             );
           },
-          child: _buildDot(),
+          child: _buildDot(dotSize),
         );
       }),
     );
   }
 
-  Widget _buildDot() {
+  Widget _buildDot(double size) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 3.0),
-      width: 8.0,
-      height: 8.0,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
-        color: Colors.blue, // You can customize the color
+        color: widget.color ?? Colors.blue,
         shape: BoxShape.circle,
       ),
     );

@@ -48,7 +48,7 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
           ),
         ),
         SizedBox(height: 12),
-        if (widget.employee?.profilePhoto != null)
+        if (widget.employee?.profileImage != null)
           TextButton.icon(
             onPressed: _isUploading ? null : _deletePhoto,
             icon: Icon(Icons.delete, size: 16),
@@ -79,8 +79,8 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
       );
     }
 
-    if (widget.employee?.profilePhoto != null) {
-      final photoUrl = _photoService.getPhotoUrl(widget.employee!.profilePhoto);
+    if (widget.employee?.profileImage != null) {
+      final photoUrl = _photoService.getPhotoUrl(widget.employee!.profileImage);
       return ClipOval(
         child: Image.network(
           photoUrl,
@@ -156,7 +156,7 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
                   _pickImage(ImageSource.camera);
                 },
               ),
-              if (widget.employee?.profilePhoto != null)
+              if (widget.employee?.profileImage != null)
                 ListTile(
                   leading: Icon(Icons.delete, color: Colors.red),
                   title: Text('Remove Photo', style: TextStyle(color: Colors.red)),

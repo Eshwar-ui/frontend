@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:quantum_dashboard/providers/attendance_provider.dart';
+import 'package:quantum_dashboard/providers/employee_provider.dart';
+import 'package:quantum_dashboard/providers/holiday_provider.dart';
 import 'package:quantum_dashboard/providers/leave_provider.dart';
 import 'package:quantum_dashboard/providers/navigation_provider.dart';
+import 'package:quantum_dashboard/providers/payslip_provider.dart';
 import 'package:quantum_dashboard/utils/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'screens/login_screen.dart';
@@ -20,8 +24,12 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => AttendanceProvider()),
+        ChangeNotifierProvider(create: (_) => HolidayProvider()),
+        ChangeNotifierProvider(create: (_) => EmployeeProvider()),
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider(create: (_) => LeaveProvider()),
+        ChangeNotifierProvider(create: (_) => PayslipProvider()),
         // Add other providers here
       ],
       child: MaterialApp(

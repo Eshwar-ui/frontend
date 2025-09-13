@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/providers/leave_provider.dart';
+import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/utils/text_styles.dart';
 
 class ApplyLeaveDialog extends StatefulWidget {
@@ -39,11 +40,22 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
   void _submitForm() async {
     if (_formKey.currentState!.validate()) {
       final leaveProvider = Provider.of<LeaveProvider>(context, listen: false);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final user = authProvider.user;
+      
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('User not found. Please login again.')),
+        );
+        return;
+      }
+      
       try {
         await leaveProvider.applyLeave(
+          employeeId: user.employeeId,
           leaveType: _leaveType,
-          startDate: _startDate,
-          endDate: _endDate,
+          from: _startDate,
+          to: _endDate,
           reason: _reason,
         );
         Navigator.of(context).pop();

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:quantum_dashboard/models/attendance_model.dart';
 import 'package:quantum_dashboard/models/holiday_model.dart';
-import 'package:quantum_dashboard/services/attendance_service.dart';
-import 'package:quantum_dashboard/services/holiday_service.dart';
+import 'package:quantum_dashboard/providers/attendance_provider.dart';
+import 'package:quantum_dashboard/providers/holiday_provider.dart';
+import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/utils/text_styles.dart';
-import 'package:quantum_dashboard/widgets/custom_floating_container.dart';
 
 class AttendanceScreen extends StatefulWidget {
   @override
@@ -14,9 +15,6 @@ class AttendanceScreen extends StatefulWidget {
 }
 
 class _AttendanceScreenState extends State<AttendanceScreen> {
-  final AttendanceService _attendanceService = AttendanceService();
-  final HolidayService _holidayService = HolidayService();
-  late Future<List<Attendance>> _attendanceFuture;
   int _selectedYear = DateTime.now().year;
   int _selectedMonth = DateTime.now().month;
   
@@ -30,53 +28,55 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   @override
   void initState() {
     super.initState();
-    _loadAttendance();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAttendance();
+    });
   }
 
   void _loadAttendance() {
-    setState(() {
-      _attendanceFuture = _attendanceService.getMyAttendance(
-        year: _selectedYear,
-        month: _selectedMonth,
-      );
-    });
+    final authProvider = context.read<AuthProvider>();
+    final user = authProvider.user;
     
-    // Load attendance data for calendar
-    _loadAttendanceForCalendar();
+    if (user != null) {
+      // Load attendance data for calendar
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadAttendanceForCalendar(user.employeeId);
+      });
+    }
   }
 
-  Future<void> _loadAttendanceForCalendar() async {
+  Future<void> _loadAttendanceForCalendar(String employeeId) async {
     try {
-      final attendanceList = await _attendanceService.getMyAttendance(
-        year: _selectedYear,
-        month: _selectedMonth,
-      );
+      final attendanceProvider = context.read<AttendanceProvider>();
+      final holidayProvider = context.read<HolidayProvider>();
+      
+      // Load punches for the selected month/year
+      await attendanceProvider.getPunches(employeeId, month: _selectedMonth, year: _selectedYear);
       
       // Load holidays for the selected year
-      final holidays = await _holidayService.getHolidaysByYear(_selectedYear);
+      await holidayProvider.getHolidaysByYear(_selectedYear);
       
       // Group attendance by date
       final Map<DateTime, List<Attendance>> events = {};
-      for (var attendance in attendanceList) {
-        final date = DateTime(attendance.date.year, attendance.date.month, attendance.date.day);
+      for (var attendance in attendanceProvider.punches) {
+        final date = DateTime(attendance.punchIn.year, attendance.punchIn.month, attendance.punchIn.day);
         if (events[date] == null) events[date] = [];
         events[date]!.add(attendance);
       }
       
       // Group holidays by date
       final Map<DateTime, Holiday> holidayMap = {};
-      for (var holiday in holidays) {
-        final parsedDate = holiday.parsedDate;
-        if (parsedDate != null) {
-          final date = DateTime(parsedDate.year, parsedDate.month, parsedDate.day);
-          holidayMap[date] = holiday;
-        }
+      for (var holiday in holidayProvider.holidays) {
+        final date = DateTime(holiday.date.year, holiday.date.month, holiday.date.day);
+        holidayMap[date] = holiday;
       }
       
-      setState(() {
-        _events = events;
-        _holidays = holidayMap;
-      });
+      if (mounted) {
+        setState(() {
+          _events = events;
+          _holidays = holidayMap;
+        });
+      }
     } catch (e) {
       print('Error loading attendance for calendar: $e');
     }
@@ -90,6 +90,95 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Holiday? _getHolidayForDay(DateTime day) {
     final date = DateTime(day.year, day.month, day.day);
     return _holidays[date];
+  }
+
+  Future<void> _punchIn() async {
+    final authProvider = context.read<AuthProvider>();
+    final attendanceProvider = context.read<AttendanceProvider>();
+    final user = authProvider.user;
+    
+    if (user != null) {
+      final result = await attendanceProvider.punchIn(user.employeeId, user.fullName);
+      if (result['message'] != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message'])),
+        );
+        // Refresh data after a short delay to avoid setState during build
+        Future.delayed(Duration(milliseconds: 100), () {
+          if (mounted) {
+            _loadAttendance();
+          }
+        });
+      }
+    }
+  }
+
+  Future<void> _punchOut() async {
+    final authProvider = context.read<AuthProvider>();
+    final attendanceProvider = context.read<AttendanceProvider>();
+    final user = authProvider.user;
+    
+    if (user != null) {
+      final result = await attendanceProvider.punchOut(user.employeeId, user.fullName);
+      if (result['message'] != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message'])),
+        );
+        // Refresh data after a short delay to avoid setState during build
+        Future.delayed(Duration(milliseconds: 100), () {
+          if (mounted) {
+            _loadAttendance();
+          }
+        });
+      }
+    }
+  }
+
+  bool _isPunchedInToday() {
+    final today = DateTime.now();
+    final todayEvents = _getEventsForDay(today);
+    return todayEvents.any((attendance) => attendance.isPunchedIn);
+  }
+
+  Widget _buildPunchButtons() {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: _isPunchedInToday() ? null : _punchIn,
+              icon: Icon(Icons.login),
+              label: Text('Punch In'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: _isPunchedInToday() ? _punchOut : null,
+              icon: Icon(Icons.logout),
+              label: Text('Punch Out'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -310,6 +399,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               ],
             ),
           ),
+          // Punch In/Out Buttons
+          _buildPunchButtons(),
           // _buildFilter(),
           Expanded(
             child: _buildCalendarView(),
@@ -351,6 +442,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               if (value != null) {
                 setState(() {
                   _selectedYear = value;
+                });
+                // Load attendance after setState completes
+                WidgetsBinding.instance.addPostFrameCallback((_) {
                   _loadAttendance();
                 });
               }
@@ -373,6 +467,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               if (value != null) {
                 setState(() {
                   _selectedMonth = value;
+                });
+                // Load attendance after setState completes
+                WidgetsBinding.instance.addPostFrameCallback((_) {
                   _loadAttendance();
                 });
               }
@@ -398,12 +495,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          TableCalendar(
-            firstDay: DateTime.utc(2020, 1, 1),
-            lastDay: DateTime.utc(2030, 12, 31),
-            focusedDay: _focusedDay,
-            calendarFormat: _calendarFormat,
+          SizedBox(
+            // height: 400, // Give TableCalendar a fixed height
+            child: TableCalendar(
+              firstDay: DateTime.utc(2020, 1, 1),
+              lastDay: DateTime.utc(2030, 12, 31),
+              focusedDay: _focusedDay,
+              calendarFormat: _calendarFormat,
             selectedDayPredicate: (day) {
               return isSameDay(_selectedDay, day);
             },
@@ -412,7 +512,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 _selectedDay = selectedDay;
                 _focusedDay = focusedDay;
               });
-              _showAttendanceDetails(selectedDay);
+              // Show details after setState completes
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _showAttendanceDetails(selectedDay);
+              });
             },
             onFormatChanged: (format) {
               setState(() {
@@ -470,7 +573,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     child: Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: _getMarkerColor(attendance.status),
+                        color: _getMarkerColor(attendance.attendanceStatus),
                       ),
                       width: 8,
                       height: 8,
@@ -480,6 +583,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 return null;
               },
             ),
+          ),
           ),
           _buildCalendarLegend(),
         ],
@@ -502,12 +606,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
     // Then check attendance status
     else if (events.isNotEmpty) {
-      final attendance = events.first as Attendance;
+      final attendance = events.first;
       
       // Check if there are incomplete check-ins (no check-out)
-      bool hasIncompleteCheckIn = attendance.checkIns.any((checkIn) => checkIn.checkOutTime == null);
+      bool hasIncompleteCheckIn = attendance.isPunchedIn;
       
-      String effectiveStatus = attendance.status.toLowerCase();
+      String effectiveStatus = attendance.attendanceStatus.toLowerCase();
       
       // If there are incomplete check-ins, treat as absent
       if (hasIncompleteCheckIn && effectiveStatus != 'absent') {
@@ -585,7 +689,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Widget _buildCalendarLegend() {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.only(
@@ -891,16 +995,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     String? additionalInfo;
 
     if (holiday != null) {
-      status = 'Holiday - ${holiday.holidayName}';
+      status = 'Holiday - ${holiday.title}';
       statusColor = Colors.purple;
       statusIcon = Icons.celebration;
     } else if (events.isNotEmpty) {
       final attendance = events.first;
       
       // Check if there are incomplete check-ins
-      bool hasIncompleteCheckIn = attendance.checkIns.any((checkIn) => checkIn.checkOutTime == null);
+      bool hasIncompleteCheckIn = attendance.isPunchedIn;
       
-      String effectiveStatus = attendance.status.toLowerCase();
+      String effectiveStatus = attendance.attendanceStatus.toLowerCase();
       
       if (hasIncompleteCheckIn && effectiveStatus != 'absent') {
         status = 'ABSENT';
@@ -908,7 +1012,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         statusIcon = Icons.cancel;
         additionalInfo = 'Marked absent due to incomplete check-out';
       } else {
-        status = attendance.status.toUpperCase();
+        status = attendance.attendanceStatus.toUpperCase();
         switch (effectiveStatus) {
           case 'present':
             statusColor = Colors.green;
@@ -1014,7 +1118,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             Expanded(
               child: _buildSummaryCard(
                 'Break Hours',
-                _formatDuration(attendance.totalBreakTime),
+                _formatDuration(attendance.breakTime),
                 Icons.free_breakfast,
                 Colors.orange,
               ),
@@ -1033,69 +1137,49 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         ),
         SizedBox(height: 12),
 
-        ...attendance.checkIns.asMap().entries.map((entry) {
-          final index = entry.key;
-          final checkIn = entry.value;
-          final duration = checkIn.checkOutTime != null
-              ? checkIn.checkOutTime!.difference(checkIn.checkInTime)
-              : Duration.zero;
-
-          return Container(
-            margin: EdgeInsets.only(bottom: 12),
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[200]!),
-            ),
-            child: Column(
-              children: [
-                if (attendance.checkIns.length > 1)
-                  Padding(
-                    padding: EdgeInsets.only(bottom: 12),
-                    child: Text(
-                      'Session ${index + 1}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[700],
-                      ),
+        Container(
+          margin: EdgeInsets.only(bottom: 12),
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey[50],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[200]!),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildTimeDetail(
+                      'Punch In',
+                      DateFormat.jm().format(attendance.punchIn.toLocal()),
+                      Icons.login,
+                      Colors.green,
                     ),
                   ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildTimeDetail(
-                        'Check In',
-                        DateFormat.jm().format(checkIn.checkInTime.toLocal()),
-                        Icons.login,
-                        Colors.green,
-                      ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: _buildTimeDetail(
+                      'Punch Out',
+                      attendance.punchOut != null
+                          ? DateFormat.jm().format(attendance.punchOut!.toLocal())
+                          : 'Still Active',
+                      Icons.logout,
+                      attendance.punchOut != null ? Colors.red : Colors.orange,
                     ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: _buildTimeDetail(
-                        'Check Out',
-                        checkIn.checkOutTime != null
-                            ? DateFormat.jm().format(checkIn.checkOutTime!.toLocal())
-                            : 'Still Active',
-                        Icons.logout,
-                        checkIn.checkOutTime != null ? Colors.red : Colors.orange,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 12),
-                _buildTimeDetail(
-                  'Duration',
-                  _formatDuration(duration.inMilliseconds.toDouble()),
-                  Icons.schedule,
-                  Colors.blue,
-                ),
-              ],
-            ),
-          );
-        }).toList(),
+                  ),
+                ],
+              ),
+              SizedBox(height: 12),
+              _buildTimeDetail(
+                'Duration',
+                attendance.formattedWorkingTime,
+                Icons.schedule,
+                Colors.blue,
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -1180,7 +1264,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           Icon(Icons.celebration, size: 48, color: Colors.purple),
           SizedBox(height: 16),
           Text(
-            holiday.holidayName,
+            holiday.title,
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
