@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:io';
-import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:quantum_dashboard/providers/payslip_provider.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/models/payslip_model.dart';
+import 'package:quantum_dashboard/utils/Pdf_helper.dart';
 import 'package:quantum_dashboard/utils/text_styles.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
@@ -47,106 +44,6 @@ class _PayslipsScreenState extends State<PayslipsScreen> {
     }
   }
 
-  Future<void> _downloadPdf(String pdfUrl, String fileName) async {
-    try {
-      // Show loading dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Downloading payslip...'),
-              ],
-            ),
-          );
-        },
-      );
-
-      // Request storage permission for Android
-      if (Platform.isAndroid) {
-        final status = await Permission.storage.request();
-        if (!status.isGranted) {
-          Navigator.of(context).pop(); // Close loading dialog
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Storage permission denied'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          return;
-        }
-      }
-
-      // Get the downloads directory
-      Directory? directory;
-      if (Platform.isAndroid) {
-        directory = Directory('/storage/emulated/0/Download');
-        if (!await directory.exists()) {
-          directory = await getExternalStorageDirectory();
-        }
-      } else if (Platform.isIOS) {
-        directory = await getApplicationDocumentsDirectory();
-      }
-
-      if (directory == null) {
-        Navigator.of(context).pop(); // Close loading dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not access storage directory'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-
-      // Create file path
-      final filePath = '${directory.path}/$fileName.pdf';
-      final file = File(filePath);
-
-      // Download the PDF
-      final response = await http.get(Uri.parse(pdfUrl));
-      if (response.statusCode == 200) {
-        await file.writeAsBytes(response.bodyBytes);
-
-        Navigator.of(context).pop(); // Close loading dialog
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Payslip downloaded successfully!'),
-            backgroundColor: Colors.green,
-            action: SnackBarAction(
-              label: 'Open',
-              onPressed: () {
-                url_launcher.launchUrl(Uri.parse('file://$filePath'));
-              },
-            ),
-          ),
-        );
-      } else {
-        Navigator.of(context).pop(); // Close loading dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to download PDF: ${response.statusCode}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      Navigator.of(context).pop(); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Download failed: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
   String _generatePayslipFileName(String empId, int month, int year) {
     final monthNames = [
       'Jan',
@@ -181,46 +78,46 @@ class _PayslipsScreenState extends State<PayslipsScreen> {
       body: Column(
         children: [
           // Toggle between generated and employee payslips
-          Container(
-            padding: EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _showGeneratedPayslips = true;
-                      });
-                      _loadPayslips();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _showGeneratedPayslips
-                          ? Colors.blue
-                          : Colors.grey,
-                    ),
-                    child: Text('Generated Payslips'),
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _showGeneratedPayslips = false;
-                      });
-                      _loadPayslips();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: !_showGeneratedPayslips
-                          ? Colors.blue
-                          : Colors.grey,
-                    ),
-                    child: Text('My Uploads'),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // Container(
+          //   padding: EdgeInsets.all(16),
+          //   child: Row(
+          //     children: [
+          //       Expanded(
+          //         child: ElevatedButton(
+          //           onPressed: () {
+          //             setState(() {
+          //               _showGeneratedPayslips = true;
+          //             });
+          //             _loadPayslips();
+          //           },
+          //           style: ElevatedButton.styleFrom(
+          //             backgroundColor: _showGeneratedPayslips
+          //                 ? Colors.blue
+          //                 : Colors.grey,
+          //           ),
+          //           child: Text('Generated Payslips'),
+          //         ),
+          //       ),
+          //       SizedBox(width: 16),
+          //       Expanded(
+          //         child: ElevatedButton(
+          //           onPressed: () {
+          //             setState(() {
+          //               _showGeneratedPayslips = false;
+          //             });
+          //             _loadPayslips();
+          //           },
+          //           style: ElevatedButton.styleFrom(
+          //             backgroundColor: !_showGeneratedPayslips
+          //                 ? Colors.blue
+          //                 : Colors.grey,
+          //           ),
+          //           child: Text('My Uploads'),
+          //         ),
+          //       ),
+          //     ],
+          //   ),
+          // ),
           // Month/Year selector for generated payslips
           if (_showGeneratedPayslips)
             Consumer<PayslipProvider>(
@@ -451,7 +348,11 @@ class _PayslipsScreenState extends State<PayslipsScreen> {
                         payslip.month,
                         payslip.year,
                       );
-                      await _downloadPdf(payslip.payslipUrl, fileName);
+                      await downloadAndOpenPdf(
+                        payslip.payslipUrl,
+                        fileName,
+                        context,
+                      );
                     },
                     icon: Icon(Icons.download, size: 18),
                     label: Text(

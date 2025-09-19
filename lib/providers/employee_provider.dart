@@ -35,7 +35,11 @@ class EmployeeProvider with ChangeNotifier {
   }
 
   // Get all employees (Admin only)
-  Future<void> getAllEmployees({String? employeeId, String? employeeName, String? designation}) async {
+  Future<void> getAllEmployees({
+    String? employeeId,
+    String? employeeName,
+    String? designation,
+  }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -55,7 +59,9 @@ class EmployeeProvider with ChangeNotifier {
   }
 
   // Add new employee (Admin only)
-  Future<Map<String, dynamic>> addEmployee(Map<String, dynamic> employeeData) async {
+  Future<Map<String, dynamic>> addEmployee(
+    Map<String, dynamic> employeeData,
+  ) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -75,7 +81,10 @@ class EmployeeProvider with ChangeNotifier {
   }
 
   // Update employee (Admin only)
-  Future<Map<String, dynamic>> updateEmployee(String id, Map<String, dynamic> updates) async {
+  Future<Map<String, dynamic>> updateEmployee(
+    String id,
+    Map<String, dynamic> updates,
+  ) async {
     _isLoading = true;
     _error = null;
     notifyListeners();

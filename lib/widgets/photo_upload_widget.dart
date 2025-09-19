@@ -1,9 +1,11 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/services/photo_service.dart';
-import 'package:quantum_dashboard/utils/network_config.dart';
+import 'package:quantum_dashboard/providers/auth_provider.dart';
+import 'package:provider/provider.dart';
 
 class PhotoUploadWidget extends StatefulWidget {
   final Employee? employee;
@@ -48,14 +50,13 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
           ),
         ),
         SizedBox(height: 12),
-        if (widget.employee?.profileImage != null)
+        if (widget.employee?.profileImage != null &&
+            widget.employee!.profileImage.isNotEmpty)
           TextButton.icon(
             onPressed: _isUploading ? null : _deletePhoto,
             icon: Icon(Icons.delete, size: 16),
             label: Text('Remove Photo', style: TextStyle(fontSize: 12)),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
-            ),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
           ),
       ],
     );
@@ -63,9 +64,7 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
 
   Widget _buildPhotoContent() {
     if (_isUploading) {
-      return Center(
-        child: CircularProgressIndicator(strokeWidth: 2),
-      );
+      return Center(child: CircularProgressIndicator(strokeWidth: 2));
     }
 
     if (_imageFile != null) {
@@ -79,8 +78,27 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
       );
     }
 
-    if (widget.employee?.profileImage != null) {
+    if (widget.employee?.profileImage != null &&
+        widget.employee!.profileImage.isNotEmpty) {
       final photoUrl = _photoService.getPhotoUrl(widget.employee!.profileImage);
+      // Support data URL directly
+      if (photoUrl.startsWith('data:image')) {
+        final base64Part = photoUrl.split(',').last;
+        try {
+          final bytes = base64Decode(base64Part);
+          return ClipOval(
+            child: Image.memory(
+              bytes,
+              width: widget.size,
+              height: widget.size,
+              fit: BoxFit.cover,
+            ),
+          );
+        } catch (_) {
+          // Fallback to placeholder if decode fails
+          return _buildPlaceholder();
+        }
+      }
       return ClipOval(
         child: Image.network(
           photoUrl,
@@ -96,8 +114,8 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 value: loadingProgress.expectedTotalBytes != null
-                    ? loadingProgress.cumulativeBytesLoaded /
-                        loadingProgress.expectedTotalBytes!
+                    ? (loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!)
                     : null,
               ),
             );
@@ -156,10 +174,14 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
                   _pickImage(ImageSource.camera);
                 },
               ),
-              if (widget.employee?.profileImage != null)
+              if (widget.employee?.profileImage != null &&
+                  widget.employee!.profileImage.isNotEmpty)
                 ListTile(
                   leading: Icon(Icons.delete, color: Colors.red),
-                  title: Text('Remove Photo', style: TextStyle(color: Colors.red)),
+                  title: Text(
+                    'Remove Photo',
+                    style: TextStyle(color: Colors.red),
+                  ),
                   onTap: () {
                     Navigator.pop(context);
                     _deletePhoto();
@@ -193,14 +215,25 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
 
     try {
       Employee updatedEmployee;
-      
+
       if (widget.isAdminMode && widget.employeeId != null) {
         updatedEmployee = await _photoService.uploadEmployeePhoto(
           widget.employeeId!,
           imagePath,
         );
       } else {
-        updatedEmployee = await _photoService.uploadProfilePhoto(imagePath);
+        final auth = Provider.of<AuthProvider>(context, listen: false);
+        final current = auth.user!;
+        // Immediately update local profile image with compressed data URL
+        final String dataUrl = await _photoService.buildCompressedDataUrl(
+          imagePath,
+        );
+        auth.setUser(current.copyWith(profileImage: dataUrl));
+        updatedEmployee = await _photoService.uploadProfilePhoto(
+          imagePath,
+          employeeMongoId: current.id,
+          employeeId: current.employeeId,
+        );
       }
 
       setState(() {
@@ -231,7 +264,14 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
     });
 
     try {
-      final updatedEmployee = await _photoService.deleteProfilePhoto();
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final current = auth.user!;
+      // Immediately clear local profile image
+      auth.setUser(current.copyWith(profileImage: ''));
+      final updatedEmployee = await _photoService.deleteProfilePhoto(
+        employeeMongoId: current.id,
+        employeeId: current.employeeId,
+      );
 
       setState(() {
         _isUploading = false;
@@ -255,10 +295,7 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 }

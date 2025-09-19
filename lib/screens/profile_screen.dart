@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/models/user_model.dart';
@@ -31,45 +32,135 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
+            centerTitle: true,
+            backgroundColor: Colors.blue.shade700,
             foregroundColor: Colors.white,
-            expandedHeight: 200.0,
+            expandedHeight: 300,
             floating: false,
             pinned: true,
+            actions: [
+              IconButton(
+                icon: Icon(Icons.edit),
+                onPressed: () {
+                  showModalBottomSheet(
+                    useSafeArea: true,
+                    context: context,
+                    isScrollControlled: false,
+                    backgroundColor: Colors.transparent,
+                    builder: (ctx) {
+                      return Container(
+                        width: double.infinity,
+                        height: 300,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(16),
+                            topRight: Radius.circular(16),
+                          ),
+                        ),
+                        padding: EdgeInsets.all(16),
+                        child: PhotoUploadWidget(
+                          employee: user,
+                          size: 200,
+                          onPhotoUploaded: (updatedEmployee) {
+                            Provider.of<AuthProvider>(
+                              context,
+                              listen: false,
+                            ).setUser(updatedEmployee);
+                            Navigator.of(ctx).pop();
+                          },
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
-              title: Text(
-                user.fullName,
-                style: AppTextStyles.heading.copyWith(color: Colors.white),
+              titlePadding: EdgeInsets.zero,
+              centerTitle: true,
+              expandedTitleScale: 1.2,
+              title: Container(
+                alignment: Alignment.center,
+                // padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                width: double.infinity,
+                height: 55,
+                color: Colors.blue.shade700,
+                child: Text(
+                  maxLines: 1,
+                  user.fullName.toTitleCase(),
+                  style: AppTextStyles.heading.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Image.asset(
-                  //   'assets/illustrations/profile_background.jpg', // Add a background image
-                  //   fit: BoxFit.cover,
-                  // ),
+                  Container(
+                    decoration: BoxDecoration(
+                      image: DecorationImage(
+                        image:
+                            (() {
+                                  if (user.profileImage.isNotEmpty) {
+                                    if (user.profileImage.startsWith(
+                                      'data:image',
+                                    )) {
+                                      try {
+                                        final String base64String = user
+                                            .profileImage
+                                            .split(',')
+                                            .last;
+                                        final bytes = base64Decode(
+                                          base64String,
+                                        );
+                                        return MemoryImage(bytes);
+                                      } catch (_) {
+                                        return const AssetImage(
+                                          'assets/avatars/avatar.png',
+                                        );
+                                      }
+                                    } else {
+                                      return NetworkImage(user.profileImage);
+                                    }
+                                  }
+                                  return const AssetImage(
+                                    'assets/avatars/avatar.png',
+                                  );
+                                })()
+                                as ImageProvider,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          Colors.black.withOpacity(0.6),
-                          Colors.transparent,
+                          Colors.blue.shade700,
+                          Colors.blue.shade700.withOpacity(0.5),
                         ],
+                        stops: [0.2, 0.7],
                         begin: Alignment.bottomCenter,
                         end: Alignment.topCenter,
                       ),
                     ),
                   ),
-                  Center(
-                    child: PhotoUploadWidget(
-                      employee: user,
-                      size: 100,
-                      onPhotoUploaded: (updatedEmployee) {
-                        // Update auth provider with new user data
-                        Provider.of<AuthProvider>(
-                          context,
-                          listen: false,
-                        ).setUser(updatedEmployee);
-                      },
+                  Container(
+                    margin: EdgeInsets.only(top: 100),
+                    child: Center(
+                      child: PhotoUploadWidget(
+                        employee: user,
+                        size: 150,
+                        onPhotoUploaded: (updatedEmployee) {
+                          // Update auth provider with new user data
+                          Provider.of<AuthProvider>(
+                            context,
+                            listen: false,
+                          ).setUser(updatedEmployee);
+                        },
+                      ),
                     ),
                   ),
                 ],
@@ -356,5 +447,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
         behavior: SnackBarBehavior.floating,
       ),
     );
+  }
+}
+
+extension on String {
+  String toTitleCase() {
+    if (isEmpty) return this;
+    return split(' ')
+        .map(
+          (word) => word.isEmpty
+              ? word
+              : '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}',
+        )
+        .join(' ');
   }
 }

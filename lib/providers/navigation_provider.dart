@@ -8,6 +8,7 @@ enum NavigationPage {
   Holidays,
   ChangePassword,
   Profile,
+  // AllEmployees,
   AdminEmployees,
   AdminLeaveRequests,
   AdminHolidays,

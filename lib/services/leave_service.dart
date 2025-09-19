@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:quantum_dashboard/models/leave_model.dart';
 import 'package:quantum_dashboard/services/api_service.dart';
+import 'package:quantum_dashboard/utils/api_endpoints.dart';
 
 class LeaveService extends ApiService {
   // Apply for leave
@@ -37,8 +38,10 @@ class LeaveService extends ApiService {
   // Get my leaves
   Future<List<Leave>> getMyLeaves(String employeeId) async {
     print('LeaveService: Fetching leaves for employee: $employeeId');
-    print('LeaveService: API URL: ${ApiService.baseUrl}/api/get-leaves/$employeeId');
-    
+    print(
+      'LeaveService: API URL: ${ApiService.baseUrl}/api/get-leaves/$employeeId',
+    );
+
     final response = await http.get(
       Uri.parse('${ApiService.baseUrl}/api/get-leaves/$employeeId'),
       headers: await getHeaders(),
@@ -76,10 +79,7 @@ class LeaveService extends ApiService {
     final response = await http.put(
       Uri.parse('${ApiService.baseUrl}/api/leave/update-status'),
       headers: await getHeaders(),
-      body: json.encode({
-        'leaveId': leaveId,
-        'status': status,
-      }),
+      body: json.encode({'leaveId': leaveId, 'status': status}),
     );
 
     final data = handleResponse(response);
@@ -95,9 +95,7 @@ class LeaveService extends ApiService {
     final response = await http.put(
       Uri.parse('${ApiService.baseUrl}/api/update-leave/$employeeId/$leaveId'),
       headers: await getHeaders(),
-      body: json.encode({
-        'data': leaveData,
-      }),
+      body: json.encode({'data': leaveData}),
     );
 
     final data = handleResponse(response);
@@ -116,7 +114,10 @@ class LeaveService extends ApiService {
   }
 
   // Delete leave (Employee)
-  Future<Map<String, dynamic>> deleteLeave(String employeeId, String leaveId) async {
+  Future<Map<String, dynamic>> deleteLeave(
+    String employeeId,
+    String leaveId,
+  ) async {
     final response = await http.delete(
       Uri.parse('${ApiService.baseUrl}/api/delete-leave/$employeeId/$leaveId'),
       headers: await getHeaders(),
@@ -124,5 +125,27 @@ class LeaveService extends ApiService {
 
     final data = handleResponse(response);
     return data;
+  }
+
+  // Fetch available leave types from backend
+  Future<List<String>> getLeaveTypes() async {
+    final response = await http.get(
+      Uri.parse('${ApiService.baseUrl}${ApiEndpoints.getLeaveTypes}'),
+      headers: await getHeaders(),
+    );
+
+    final data = handleResponse(response);
+    // Expecting an array of objects with 'leaveType' field
+    if (data is List) {
+      return data
+          .map(
+            (e) => (e is Map && e['leaveType'] != null)
+                ? e['leaveType'].toString()
+                : null,
+          )
+          .whereType<String>()
+          .toList();
+    }
+    return <String>[];
   }
 }

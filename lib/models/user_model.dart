@@ -51,6 +51,60 @@ class Employee {
     this.fathername,
   });
 
+  Employee copyWith({
+    String? id,
+    String? employeeId,
+    String? firstName,
+    String? lastName,
+    String? email,
+    String? mobile,
+    DateTime? dateOfBirth,
+    DateTime? joiningDate,
+    String? password,
+    String? profileImage,
+    String? department,
+    String? designation,
+    String? gender,
+    String? grade,
+    String? role,
+    String? report,
+    String? address,
+    String? bankname,
+    String? accountnumber,
+    String? ifsccode,
+    String? PANno,
+    String? UANno,
+    String? ESIno,
+    String? fathername,
+  }) {
+    return Employee(
+      id: id ?? this.id,
+      employeeId: employeeId ?? this.employeeId,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      email: email ?? this.email,
+      mobile: mobile ?? this.mobile,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      joiningDate: joiningDate ?? this.joiningDate,
+      password: password ?? this.password,
+      profileImage: profileImage ?? this.profileImage,
+      department: department ?? this.department,
+      designation: designation ?? this.designation,
+      gender: gender ?? this.gender,
+      grade: grade ?? this.grade,
+      role: role ?? this.role,
+      report: report ?? this.report,
+      address: address ?? this.address,
+      bankname: bankname ?? this.bankname,
+      accountnumber: accountnumber ?? this.accountnumber,
+      ifsccode: ifsccode ?? this.ifsccode,
+      PANno: PANno ?? this.PANno,
+      UANno: UANno ?? this.UANno,
+      ESIno: ESIno ?? this.ESIno,
+      fathername: fathername ?? this.fathername,
+    );
+  }
+
   factory Employee.fromJson(Map<String, dynamic> json) {
     // Handle both 'id' and '_id' field names
     final id = json['id'] as String? ?? json['_id'] as String?;
@@ -85,11 +139,11 @@ class Employee {
       lastName: lastName ?? '',
       email: email ?? '',
       mobile: mobile ?? '',
-      dateOfBirth: dateOfBirthString != null 
-          ? _parseDate(dateOfBirthString) 
+      dateOfBirth: dateOfBirthString != null
+          ? _parseDate(dateOfBirthString)
           : DateTime.now(),
-      joiningDate: joiningDateString != null 
-          ? _parseDate(joiningDateString) 
+      joiningDate: joiningDateString != null
+          ? _parseDate(joiningDateString)
           : DateTime.now(),
       password: password ?? '',
       profileImage: profileImage ?? '',
@@ -143,14 +197,16 @@ class Employee {
 
   // Helper method to parse date from various formats
   static DateTime _parseDate(dynamic dateValue) {
-    print('UserModel: Parsing date value: $dateValue (type: ${dateValue.runtimeType})');
+    print(
+      'UserModel: Parsing date value: $dateValue (type: ${dateValue.runtimeType})',
+    );
     try {
       // If it's already a DateTime object, return it
       if (dateValue is DateTime) {
         print('UserModel: Date is already DateTime, returning as-is');
         return dateValue;
       }
-      
+
       // If it's a String, try to parse it
       if (dateValue is String) {
         print('UserModel: Date is String, attempting to parse');
@@ -168,14 +224,18 @@ class Employee {
               return DateTime(year, month, day);
             }
           } catch (e) {
-            print('Error parsing date string: $dateValue, using current date as fallback');
+            print(
+              'Error parsing date string: $dateValue, using current date as fallback',
+            );
             return DateTime.now();
           }
         }
       }
-      
+
       // If it's neither DateTime nor String, return current date
-      print('Unexpected date type: ${dateValue.runtimeType}, using current date as fallback');
+      print(
+        'Unexpected date type: ${dateValue.runtimeType}, using current date as fallback',
+      );
       return DateTime.now();
     } catch (e) {
       print('Error parsing date: $dateValue, using current date as fallback');

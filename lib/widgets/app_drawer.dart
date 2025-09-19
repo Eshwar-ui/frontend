@@ -24,93 +24,103 @@ class AppDrawer extends StatelessWidget {
                   shrinkWrap: false,
                   padding: EdgeInsets.zero,
                   children: <Widget>[
-              DrawerHeader(
-                curve: Curves.easeInOutBack,
-                padding: const EdgeInsets.all(20),
-                child: Image.asset(AppAssets.quantumLogoV),
-              ),
-              if (authProvider.isAdmin) ...[
-                // Divider(color: Colors.grey[300], thickness: 1),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Text(
-                    authProvider.isAdmin ? 'ADMIN PANEL' : 'HR PANEL',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[600],
+                    DrawerHeader(
+                      curve: Curves.easeInOutBack,
+                      padding: const EdgeInsets.all(20),
+                      child: Image.asset(AppAssets.quantumLogoV),
                     ),
-                  ),
-                ),
-                _buildDrawerItem(
-                  context: context,
-                  navigationProvider: navigationProvider,
-                  page: NavigationPage.AdminEmployees,
-                  icon: Icons.people,
-                  title: 'Manage Employees',
-                ),
-                _buildDrawerItem(
-                  context: context,
-                  navigationProvider: navigationProvider,
-                  page: NavigationPage.AdminLeaveRequests,
-                  icon: Icons.assignment,
-                  title: 'Leave Requests',
-                ),
-                _buildDrawerItem(
-                  context: context,
-                  navigationProvider: navigationProvider,
-                  page: NavigationPage.AdminHolidays,
-                  icon: Icons.calendar_today,
-                  title: 'Manage Holidays',
-                ),
-                Divider(color: Colors.grey[300], thickness: 1),
-              ],
-              _buildDrawerItem(
-                context: context,
-                navigationProvider: navigationProvider,
-                page: NavigationPage.Dashboard,
-                icon: AppAssets.dashboardIcon,
-                title: 'Dashboard',
-              ),
-              _buildDrawerItem(
-                context: context,
-                navigationProvider: navigationProvider,
-                page: NavigationPage.Leaves,
-                icon: AppAssets.leavesIcon,
-                title: 'Leaves',
-              ),
-              _buildDrawerItem(
-                context: context,
-                navigationProvider: navigationProvider,
-                page: NavigationPage.Attendance,
-                icon: AppAssets.attendanceIcon,
-                title: 'Attendance',
-              ),
-              _buildDrawerItem(
-                context: context,
-                navigationProvider: navigationProvider,
-                page: NavigationPage.Payslips,
-                icon: AppAssets.payslipIcon,
-                title: 'Payslips',
-              ),
-              _buildDrawerItem(
-                context: context,
-                navigationProvider: navigationProvider,
-                page: NavigationPage.Holidays,
-                icon: AppAssets.holidaysIcon,
-                title: 'Holidays',
-              ),
-              
-              // Admin-only sections (includes HR)
-              
-              
-              _buildDrawerItem(
-                context: context,
-                navigationProvider: navigationProvider,
-                page: NavigationPage.ChangePassword,
-                icon: AppAssets.changepasswordIcon,
-                title: 'Change Password',
-              ),
+                    if (authProvider.isAdmin) ...[
+                      // Divider(color: Colors.grey[300], thickness: 1),
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        child: Text(
+                          authProvider.isAdmin ? 'ADMIN PANEL' : 'HR PANEL',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ),
+                      _buildDrawerItem(
+                        context: context,
+                        navigationProvider: navigationProvider,
+                        page: NavigationPage.AdminEmployees,
+                        icon: Icons.people,
+                        title: 'Manage Employees',
+                      ),
+                      _buildDrawerItem(
+                        context: context,
+                        navigationProvider: navigationProvider,
+                        page: NavigationPage.AdminLeaveRequests,
+                        icon: Icons.assignment,
+                        title: 'Leave Requests',
+                      ),
+                      _buildDrawerItem(
+                        context: context,
+                        navigationProvider: navigationProvider,
+                        page: NavigationPage.AdminHolidays,
+                        icon: Icons.calendar_today,
+                        title: 'Manage Holidays',
+                      ),
+                      Divider(color: Colors.grey[300], thickness: 1),
+                    ],
+                    _buildDrawerItem(
+                      context: context,
+                      navigationProvider: navigationProvider,
+                      page: NavigationPage.Dashboard,
+                      icon: AppAssets.dashboardIcon,
+                      title: 'Dashboard',
+                    ),
+                    _buildDrawerItem(
+                      context: context,
+                      navigationProvider: navigationProvider,
+                      page: NavigationPage.Leaves,
+                      icon: AppAssets.leavesIcon,
+                      title: 'Leaves',
+                    ),
+                    _buildDrawerItem(
+                      context: context,
+                      navigationProvider: navigationProvider,
+                      page: NavigationPage.Attendance,
+                      icon: AppAssets.attendanceIcon,
+                      title: 'Attendance',
+                    ),
+                    _buildDrawerItem(
+                      context: context,
+                      navigationProvider: navigationProvider,
+                      page: NavigationPage.Payslips,
+                      icon: AppAssets.payslipIcon,
+                      title: 'Payslips',
+                    ),
+                    _buildDrawerItem(
+                      context: context,
+                      navigationProvider: navigationProvider,
+                      page: NavigationPage.Holidays,
+                      icon: AppAssets.holidaysIcon,
+                      title: 'Holidays',
+                    ),
+
+                    // All Employees (read-only list, visible to all logged-in users)
+                    // _buildDrawerItem(
+                    //   context: context,
+                    //   navigationProvider: navigationProvider,
+                    //   page: NavigationPage.AllEmployees,
+                    //   icon: Icons.group,
+                    //   title: 'All Employees',
+                    // ),
+
+                    // Admin-only sections (includes HR)
+                    _buildDrawerItem(
+                      context: context,
+                      navigationProvider: navigationProvider,
+                      page: NavigationPage.ChangePassword,
+                      icon: AppAssets.changepasswordIcon,
+                      title: 'Change Password',
+                    ),
                   ],
                 ),
               ),
@@ -168,18 +178,18 @@ class AppDrawer extends StatelessWidget {
     return ListTile(
       selected: isSelected,
       selectedTileColor: const Color(0xff0079C1),
-      leading: icon is String 
-        ? SvgPicture.asset(
-            icon,
-            width: 24,
-            height: 24,
-            color: isSelected ? Colors.white : Colors.black,
-          )
-        : Icon(
-            icon as IconData,
-            size: 24,
-            color: isSelected ? Colors.white : Colors.black,
-          ),
+      leading: icon is String
+          ? SvgPicture.asset(
+              icon,
+              width: 24,
+              height: 24,
+              color: isSelected ? Colors.white : Colors.black,
+            )
+          : Icon(
+              icon as IconData,
+              size: 24,
+              color: isSelected ? Colors.white : Colors.black,
+            ),
       title: Text(
         title,
         style: AppTextStyles.button.copyWith(
@@ -205,10 +215,7 @@ class AppDrawer extends StatelessWidget {
             children: [
               Text(
                 'Saved Credentials',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 8),
               FutureBuilder<Map<String, dynamic>?>(
@@ -282,10 +289,10 @@ class AppDrawer extends StatelessWidget {
 
   String _formatLastLogin(DateTime? lastLogin) {
     if (lastLogin == null) return 'Unknown';
-    
+
     final now = DateTime.now();
     final difference = now.difference(lastLogin);
-    
+
     if (difference.inDays > 0) {
       return '${difference.inDays} day(s) ago';
     } else if (difference.inHours > 0) {

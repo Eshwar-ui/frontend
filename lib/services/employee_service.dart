@@ -5,7 +5,6 @@ import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/services/api_service.dart';
 
 class EmployeeService extends ApiService {
-  
   // Get individual employee
   Future<Employee> getEmployee(String employeeId) async {
     final response = await http.get(
@@ -20,7 +19,11 @@ class EmployeeService extends ApiService {
   // Admin Methods
 
   // Get all employees (Admin only)
-  Future<List<Employee>> getAllEmployees({String? employeeId, String? employeeName, String? designation}) async {
+  Future<List<Employee>> getAllEmployees({
+    String? employeeId,
+    String? employeeName,
+    String? designation,
+  }) async {
     final queryParams = <String, String>{};
     if (employeeId != null) queryParams['employeeId'] = employeeId;
     if (employeeName != null) queryParams['employeeName'] = employeeName;
@@ -37,7 +40,9 @@ class EmployeeService extends ApiService {
   }
 
   // Add new employee (Admin only)
-  Future<Map<String, dynamic>> addEmployee(Map<String, dynamic> employeeData) async {
+  Future<Map<String, dynamic>> addEmployee(
+    Map<String, dynamic> employeeData,
+  ) async {
     final response = await http.post(
       Uri.parse('${ApiService.baseUrl}/api/add-employee'),
       headers: await getHeaders(),
@@ -49,7 +54,10 @@ class EmployeeService extends ApiService {
   }
 
   // Update employee (Admin only)
-  Future<Map<String, dynamic>> updateEmployee(String id, Map<String, dynamic> updates) async {
+  Future<Map<String, dynamic>> updateEmployee(
+    String id,
+    Map<String, dynamic> updates,
+  ) async {
     final response = await http.put(
       Uri.parse('${ApiService.baseUrl}/api/update-employee/$id'),
       headers: await getHeaders(),

@@ -25,9 +25,21 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   Widget _buildHolidayCard(Holiday holiday) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: CustomFloatingContainer(
+      child: Container(
         // margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         // elevation: 2,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0xff0C0C0D).withOpacity(0.4),
+              blurRadius: 32,
+              offset: Offset(0, 16),
+              spreadRadius: -8,
+            ),
+          ],
+        ),
         child: Padding(
           padding: EdgeInsets.all(8),
           child: Column(

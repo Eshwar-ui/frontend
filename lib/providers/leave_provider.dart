@@ -8,10 +8,12 @@ class LeaveProvider with ChangeNotifier {
   List<Leave> _leaves = [];
   bool _isLoading = false;
   String? _error;
+  List<String> _leaveTypes = [];
 
   List<Leave> get leaves => _leaves;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  List<String> get leaveTypes => _leaveTypes;
 
   Future<void> getMyLeaves(String employeeId) async {
     _isLoading = true;
@@ -27,6 +29,16 @@ class LeaveProvider with ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> fetchLeaveTypes() async {
+    try {
+      final types = await _leaveService.getLeaveTypes();
+      _leaveTypes = types;
+      notifyListeners();
+    } catch (e) {
+      print('Error fetching leave types: $e');
     }
   }
 
@@ -94,7 +106,11 @@ class LeaveProvider with ChangeNotifier {
   }
 
   // Update leave (Employee)
-  Future<void> updateLeave(String employeeId, String leaveId, Map<String, dynamic> leaveData) async {
+  Future<void> updateLeave(
+    String employeeId,
+    String leaveId,
+    Map<String, dynamic> leaveData,
+  ) async {
     _isLoading = true;
     _error = null;
     notifyListeners();

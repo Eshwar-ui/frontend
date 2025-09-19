@@ -10,6 +10,7 @@ import 'package:quantum_dashboard/screens/dashboard_content.dart';
 import 'package:quantum_dashboard/screens/holidays_screen.dart';
 import 'package:quantum_dashboard/screens/leaves_screen.dart';
 import 'package:quantum_dashboard/screens/payslips_screen.dart';
+// import 'package:quantum_dashboard/screens/all_employees_screen.dart';
 import 'package:quantum_dashboard/widgets/appBar.dart';
 import 'package:quantum_dashboard/widgets/app_drawer.dart';
 
@@ -42,6 +43,8 @@ class MainScreen extends StatelessWidget {
         return HolidaysScreen();
       case NavigationPage.ChangePassword:
         return ChangePasswordScreen();
+      // case NavigationPage.AllEmployees:
+      //   return AllEmployeesScreen();
       case NavigationPage.AdminEmployees:
         return AdminEmployeesScreen();
       case NavigationPage.AdminLeaveRequests:

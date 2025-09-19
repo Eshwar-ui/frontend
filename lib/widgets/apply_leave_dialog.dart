@@ -14,10 +14,20 @@ class ApplyLeaveDialog extends StatefulWidget {
 
 class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
   final _formKey = GlobalKey<FormState>();
-  String _leaveType = 'Annual';
+  String? _leaveType;
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now().add(Duration(days: 1));
   String _reason = '';
+
+  @override
+  void initState() {
+    super.initState();
+    // Fetch leave types when dialog opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<LeaveProvider>(context, listen: false);
+      provider.fetchLeaveTypes();
+    });
+  }
 
   Future<void> _selectDate(BuildContext context, bool isStartDate) async {
     final DateTime? picked = await showDatePicker(
@@ -38,41 +48,77 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
   }
 
   void _submitForm() async {
-    if (_formKey.currentState!.validate()) {
+    final isValid = _formKey.currentState?.validate() ?? false;
+    if (isValid) {
       final leaveProvider = Provider.of<LeaveProvider>(context, listen: false);
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final user = authProvider.user;
-      
+
       if (user == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('User not found. Please login again.')),
         );
         return;
       }
-      
-      try {
-        await leaveProvider.applyLeave(
-          employeeId: user.employeeId,
-          leaveType: _leaveType,
-          from: _startDate,
-          to: _endDate,
-          reason: _reason,
-        );
-        Navigator.of(context).pop();
+
+      final selectedType =
+          _leaveType ??
+          (leaveProvider.leaveTypes.isNotEmpty
+              ? leaveProvider.leaveTypes.first
+              : 'Annual');
+
+      await leaveProvider.applyLeave(
+        employeeId: user.employeeId,
+        leaveType: selectedType,
+        from: _startDate,
+        to: _endDate,
+        reason: _reason,
+      );
+
+      // If provider captured an error, show a friendly message
+      if (leaveProvider.error != null) {
+        final raw = leaveProvider.error!.toString();
+        final msg = raw.startsWith('Exception: ')
+            ? raw.substring('Exception: '.length)
+            : raw;
+        final lower = msg.toLowerCase();
+        final showApi = lower.contains('already') || lower.contains('exists');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Leave applied successfully!')),
+          SnackBar(
+            content: Text(
+              showApi ? msg : 'Could not apply leave. Please try again.',
+            ),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
         );
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to apply for leave: $e')),
-        );
+        return;
       }
+
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Leave applied successfully')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final leaveProvider = Provider.of<LeaveProvider>(context);
+    List<String> allowedTypes = leaveProvider.leaveTypes.where((t) {
+      final v = t.toLowerCase();
+      return v == 'sick leave' ||
+          v == 'personal leave' ||
+          v == 'sick' ||
+          v == 'personal';
+    }).toList();
+    if (allowedTypes.isEmpty) {
+      allowedTypes = const ['Sick Leave', 'Personal Leave'];
+    }
+    final currentValue =
+        (_leaveType != null && allowedTypes.contains(_leaveType))
+        ? _leaveType
+        : null;
     return AlertDialog(
       title: Text('Apply for Leave', style: AppTextStyles.heading),
       content: Form(
@@ -82,8 +128,8 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<String>(
-                value: _leaveType,
-                items: ['Annual', 'Sick', 'Casual', 'Unpaid']
+                value: currentValue,
+                items: allowedTypes
                     .map(
                       (type) =>
                           DropdownMenuItem(value: type, child: Text(type)),

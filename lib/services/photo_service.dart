@@ -1,13 +1,39 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
+import 'dart:typed_data';
+import 'package:image/image.dart' as img;
+// import 'package:http/http.dart' as http; // no direct usage after refactor
 import 'package:image_picker/image_picker.dart';
 import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/services/api_service.dart';
+import 'package:quantum_dashboard/services/employee_service.dart';
 
 class PhotoService extends ApiService {
   final ImagePicker _picker = ImagePicker();
+  // Build a compressed data URL from an image path
+  Future<String> buildCompressedDataUrl(String imagePath) async {
+    final Uint8List originalBytes = await File(imagePath).readAsBytes();
+    final img.Image? decoded = img.decodeImage(originalBytes);
+    Uint8List outputBytes = originalBytes;
+    if (decoded != null) {
+      final int maxSide = 800;
+      final int width = decoded.width;
+      final int height = decoded.height;
+      img.Image target = decoded;
+      if (width > maxSide || height > maxSide) {
+        target = img.copyResize(
+          decoded,
+          width: width >= height ? maxSide : (width * maxSide ~/ height),
+          height: height > width ? maxSide : (height * maxSide ~/ width),
+          interpolation: img.Interpolation.cubic,
+        );
+      }
+      final List<int> jpg = img.encodeJpg(target, quality: 60);
+      outputBytes = Uint8List.fromList(jpg);
+    }
+    final String base64Data = base64Encode(outputBytes);
+    return 'data:image/jpeg;base64,$base64Data';
+  }
 
   // Pick image from gallery or camera
   Future<XFile?> pickImage({ImageSource source = ImageSource.gallery}) async {
@@ -26,33 +52,23 @@ class PhotoService extends ApiService {
   }
 
   // Upload profile photo for current user
-  Future<Employee> uploadProfilePhoto(String imagePath) async {
+  Future<Employee> uploadProfilePhoto(
+    String imagePath, {
+    required String employeeMongoId,
+    required String employeeId,
+  }) async {
     try {
-      final uri = Uri.parse('${ApiService.baseUrl}/api/profile/upload-photo');
-      final request = http.MultipartRequest('POST', uri);
-      
-      // Add headers
-      final headers = await getHeaders();
-      request.headers.addAll(headers);
-      
-      // Add file
-      final file = await http.MultipartFile.fromPath(
-        'profilePhoto',
-        imagePath,
-        contentType: MediaType('image', 'jpeg'),
-      );
-      request.files.add(file);
+      // Build compressed data URL
+      final String dataUrl = await buildCompressedDataUrl(imagePath);
 
-      final response = await request.send();
-      final responseData = await response.stream.bytesToString();
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(responseData);
-        return Employee.fromJson(data['user']);
-      } else {
-        final errorData = json.decode(responseData);
-        throw Exception(errorData['message'] ?? 'Failed to upload photo: ${response.statusCode}');
-      }
+      final employeeService = EmployeeService();
+      await employeeService.updateEmployee(employeeMongoId, {
+        'profileImage': dataUrl,
+      });
+
+      // Re-fetch the employee to get latest data
+      final updated = await employeeService.getEmployee(employeeId);
+      return updated;
     } catch (e) {
       print('Error uploading profile photo: $e');
       throw Exception('Failed to upload photo: $e');
@@ -60,33 +76,19 @@ class PhotoService extends ApiService {
   }
 
   // Upload photo for specific employee (Admin/HR only)
-  Future<Employee> uploadEmployeePhoto(String employeeId, String imagePath) async {
+  Future<Employee> uploadEmployeePhoto(
+    String employeeId,
+    String imagePath,
+  ) async {
     try {
-      final uri = Uri.parse('${ApiService.baseUrl}/api/profile/upload-photo/$employeeId');
-      final request = http.MultipartRequest('POST', uri);
-      
-      // Add headers
-      final headers = await getHeaders();
-      request.headers.addAll(headers);
-      
-      // Add file
-      final file = await http.MultipartFile.fromPath(
-        'profilePhoto',
+      final employeeService = EmployeeService();
+      // Get full employee to retrieve Mongo _id
+      final employee = await employeeService.getEmployee(employeeId);
+      return uploadProfilePhoto(
         imagePath,
-        contentType: MediaType('image', 'jpeg'),
+        employeeMongoId: employee.id,
+        employeeId: employee.employeeId,
       );
-      request.files.add(file);
-
-      final response = await request.send();
-      final responseData = await response.stream.bytesToString();
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(responseData);
-        return Employee.fromJson(data['employee']);
-      } else {
-        final errorData = json.decode(responseData);
-        throw Exception(errorData['message'] ?? 'Failed to upload photo: ${response.statusCode}');
-      }
     } catch (e) {
       print('Error uploading employee photo: $e');
       throw Exception('Failed to upload photo: $e');
@@ -94,22 +96,22 @@ class PhotoService extends ApiService {
   }
 
   // Delete profile photo
-  Future<Employee> deleteProfilePhoto() async {
+  Future<Employee> deleteProfilePhoto({
+    required String employeeMongoId,
+    required String employeeId,
+  }) async {
     try {
-      final response = await http.delete(
-        Uri.parse('${ApiService.baseUrl}/api/profile/delete-photo'),
-        headers: await getHeaders(),
-      );
-
-      final data = handleResponse(response);
-      return Employee.fromJson(data['user']);
+      final employeeService = EmployeeService();
+      await employeeService.updateEmployee(employeeMongoId, {
+        'profileImage': '',
+      });
+      final updated = await employeeService.getEmployee(employeeId);
+      return updated;
     } catch (e) {
       print('Error deleting profile photo: $e');
       throw Exception('Failed to delete photo: $e');
     }
   }
-
-
 
   // Get full photo URL
   String getPhotoUrl(String? photoPath) {
@@ -118,6 +120,9 @@ class PhotoService extends ApiService {
     }
     if (photoPath.startsWith('http')) {
       return photoPath;
+    }
+    if (photoPath.startsWith('data:image')) {
+      return photoPath; // Will be handled specially by the caller
     }
     return '${ApiService.baseUrl}$photoPath';
   }

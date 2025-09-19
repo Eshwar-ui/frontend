@@ -4,19 +4,20 @@ import 'dart:io' show Platform;
 class NetworkConfig {
   // Production backend URL (deployed on Render)
   // Try the subdomain approach first
-  static const String _productionUrl = 'https://quantumworks.space';
+  static const String _productionUrl =
+      'https://vns-quantum-dashboard.onrender.com';
   // Alternative options:
   // static const String _productionUrl = 'https://quantumworks.space:4444';
   // static const String _productionUrl = 'https://quantum-dashboard-backend.onrender.com';
 
   // Development settings (for local development)
   static const String _devMachineIp =
-      '10.113.181.233'; // Android emulator default
+      '192.168.1.15'; // Android emulator default
   // static const String _devMachineIp = '10.0.2.2';
   static const int _serverPort = 4444; // Backend runs on port 4444
 
   // Set to true to use production backend, false for local development
-  static const bool _useProductionBackend = false;
+  static const bool _useProductionBackend = true;
 
   // Whether the app is using production backend
   static bool get isUsingProduction => _useProductionBackend;
