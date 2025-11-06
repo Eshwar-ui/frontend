@@ -31,6 +31,17 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
   final PhotoService _photoService = PhotoService();
   bool _isUploading = false;
   File? _imageFile;
+  ScaffoldMessengerState? _scaffoldMessenger;
+  AuthProvider? _authProvider;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _scaffoldMessenger = ScaffoldMessenger.of(context);
+    if (!widget.isAdminMode) {
+      _authProvider = Provider.of<AuthProvider>(context, listen: false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -209,6 +220,7 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
   }
 
   Future<void> _uploadPhoto(String imagePath) async {
+    if (!mounted) return;
     setState(() {
       _isUploading = true;
     });
@@ -222,13 +234,14 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
           imagePath,
         );
       } else {
-        final auth = Provider.of<AuthProvider>(context, listen: false);
-        final current = auth.user!;
+        if (!mounted || _authProvider == null) return;
+        final current = _authProvider!.user!;
         // Immediately update local profile image with compressed data URL
         final String dataUrl = await _photoService.buildCompressedDataUrl(
           imagePath,
         );
-        auth.setUser(current.copyWith(profileImage: dataUrl));
+        if (!mounted) return;
+        _authProvider!.setUser(current.copyWith(profileImage: dataUrl));
         updatedEmployee = await _photoService.uploadProfilePhoto(
           imagePath,
           employeeMongoId: current.id,
@@ -236,6 +249,7 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
         );
       }
 
+      if (!mounted) return;
       setState(() {
         _imageFile = null;
         _isUploading = false;
@@ -243,13 +257,16 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
 
       widget.onPhotoUploaded?.call(updatedEmployee);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Photo uploaded successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (mounted && _scaffoldMessenger != null) {
+        _scaffoldMessenger!.showSnackBar(
+          SnackBar(
+            content: Text('Photo uploaded successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _imageFile = null;
         _isUploading = false;
@@ -259,33 +276,38 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
   }
 
   Future<void> _deletePhoto() async {
+    if (!mounted) return;
     setState(() {
       _isUploading = true;
     });
 
     try {
-      final auth = Provider.of<AuthProvider>(context, listen: false);
-      final current = auth.user!;
+      if (!mounted || _authProvider == null) return;
+      final current = _authProvider!.user!;
       // Immediately clear local profile image
-      auth.setUser(current.copyWith(profileImage: ''));
+      _authProvider!.setUser(current.copyWith(profileImage: ''));
       final updatedEmployee = await _photoService.deleteProfilePhoto(
         employeeMongoId: current.id,
         employeeId: current.employeeId,
       );
 
+      if (!mounted) return;
       setState(() {
         _isUploading = false;
       });
 
       widget.onPhotoUploaded?.call(updatedEmployee);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Photo removed successfully'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      if (mounted && _scaffoldMessenger != null) {
+        _scaffoldMessenger!.showSnackBar(
+          SnackBar(
+            content: Text('Photo removed successfully'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isUploading = false;
       });
@@ -294,7 +316,8 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (!mounted || _scaffoldMessenger == null) return;
+    _scaffoldMessenger!.showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }

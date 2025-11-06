@@ -36,7 +36,46 @@ class EmployeeService extends ApiService {
     final response = await http.get(uri, headers: await getHeaders());
 
     final data = handleResponse(response);
-    return (data as List).map((json) => Employee.fromJson(json)).toList();
+    final employees = (data as List)
+        .map((json) => Employee.fromJson(json))
+        .toList();
+
+    // Print all employee details to console
+    print('\n========== ALL EMPLOYEE DETAILS ==========');
+    print('Total Employees: ${employees.length}\n');
+
+    for (int i = 0; i < employees.length; i++) {
+      final employee = employees[i];
+      print('--- Employee ${i + 1} ---');
+      print('ID: ${employee.id}');
+      print('Employee ID: ${employee.employeeId}');
+      print('Full Name: ${employee.fullName}');
+      print('First Name: ${employee.firstName}');
+      print('Last Name: ${employee.lastName}');
+      print('Email: ${employee.email}');
+      print('Mobile: ${employee.mobile}');
+      print('Date of Birth: ${employee.dateOfBirth}');
+      print('Joining Date: ${employee.joiningDate}');
+      print('Designation: ${employee.designation}');
+      print('Department: ${employee.department}');
+      print('Role: ${employee.role}');
+      print('Gender: ${employee.gender}');
+      print('Grade: ${employee.grade}');
+      print('Profile Image: ${employee.profileImage}');
+      print('Address: ${employee.address}');
+      print('Bank Name: ${employee.bankname}');
+      print('Account Number: ${employee.accountnumber}');
+      print('IFSC Code: ${employee.ifsccode}');
+      print('PAN No: ${employee.PANno}');
+      print('UAN No: ${employee.UANno}');
+      print('ESI No: ${employee.ESIno}');
+      print('Father Name: ${employee.fathername}');
+      print('Report: ${employee.report}');
+      print('');
+    }
+    print('==========================================\n');
+
+    return employees;
   }
 
   // Add new employee (Admin only)

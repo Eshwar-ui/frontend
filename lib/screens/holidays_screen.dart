@@ -274,6 +274,16 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     final isTablet = screenWidth > 600;
 
     return Scaffold(
+      appBar: AppBar(
+        title: Text('Holidays', style: TextStyle(color: Colors.white)),
+        backgroundColor: Color(0xFF1976D2),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
       body: Column(
         children: [
           SizedBox(height: 12),

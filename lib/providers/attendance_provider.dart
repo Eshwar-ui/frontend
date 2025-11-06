@@ -19,107 +19,159 @@ class AttendanceProvider with ChangeNotifier {
   String? get error => _error;
   double get totalWorkingTime => _totalWorkingTime;
 
+  // Helper method to safely notify listeners after the current frame
+  // This prevents setState() errors when notifyListeners() is called during build
+  void _safeNotifyListeners() {
+    // Use microtask to defer notification until after the current synchronous code
+    // This ensures notifications don't happen during the build phase
+    Future.microtask(() {
+      if (hasListeners) {
+        notifyListeners();
+      }
+    });
+  }
+
   // Punch in
-  Future<Map<String, dynamic>> punchIn(String employeeId, String employeeName) async {
+  Future<Map<String, dynamic>> punchIn(
+    String employeeId,
+    String employeeName,
+  ) async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       final result = await _attendanceService.punchIn(employeeId, employeeName);
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return result;
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return {'success': false, 'message': e.toString()};
     }
   }
 
   // Punch out
-  Future<Map<String, dynamic>> punchOut(String employeeId, String employeeName) async {
+  Future<Map<String, dynamic>> punchOut(
+    String employeeId,
+    String employeeName,
+  ) async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
-      final result = await _attendanceService.punchOut(employeeId, employeeName);
+      final result = await _attendanceService.punchOut(
+        employeeId,
+        employeeName,
+      );
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return result;
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return {'success': false, 'message': e.toString()};
     }
   }
 
   // Get punches for specific employee
-  Future<void> getPunches(String employeeId, {String? fromDate, int? month, int? year}) async {
+  Future<void> getPunches(
+    String employeeId, {
+    String? fromDate,
+    int? month,
+    int? year,
+  }) async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
-      final result = await _attendanceService.getPunches(employeeId, fromDate: fromDate, month: month, year: year);
+      final result = await _attendanceService.getPunches(
+        employeeId,
+        fromDate: fromDate,
+        month: month,
+        year: year,
+      );
       _punches = result['punches'];
       _totalWorkingTime = result['totalWorkingTime'];
     } catch (e) {
       _error = e.toString();
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
   // Get date-wise attendance data
-  Future<void> getDateWiseData(String employeeId, {int? month, int? year, String? employeeName}) async {
+  Future<void> getDateWiseData(
+    String employeeId, {
+    int? month,
+    int? year,
+    String? employeeName,
+  }) async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
-      _dateWiseData = await _attendanceService.getDateWiseData(employeeId, month: month, year: year, employeeName: employeeName);
+      _dateWiseData = await _attendanceService.getDateWiseData(
+        employeeId,
+        month: month,
+        year: year,
+        employeeName: employeeName,
+      );
     } catch (e) {
       _error = e.toString();
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
   // Get admin attendance data
-  Future<void> getAdminAttendance({String? employee, int? month, int? year}) async {
+  Future<void> getAdminAttendance({
+    String? employee,
+    int? month,
+    int? year,
+  }) async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
-      _adminAttendance = await _attendanceService.getAdminAttendance(employee: employee, month: month, year: year);
+      _adminAttendance = await _attendanceService.getAdminAttendance(
+        employee: employee,
+        month: month,
+        year: year,
+      );
     } catch (e) {
       _error = e.toString();
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
   // Get employee activity for specific date (Admin)
-  Future<Map<String, dynamic>> getEmployeeDatePunches(String employeeId, String date) async {
+  Future<Map<String, dynamic>> getEmployeeDatePunches(
+    String employeeId,
+    String date,
+  ) async {
     try {
       return await _attendanceService.getEmployeeDatePunches(employeeId, date);
     } catch (e) {
       _error = e.toString();
-      notifyListeners();
+      _safeNotifyListeners();
       return {'punches': [], 'totalWorkingTime': 0.0};
     }
   }
 
   void clearError() {
     _error = null;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 }

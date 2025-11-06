@@ -27,14 +27,36 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _rememberMe = false;
   String? _connectivityMessage;
+  AuthProvider? _authProvider;
+  NavigatorState? _navigator;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Save references to avoid deactivated widget errors
+    if (!mounted) return;
+
+    try {
+      _authProvider = Provider.of<AuthProvider>(context, listen: false);
+      _navigator = Navigator.of(context);
+    } catch (e) {
+      // Handle case where context is no longer valid
+      print('Error accessing providers/navigator in didChangeDependencies: $e');
+      _authProvider = null;
+      _navigator = null;
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    // Check connectivity when the login screen loads
-    _checkConnectivity();
-    // Load saved credentials
-    _loadSavedCredentials();
+    // Delay async operations until after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _checkConnectivity();
+        _loadSavedCredentials();
+      }
+    });
   }
 
   @override
@@ -45,15 +67,21 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _clearErrors() {
-    if (mounted) {
+    if (!mounted || _authProvider == null) return;
+
+    try {
       setState(() {
         _connectivityMessage = null;
       });
-      context.read<AuthProvider>().clearError();
+      _authProvider!.clearError();
+    } catch (e) {
+      // Silently handle errors if widget is disposed
+      print('Error clearing errors: $e');
     }
   }
 
   void _togglePasswordVisibility() {
+    if (!mounted) return;
     setState(() {
       _obscurePassword = !_obscurePassword;
     });
@@ -71,54 +99,84 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _loadSavedCredentialsDialog() async {
+    if (!mounted) return;
+
     final credentials = await CredentialStorageService.getSavedCredentials();
+    if (!mounted) return;
+
     if (credentials != null && mounted) {
+      final theme = Theme.of(context);
+      final colorScheme = theme.colorScheme;
+
+      if (!mounted) return;
       showDialog(
         context: context,
-        builder: (BuildContext context) {
+        builder: (BuildContext dialogContext) {
           return AlertDialog(
-            title: Text('Load Saved Credentials'),
+            backgroundColor: theme.cardColor,
+            title: Text(
+              'Load Saved Credentials',
+              style: TextStyle(color: colorScheme.onSurface),
+            ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Found saved credentials for:'),
+                Text(
+                  'Found saved credentials for:',
+                  style: TextStyle(
+                    color: colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                ),
                 SizedBox(height: 8),
                 Text(
                   credentials['email'] ?? '',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
                 SizedBox(height: 8),
                 Text(
                   'Last login: ${_formatLastLogin(credentials['lastLogin'])}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.onSurface.withOpacity(0.6),
+                  ),
                 ),
               ],
             ),
             actions: [
               TextButton(
                 onPressed: () {
-                  Navigator.of(context).pop();
+                  Navigator.of(dialogContext).pop();
                 },
                 child: Text('Cancel'),
               ),
               TextButton(
                 onPressed: () {
-                  setState(() {
-                    _emailController.text = credentials['email'] ?? '';
-                    _passwordController.text = credentials['password'] ?? '';
-                    _rememberMe = true;
-                  });
-                  Navigator.of(context).pop();
+                  if (mounted) {
+                    setState(() {
+                      _emailController.text = credentials['email'] ?? '';
+                      _passwordController.text = credentials['password'] ?? '';
+                      _rememberMe = true;
+                    });
+                  }
+                  Navigator.of(dialogContext).pop();
                 },
                 child: Text('Load'),
               ),
               TextButton(
                 onPressed: () async {
                   await CredentialStorageService.clearCredentials();
-                  Navigator.of(context).pop();
+                  if (mounted) {
+                    Navigator.of(dialogContext).pop();
+                  }
                 },
-                child: Text('Clear', style: TextStyle(color: Colors.red)),
+                child: Text(
+                  'Clear',
+                  style: TextStyle(color: colorScheme.error),
+                ),
               ),
             ],
           );
@@ -145,23 +203,31 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
+    if (!mounted || _authProvider == null) return;
+
     if (!_formKey.currentState!.validate()) return;
 
     _clearErrors();
 
-    final authProvider = context.read<AuthProvider>();
-    final success = await authProvider.login(
+    final success = await _authProvider!.login(
       _emailController.text.trim(),
       _passwordController.text,
     );
 
-    if (success && mounted) {
+    if (!mounted) return;
+
+    if (success) {
       // Save credentials if remember me is checked
-      await CredentialStorageService.saveCredentials(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-        rememberMe: _rememberMe,
-      );
+      try {
+        await CredentialStorageService.saveCredentials(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+          rememberMe: _rememberMe,
+        );
+      } catch (e) {
+        // Silently handle save errors
+        print('Error saving credentials: $e');
+      }
 
       // Navigation will be handled by the main app based on auth state
       print('Login successful, navigating to dashboard');
@@ -178,31 +244,34 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       await ConnectivityChecker.printDiagnosticInfo();
+      if (!mounted) return;
+
       final canConnect = await ConnectivityChecker.canConnectToBackend();
 
-      if (mounted) {
-        setState(() {
-          _isCheckingConnectivity = false;
-          _connectivityMessage = canConnect
-              ? null
-              : 'Cannot connect to server. Please check your network settings.';
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _isCheckingConnectivity = false;
+        _connectivityMessage = canConnect
+            ? null
+            : 'Cannot connect to server. Please check your network settings.';
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isCheckingConnectivity = false;
-          _connectivityMessage = 'Error checking connectivity: $e';
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _isCheckingConnectivity = false;
+        _connectivityMessage = 'Error checking connectivity: $e';
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.all(16.0),
@@ -229,9 +298,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         textAlign: TextAlign.center,
                         'Log in to your account and access your personalized dashboard',
                         style: TextStyle(
-                          color: Colors.grey,
+                          color: colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                       SizedBox(height: 20),
@@ -245,7 +314,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               'Email',
                               style: TextStyle(
                                 fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurface,
                               ),
                             ),
                             TextFormField(
@@ -253,46 +323,17 @@ class _LoginScreenState extends State<LoginScreen> {
                               keyboardType: TextInputType.emailAddress,
                               textInputAction: TextInputAction.next,
                               onChanged: (_) => _clearErrors(),
+                              style: TextStyle(color: colorScheme.onSurface),
                               decoration: InputDecoration(
-                                border: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Colors.grey.shade300,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Colors.grey.shade300,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Color(0xFF1976D2),
-                                    width: 2,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                errorBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Colors.red,
-                                    width: 2,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
                                 hintText: 'Enter Email',
-                                fillColor: const Color.fromARGB(
-                                  43,
-                                  245,
-                                  245,
-                                  245,
+                                hintStyle: TextStyle(
+                                  color: colorScheme.onSurface.withOpacity(0.5),
                                 ),
-                                filled: true,
                                 contentPadding: EdgeInsets.symmetric(
                                   horizontal: 16,
                                   vertical: 12,
                                 ),
-                              ),
+                              ).applyDefaults(theme.inputDecorationTheme),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
                                   return 'Please enter your email';
@@ -310,7 +351,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               'Password',
                               style: TextStyle(
                                 fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurface,
                               ),
                             ),
                             TextFormField(
@@ -319,36 +361,12 @@ class _LoginScreenState extends State<LoginScreen> {
                               textInputAction: TextInputAction.done,
                               onChanged: (_) => _clearErrors(),
                               onFieldSubmitted: (_) => _handleLogin(),
+                              style: TextStyle(color: colorScheme.onSurface),
                               decoration: InputDecoration(
-                                border: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Colors.grey.shade300,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Colors.grey.shade300,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Color(0xFF1976D2),
-                                    width: 2,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                errorBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: Colors.red,
-                                    width: 2,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
                                 hintText: 'Enter Password',
-                                fillColor: Colors.grey.shade100,
-                                filled: true,
+                                hintStyle: TextStyle(
+                                  color: colorScheme.onSurface.withOpacity(0.5),
+                                ),
                                 contentPadding: EdgeInsets.symmetric(
                                   horizontal: 16,
                                   vertical: 12,
@@ -358,11 +376,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                     _obscurePassword
                                         ? Icons.visibility_off
                                         : Icons.visibility,
-                                    color: Colors.grey.shade600,
+                                    color: colorScheme.onSurface.withOpacity(
+                                      0.6,
+                                    ),
                                   ),
                                   onPressed: _togglePasswordVisibility,
                                 ),
-                              ),
+                              ).applyDefaults(theme.inputDecorationTheme),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
                                   return 'Please enter your password';
@@ -385,13 +405,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                       _rememberMe = value ?? false;
                                     });
                                   },
-                                  activeColor: Color(0xFF1976D2),
+                                  activeColor: colorScheme.primary,
                                 ),
                                 Text(
                                   'Remember me',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: Colors.grey[700],
+                                    color: colorScheme.onSurface.withOpacity(
+                                      0.8,
+                                    ),
                                   ),
                                 ),
                                 Spacer(),
@@ -408,7 +430,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                           'Load Saved',
                                           style: TextStyle(
                                             fontSize: 12,
-                                            color: Color(0xFF1976D2),
+                                            color: colorScheme.primary,
                                           ),
                                         ),
                                       );
@@ -425,7 +447,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     _isCheckingConnectivity) {
                                   return Center(
                                     child: LoadingDotsAnimation(
-                                      color: Color(0xFF1976D2),
+                                      color: colorScheme.primary,
                                       size: 10,
                                     ),
                                   );
@@ -440,12 +462,40 @@ class _LoginScreenState extends State<LoginScreen> {
                                     if (_connectivityMessage != null)
                                       Padding(
                                         padding: EdgeInsets.only(top: 10),
-                                        child: Text(
-                                          _connectivityMessage!,
-                                          style: TextStyle(
-                                            color: Colors.orange,
+                                        child: Container(
+                                          padding: EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: Colors.orange.shade50
+                                                .withOpacity(isDark ? 0.2 : 1),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.orange.shade300,
+                                              width: 1,
+                                            ),
                                           ),
-                                          textAlign: TextAlign.center,
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.warning_amber_rounded,
+                                                color: Colors.orange.shade700,
+                                                size: 20,
+                                              ),
+                                              SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  _connectivityMessage!,
+                                                  style: TextStyle(
+                                                    color:
+                                                        Colors.orange.shade900,
+                                                    fontSize: 14,
+                                                  ),
+                                                  textAlign: TextAlign.left,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     if (NetworkConfig.showDebugUI)
@@ -454,12 +504,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                         child: Container(
                                           padding: EdgeInsets.all(8),
                                           decoration: BoxDecoration(
-                                            color: Colors.amber.shade100,
+                                            color: Colors.amber.shade100
+                                                .withOpacity(isDark ? 0.2 : 1),
                                             borderRadius: BorderRadius.circular(
                                               8,
                                             ),
                                             border: Border.all(
                                               color: Colors.amber.shade700,
+                                              width: 1,
                                             ),
                                           ),
                                           child: Row(
@@ -492,18 +544,31 @@ class _LoginScreenState extends State<LoginScreen> {
                                             MainAxisAlignment.center,
                                         children: [
                                           TextButton(
-                                            onPressed: _checkConnectivity,
+                                            onPressed: () {
+                                              if (mounted) {
+                                                _checkConnectivity();
+                                              }
+                                            },
                                             child: Text('Check Connection'),
                                           ),
                                           TextButton(
                                             onPressed: () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      NetworkTroubleshootScreen(),
-                                                ),
-                                              );
+                                              if (!mounted ||
+                                                  _navigator == null) {
+                                                return;
+                                              }
+                                              try {
+                                                _navigator!.push(
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        NetworkTroubleshootScreen(),
+                                                  ),
+                                                );
+                                              } catch (e) {
+                                                print(
+                                                  'Error navigating to network troubleshoot: $e',
+                                                );
+                                              }
                                             },
                                             child: Text('Network Help'),
                                           ),
@@ -522,7 +587,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                     child: Container(
                                       padding: EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: Colors.red.shade50,
+                                        color: Colors.red.shade50.withOpacity(
+                                          isDark ? 0.2 : 1,
+                                        ),
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
                                           color: Colors.red.shade200,
@@ -572,11 +639,21 @@ class _LoginScreenState extends State<LoginScreen> {
                                 children: [
                                   TextSpan(
                                     text:
-                                        'If you forgot your password, our HR team is here to help! Contact us at',
+                                        'If you forgot your password, our HR team is here to help! Contact us at ',
+                                    style: TextStyle(
+                                      color: colorScheme.onSurface.withOpacity(
+                                        0.7,
+                                      ),
+                                      fontSize: 12,
+                                    ),
                                   ),
                                   TextSpan(
-                                    text: ' contact@quantumworks.in',
-                                    style: TextStyle(color: Colors.blue),
+                                    text: 'contact@quantumworks.in',
+                                    style: TextStyle(
+                                      color: colorScheme.primary,
+                                      fontSize: 12,
+                                      decoration: TextDecoration.underline,
+                                    ),
                                     recognizer: TapGestureRecognizer()
                                       ..onTap = () {
                                         launchUrl(

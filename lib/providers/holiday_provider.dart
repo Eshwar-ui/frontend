@@ -13,22 +13,36 @@ class HolidayProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  // Helper method to safely notify listeners after the current frame
+  // This prevents setState() errors when notifyListeners() is called during build
+  void _safeNotifyListeners() {
+    // Use microtask to defer notification until after the current synchronous code
+    // This ensures notifications don't happen during the build phase
+    Future.microtask(() {
+      if (hasListeners) {
+        notifyListeners();
+      }
+    });
+  }
+
   // Get all holidays
   Future<void> getHolidays() async {
     print('HolidayProvider: Starting to fetch holidays...');
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       _holidays = await _holidayService.getHolidays();
-      print('HolidayProvider: Successfully fetched ${_holidays.length} holidays');
+      print(
+        'HolidayProvider: Successfully fetched ${_holidays.length} holidays',
+      );
     } catch (e) {
       print('HolidayProvider: Error fetching holidays: $e');
       _error = e.toString();
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
@@ -36,7 +50,7 @@ class HolidayProvider with ChangeNotifier {
   Future<void> getHolidaysByYear(int year) async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       _holidays = await _holidayService.getHolidaysByYear(year);
@@ -44,7 +58,7 @@ class HolidayProvider with ChangeNotifier {
       _error = e.toString();
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
@@ -56,7 +70,7 @@ class HolidayProvider with ChangeNotifier {
   }) async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       final result = await _holidayService.addHoliday(
@@ -66,36 +80,42 @@ class HolidayProvider with ChangeNotifier {
       );
       await getHolidays(); // Refresh the list
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return result;
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return {'success': false, 'message': e.toString()};
     }
   }
 
   // Update holiday (Admin only)
-  Future<Map<String, dynamic>> updateHoliday(String holidayId, {
+  Future<Map<String, dynamic>> updateHoliday(
+    String holidayId, {
     required String title,
     required String date,
     required String day,
   }) async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
-      final result = await _holidayService.updateHoliday(holidayId, title: title, date: date, day: day);
+      final result = await _holidayService.updateHoliday(
+        holidayId,
+        title: title,
+        date: date,
+        day: day,
+      );
       await getHolidays(); // Refresh the list
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return result;
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return {'success': false, 'message': e.toString()};
     }
   }
@@ -104,24 +124,24 @@ class HolidayProvider with ChangeNotifier {
   Future<Map<String, dynamic>> deleteHoliday(String holidayId) async {
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       final result = await _holidayService.deleteHoliday(holidayId);
       await getHolidays(); // Refresh the list
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return result;
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
       return {'success': false, 'message': e.toString()};
     }
   }
 
   void clearError() {
     _error = null;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 }

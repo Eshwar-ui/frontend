@@ -105,13 +105,14 @@ class AppDrawer extends StatelessWidget {
                     ),
 
                     // All Employees (read-only list, visible to all logged-in users)
-                    // _buildDrawerItem(
-                    //   context: context,
-                    //   navigationProvider: navigationProvider,
-                    //   page: NavigationPage.AllEmployees,
-                    //   icon: Icons.group,
-                    //   title: 'All Employees',
-                    // ),
+                    _buildDrawerItem(
+                      context: context,
+                      navigationProvider: navigationProvider,
+                      page: NavigationPage
+                          .AdminEmployees, // Fixed: changed from AllEmployees to Employees
+                      icon: Icons.group,
+                      title: 'All Employees',
+                    ),
 
                     // Admin-only sections (includes HR)
                     _buildDrawerItem(
