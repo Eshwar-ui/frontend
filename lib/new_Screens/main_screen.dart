@@ -1,19 +1,21 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/new_Screens/new_calender_screen.dart';
 import 'package:quantum_dashboard/new_Screens/new_dashboard.dart';
 import 'package:quantum_dashboard/new_Screens/new_profile_page.dart';
 import 'package:quantum_dashboard/new_Screens/new_search_screen.dart';
+import 'package:quantum_dashboard/providers/navigation_provider.dart';
 
-class NavScreen extends StatefulWidget {
+class NavScreen extends StatelessWidget {
   const NavScreen({super.key});
 
-  @override
-  State<NavScreen> createState() => _NavScreenState();
-}
-
-class _NavScreenState extends State<NavScreen> {
-  int _selectedIndex = 0;
+  static const Map<NavigationPage, int> _pageMap = {
+    NavigationPage.Dashboard: 0,
+    NavigationPage.Leaves: 1, // Assuming calendar is for leaves
+    NavigationPage.Holidays: 2, // Assuming search is for holidays
+    NavigationPage.Profile: 3,
+  };
 
   static const List<Widget> _widgetOptions = <Widget>[
     new_dashboard(),
@@ -22,78 +24,16 @@ class _NavScreenState extends State<NavScreen> {
     NewProfilePage(),
   ];
 
-  Widget _buildNavItem(IconData icon, String label, int index) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-    bool isSelected = _selectedIndex == index;
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedIndex = index;
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        padding: EdgeInsets.symmetric(
-          horizontal: isSelected ? 20 : 16,
-          vertical: 12,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? colorScheme.primary
-              : (isDark ? colorScheme.surface : Colors.white),
-          borderRadius: BorderRadius.circular(25),
-          boxShadow: [
-            BoxShadow(
-              color: isDark
-                  ? Colors.black.withValues(alpha: 0.3)
-                  : Colors.black.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isSelected
-                  ? Colors.white
-                  : (isDark
-                        ? colorScheme.onSurface.withOpacity(0.7)
-                        : Colors.grey[600]),
-              size: 24,
-            ),
-            if (isSelected) ...[
-              const SizedBox(width: 8),
-              AnimatedOpacity(
-                duration: const Duration(milliseconds: 200),
-                opacity: isSelected ? 1.0 : 0.0,
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final navigationProvider = Provider.of<NavigationProvider>(context);
+    final currentPage = navigationProvider.currentPage;
 
+    int _selectedIndex = _pageMap[currentPage] ?? 0;
+    debugPrint("Building NavScreen with selectedIndex: $_selectedIndex");
+    
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
@@ -179,10 +119,10 @@ class _NavScreenState extends State<NavScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            _buildNavItem(Icons.dashboard, 'Dashboard', 0),
-                            _buildNavItem(Icons.calendar_month, 'Calendar', 1),
-                            _buildNavItem(Icons.search, 'Search', 2),
-                            _buildNavItem(Icons.person, 'Profile', 3),
+                            _buildNavItem(Icons.dashboard, 'Dashboard', 0, context),
+                            _buildNavItem(Icons.calendar_month, 'Calendar', 1, context),
+                            _buildNavItem(Icons.search, 'Search', 2, context),
+                            _buildNavItem(Icons.person, 'Profile', 3, context),
                           ],
                         ),
                       ),
@@ -196,4 +136,73 @@ class _NavScreenState extends State<NavScreen> {
       ),
     );
   }
+
+  Widget _buildNavItem(IconData icon, String label, int index, BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final navigationProvider = Provider.of<NavigationProvider>(context);
+    final currentPage = navigationProvider.currentPage;
+    final isSelected = (_pageMap[currentPage] ?? 0) == index;
+
+    return GestureDetector(
+      onTap: () {
+        final newPage = _pageMap.entries.firstWhere((element) => element.value == index).key;
+        navigationProvider.setCurrentPage(newPage);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        padding: EdgeInsets.symmetric(
+          horizontal: isSelected ? 20 : 16,
+          vertical: 12,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? colorScheme.primary
+              : (isDark ? colorScheme.surface : Colors.white),
+          borderRadius: BorderRadius.circular(25),
+          boxShadow: [
+            BoxShadow(
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.3)
+                  : Colors.black.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isSelected
+                  ? Colors.white
+                  : (isDark
+                        ? colorScheme.onSurface.withOpacity(0.7)
+                        : Colors.grey[600]),
+              size: 24,
+            ),
+            if (isSelected) ...[
+              const SizedBox(width: 8),
+              AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: isSelected ? 1.0 : 0.0,
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }
+

@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/providers/theme_provider.dart';
 
+import 'package:quantum_dashboard/providers/local_auth_provider.dart';
+
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
@@ -41,6 +43,10 @@ class SettingsPage extends StatelessWidget {
                 _buildSectionTitle('Appearance', Icons.palette, Colors.purple),
                 const SizedBox(height: 12),
                 _buildThemeSelector(context),
+                const SizedBox(height: 32),
+                _buildSectionTitle('Security', Icons.security, Colors.red),
+                const SizedBox(height: 12),
+                _buildDeviceLockSettings(context),
                 const SizedBox(height: 32),
                 _buildSectionTitle('Preferences', Icons.tune, Colors.blue),
                 const SizedBox(height: 12),
@@ -334,6 +340,159 @@ class SettingsPage extends StatelessWidget {
                 'OK',
                 style: GoogleFonts.poppins(
                   color: Color(0xFF1976D2),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDeviceLockSettings(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final authProvider = Provider.of<LocalAuthProvider>(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: theme.brightness == Brightness.dark
+                ? Colors.black.withOpacity(0.3)
+                : Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Device Lock Toggle (uses native system authentication)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.lock_outline,
+                    color: colorScheme.onSurface.withOpacity(0.7),
+                    size: 22,
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Device Lock',
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Require system authentication on launch',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: authProvider.isDeviceLockEnabled,
+                  onChanged: (value) async {
+                    if (value) {
+                      await authProvider.setDeviceLockEnabled(true);
+                      final ok = await authProvider
+                          .authenticateWithBiometrics();
+                      if (!ok) {
+                        await authProvider.setDeviceLockEnabled(false);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Authentication failed. Device lock not enabled.',
+                              style: GoogleFonts.poppins(),
+                            ),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    } else {
+                      _showDisableDeviceLockDialog(context, authProvider);
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          // No extra options; native auth will handle biometrics/device passcode
+        ],
+      ),
+    );
+  }
+
+  void _showDisableDeviceLockDialog(
+    BuildContext context,
+    LocalAuthProvider authProvider,
+  ) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            'Disable Device Lock?',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            'This will disable device lock authentication. Are you sure?',
+            style: GoogleFonts.poppins(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.poppins(
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                await authProvider.disableDeviceLock();
+                Navigator.of(dialogContext).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Device lock disabled',
+                      style: GoogleFonts.poppins(),
+                    ),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+              },
+              child: Text(
+                'Disable',
+                style: GoogleFonts.poppins(
+                  color: Colors.red,
                   fontWeight: FontWeight.w600,
                 ),
               ),

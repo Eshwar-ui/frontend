@@ -11,6 +11,10 @@
     <!-- For Android 11+ (Scoped Storage) -->
         <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
             tools:ignore="ScopedStorage" />
+        
+    <!-- Biometric authentication permissions -->
+        <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+        <uses-permission android:name="android.permission.USE_FINGERPRINT" />
    <application
         android:label="Quantum Works Employee Dashboard"
         android:name="${applicationName}"

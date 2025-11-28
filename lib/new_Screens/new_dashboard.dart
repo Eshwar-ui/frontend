@@ -1,14 +1,18 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/services/attendance_service.dart';
+import 'package:quantum_dashboard/services/leave_service.dart';
 import 'package:quantum_dashboard/models/attendance_model.dart';
+import 'package:quantum_dashboard/models/leave_model.dart';
 import 'package:timeline_tile/timeline_tile.dart';
 import 'package:intl/intl.dart';
 import 'package:lottie/lottie.dart';
+import 'package:quantum_dashboard/providers/navigation_provider.dart';
 
 class new_dashboard extends StatefulWidget {
   const new_dashboard({super.key});
@@ -19,6 +23,7 @@ class new_dashboard extends StatefulWidget {
 
 class _new_dashboardState extends State<new_dashboard> {
   final AttendanceService _attendanceService = AttendanceService();
+  final LeaveService _leaveService = LeaveService();
 
   // Attendance data
   bool _isLoading = true;
@@ -37,6 +42,8 @@ class _new_dashboardState extends State<new_dashboard> {
     // Wait for the widget to be fully built before accessing context
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadAttendanceData();
+      _calculateTotalWorkTime(_todayPunches);
+      _calculateTotalBreakTime(_todayPunches);
     });
   }
 
@@ -56,20 +63,20 @@ class _new_dashboardState extends State<new_dashboard> {
         // Completed session: punch out time - punch in time
         final workDuration = punch.punchOut!.difference(punch.punchIn);
         totalWorkTime += workDuration.inSeconds.toDouble();
-        print(
+        debugPrint(
           '📊 Work session: ${punch.punchIn.toLocal()} to ${punch.punchOut!.toLocal()} = ${workDuration.inSeconds} seconds',
         );
       } else {
         // Ongoing session: current time - punch in time
         final workDuration = now.difference(punch.punchIn);
         totalWorkTime += workDuration.inSeconds.toDouble();
-        print(
+        debugPrint(
           '📊 Ongoing work session: ${punch.punchIn.toLocal()} to now = ${workDuration.inSeconds} seconds',
         );
       }
     }
 
-    print(
+    debugPrint(
       '📊 Total work time: $totalWorkTime seconds (${(totalWorkTime / 3600).toStringAsFixed(2)} hours)',
     );
     return totalWorkTime;
@@ -108,7 +115,7 @@ class _new_dashboardState extends State<new_dashboard> {
   // Calculate total break time between consecutive punch sessions
   double _calculateTotalBreakTime(List<Attendance> todayPunches) {
     if (todayPunches.length < 2) {
-      print('📊 Less than 2 punches, no break time calculation');
+      debugPrint('📊 Less than 2 punches, no break time calculation');
       return 0.0;
     }
 
@@ -118,7 +125,9 @@ class _new_dashboardState extends State<new_dashboard> {
 
     double totalBreakTime = 0.0;
 
-    print('📊 Calculating break time between ${sortedPunches.length} punches');
+    debugPrint(
+      '📊 Calculating break time between ${sortedPunches.length} punches',
+    );
 
     for (int i = 0; i < sortedPunches.length - 1; i++) {
       final currentPunch = sortedPunches[i];
@@ -134,14 +143,14 @@ class _new_dashboardState extends State<new_dashboard> {
 
         if (breakSeconds > 0) {
           totalBreakTime += breakSeconds;
-          print(
+          debugPrint(
             '📊 Break ${i + 1}: ${breakStart.toLocal()} to ${breakEnd.toLocal()} = ${breakSeconds} seconds (${(breakSeconds / 60).toStringAsFixed(1)} minutes)',
           );
         }
       }
     }
 
-    print(
+    debugPrint(
       '📊 Total break time: $totalBreakTime seconds (${(totalBreakTime / 3600).toStringAsFixed(2)} hours)',
     );
     return totalBreakTime;
@@ -154,7 +163,7 @@ class _new_dashboardState extends State<new_dashboard> {
 
     // Check if user is logged in
     if (!authProvider.isLoggedIn) {
-      print('❌ User is not logged in');
+      debugPrint('❌ User is not logged in');
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -183,7 +192,7 @@ class _new_dashboardState extends State<new_dashboard> {
         DateTime.now().day,
       );
 
-      print('📊 Loading attendance data for ${user.fullName}...');
+      debugPrint('📊 Loading attendance data for ${user.fullName}...');
 
       // Fetch today's punches directly to get the most up-to-date data
       final todayPunchesResult = await _attendanceService.getPunches(
@@ -254,13 +263,61 @@ class _new_dashboardState extends State<new_dashboard> {
         if (status == 'Absent') absent++;
       }
 
+      // Fetch and calculate leave days for current month
+      int leaveDays = 0;
+      try {
+        final leaves = await _leaveService.getMyLeaves(user.employeeId);
+
+        // Calculate first and last day of current month
+        final firstDayOfMonth = DateTime(currentYear, currentMonth, 1);
+        final lastDayOfMonth = DateTime(currentYear, currentMonth + 1, 0);
+
+        // Count approved leaves that overlap with current month
+        for (var leave in leaves) {
+          // Only count approved leaves
+          if (leave.status.toLowerCase() == 'approved') {
+            // Check if leave overlaps with current month
+            final leaveStart = DateTime(
+              leave.from.year,
+              leave.from.month,
+              leave.from.day,
+            );
+            final leaveEnd = DateTime(
+              leave.to.year,
+              leave.to.month,
+              leave.to.day,
+            );
+
+            // Check if leave period overlaps with current month
+            if (leaveEnd.isAfter(firstDayOfMonth.subtract(Duration(days: 1))) &&
+                leaveStart.isBefore(lastDayOfMonth.add(Duration(days: 1)))) {
+              // Calculate overlapping days
+              final overlapStart = leaveStart.isAfter(firstDayOfMonth)
+                  ? leaveStart
+                  : firstDayOfMonth;
+              final overlapEnd = leaveEnd.isBefore(lastDayOfMonth)
+                  ? leaveEnd
+                  : lastDayOfMonth;
+
+              // Count days in the overlap (inclusive)
+              final overlapDays =
+                  overlapEnd.difference(overlapStart).inDays + 1;
+              leaveDays += overlapDays > 0 ? overlapDays : 0;
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Error fetching leave data: $e');
+        // Continue with leaveDays = 0 if there's an error
+      }
+
       if (mounted) {
         setState(() {
           _todayAttendance = todayRecord;
           _todayPunches = todayPunches;
           _presentDays = present;
           _absentDays = absent;
-          _leaveDays = 0; // TODO: Fetch actual leave data from leave service
+          _leaveDays = leaveDays;
           _totalWorkTime = calculatedWorkTime;
           _totalBreakTime = calculatedBreakTime;
           _isLoading = false;
@@ -270,14 +327,14 @@ class _new_dashboardState extends State<new_dashboard> {
         _startWorkTimeTimer(todayPunches);
       }
 
-      print(
-        '✅ Loaded attendance: Present=$present, Absent=$absent, TodayRecord=${todayRecord != null ? "Found" : "Not Found"}',
+      debugPrint(
+        '✅ Loaded attendance: Present=$present, Absent=$absent, Leaves=$leaveDays, TodayRecord=${todayRecord != null ? "Found" : "Not Found"}',
       );
-      print(
+      debugPrint(
         '✅ Today attendance isPunchedIn: ${todayRecord?.isPunchedIn ?? false}',
       );
     } catch (e) {
-      print('❌ Error loading attendance: $e');
+      debugPrint('❌ Error loading attendance: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -328,14 +385,14 @@ class _new_dashboardState extends State<new_dashboard> {
     try {
       if (isPunchedIn) {
         // Punch Out
-        print('⏰ Punching out...');
+        debugPrint('⏰ Punching out...');
         await _attendanceService.punchOut(user.employeeId, user.fullName);
-        print('✅ Punched out successfully!');
+        debugPrint('✅ Punched out successfully!');
       } else {
         // Punch In
-        print('⏰ Punching in...');
+        debugPrint('⏰ Punching in...');
         await _attendanceService.punchIn(user.employeeId, user.fullName);
-        print('✅ Punched in successfully!');
+        debugPrint('✅ Punched in successfully!');
       }
 
       // Check if still mounted after async operation
@@ -359,7 +416,7 @@ class _new_dashboardState extends State<new_dashboard> {
         );
       }
     } catch (e) {
-      print('❌ Error during punch: $e');
+      debugPrint('❌ Error during punch: $e');
 
       // On error, reload the actual data to revert optimistic update
       if (mounted) {
@@ -972,7 +1029,14 @@ class _new_dashboardState extends State<new_dashboard> {
             ],
           ),
           Spacer(),
-          _buildAvatar(userpicture, firstName, colorScheme),
+          GestureDetector(
+onTap: () {
+              debugPrint("Current page before tap: ${Provider.of<NavigationProvider>(context, listen: false).currentPage}");
+              Provider.of<NavigationProvider>(context, listen: false)
+                  .setCurrentPage(NavigationPage.Profile);
+            },
+            child: _buildAvatar(userpicture, firstName, colorScheme),
+          ),
         ],
       ),
     );

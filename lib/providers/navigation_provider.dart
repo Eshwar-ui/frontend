@@ -21,6 +21,7 @@ class NavigationProvider with ChangeNotifier {
 
   void setCurrentPage(NavigationPage page) {
     _currentPage = page;
+    debugPrint("Setting current page to: $page");
     notifyListeners();
   }
 }
