@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
+import 'package:quantum_dashboard/screens/change_password_screen.dart';
 import 'package:quantum_dashboard/screens/leaves_screen.dart';
 import 'package:quantum_dashboard/screens/new_payslip_screen.dart';
 import 'package:quantum_dashboard/screens/holidays_screen.dart';
@@ -30,43 +31,8 @@ class _new_search_screenState extends State<new_search_screen> {
   }
 
   // Define all available services/features in the app
-  // Only includes: Attendance, Leaves, Payslips, Holidays
+  // Only includes: Leaves, Payslips, Holidays, Change Password
   final List<AppService> _allServices = [
-    // Attendance
-    AppService(
-      id: 'attendance',
-      title: 'Attendance',
-      description: 'View and manage your attendance records',
-      category: 'Attendance',
-      icon: Icons.calendar_today,
-      color: Colors.green,
-      keywords: [
-        'punch',
-        'checkin',
-        'checkout',
-        'timesheet',
-        'working hours',
-        'attendance',
-      ],
-    ),
-    AppService(
-      id: 'punch_in',
-      title: 'Punch In',
-      description: 'Clock in for your work shift',
-      category: 'Attendance',
-      icon: Icons.login,
-      color: Colors.green,
-      keywords: ['checkin', 'start', 'clock in', 'arrival', 'punch'],
-    ),
-    AppService(
-      id: 'punch_out',
-      title: 'Punch Out',
-      description: 'Clock out from your work shift',
-      category: 'Attendance',
-      icon: Icons.logout,
-      color: Colors.red,
-      keywords: ['checkout', 'end', 'clock out', 'departure', 'punch'],
-    ),
     // Leaves
     AppService(
       id: 'leave_apply',
@@ -92,15 +58,6 @@ class _new_search_screenState extends State<new_search_screen> {
       icon: Icons.history,
       color: Colors.grey,
       keywords: ['past leaves', 'leave records', 'history', 'previous'],
-    ),
-    AppService(
-      id: 'leave_balance',
-      title: 'Leave Balance',
-      description: 'Check your available leave balance',
-      category: 'Leaves',
-      icon: Icons.account_balance_wallet,
-      color: Colors.teal,
-      keywords: ['remaining leaves', 'quota', 'balance', 'available'],
     ),
     // Payslips
     AppService(
@@ -129,6 +86,16 @@ class _new_search_screenState extends State<new_search_screen> {
       icon: Icons.celebration,
       color: Colors.purple,
       keywords: ['vacation', 'off', 'holiday list', 'holidays', 'holiday'],
+    ),
+    // Change Password
+    AppService(
+      id: 'change_password',
+      title: 'Change Password',
+      description: 'Update your account password',
+      category: 'Settings',
+      icon: Icons.lock,
+      color: Colors.cyan,
+      keywords: ['password', 'security', 'update password', 'change password'],
     ),
   ];
 
@@ -180,19 +147,12 @@ class _new_search_screenState extends State<new_search_screen> {
     switch (service.id) {
       case 'leave_apply':
       case 'leave_history':
-      case 'leave_balance':
         // Navigate to leaves screen for all leave-related services
         if (_navigator != null) {
           _navigator!.push(
             MaterialPageRoute(builder: (context) => LeavesScreen()),
           );
         }
-        break;
-      case 'attendance':
-      case 'punch_in':
-      case 'punch_out':
-        // TODO: Navigate to attendance screen
-        _showComingSoonMessage(service);
         break;
       case 'holidays':
         if (_navigator != null && mounted) {
@@ -214,6 +174,14 @@ class _new_search_screenState extends State<new_search_screen> {
         if (_navigator != null) {
           _navigator!.push(
             MaterialPageRoute(builder: (context) => NewPayslipScreen()),
+          );
+        }
+        break;
+      case 'change_password':
+        // Navigate to change password screen
+        if (_navigator != null) {
+          _navigator!.push(
+            MaterialPageRoute(builder: (context) => ChangePasswordScreen()),
           );
         }
         break;
@@ -380,10 +348,10 @@ class _new_search_screenState extends State<new_search_screen> {
 
   Widget _buildQuickActions(BuildContext context) {
     final quickActions = [
-      _allServices.firstWhere((s) => s.id == 'attendance'),
       _allServices.firstWhere((s) => s.id == 'leave_apply'),
       _allServices.firstWhere((s) => s.id == 'payslips'),
       _allServices.firstWhere((s) => s.id == 'holidays'),
+      _allServices.firstWhere((s) => s.id == 'change_password'),
     ];
 
     return Column(

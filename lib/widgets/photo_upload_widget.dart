@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/services/photo_service.dart';
@@ -15,19 +16,19 @@ class PhotoUploadWidget extends StatefulWidget {
   final double size;
 
   const PhotoUploadWidget({
-    Key? key,
+    super.key,
     this.employee,
     this.employeeId,
     this.onPhotoUploaded,
     this.isAdminMode = false,
     this.size = 120,
-  }) : super(key: key);
+  });
 
   @override
-  _PhotoUploadWidgetState createState() => _PhotoUploadWidgetState();
+  PhotoUploadWidgetState createState() => PhotoUploadWidgetState();
 }
 
-class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
+class PhotoUploadWidgetState extends State<PhotoUploadWidget> {
   final PhotoService _photoService = PhotoService();
   bool _isUploading = false;
   File? _imageFile;
@@ -209,13 +210,37 @@ class _PhotoUploadWidgetState extends State<PhotoUploadWidget> {
     try {
       final XFile? image = await _photoService.pickImage(source: source);
       if (image != null) {
-        setState(() {
-          _imageFile = File(image.path);
-        });
-        await _uploadPhoto(image.path);
+        if (!mounted) return;
+        final theme = Theme.of(context);
+        final croppedFile = await ImageCropper().cropImage(
+          sourcePath: image.path,
+          aspectRatio: CropAspectRatio(ratioX: 1, ratioY: 1),
+          uiSettings: [
+            AndroidUiSettings(
+                toolbarTitle: 'Crop Image',
+                toolbarColor: theme.colorScheme.primary,
+                toolbarWidgetColor: Colors.white,
+                initAspectRatio: CropAspectRatioPreset.square,
+                lockAspectRatio: true),
+            IOSUiSettings(
+              title: 'Crop Image',
+              aspectRatioLockEnabled: true,
+              resetAspectRatioEnabled: false,
+              aspectRatioPickerButtonHidden: true,
+              aspectRatioLockDimensionSwapEnabled: false,
+            ),
+          ],
+        );
+
+        if (croppedFile != null) {
+          setState(() {
+            _imageFile = File(croppedFile.path);
+          });
+          await _uploadPhoto(croppedFile.path);
+        }
       }
     } catch (e) {
-      _showError('Failed to pick image: $e');
+      _showError('Failed to pick and crop image: $e');
     }
   }
 

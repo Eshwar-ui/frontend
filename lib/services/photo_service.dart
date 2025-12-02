@@ -1,8 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
-import 'package:image/image.dart' as img;
-// import 'package:http/http.dart' as http; // no direct usage after refactor
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/services/api_service.dart';
@@ -12,26 +10,19 @@ class PhotoService extends ApiService {
   final ImagePicker _picker = ImagePicker();
   // Build a compressed data URL from an image path
   Future<String> buildCompressedDataUrl(String imagePath) async {
-    final Uint8List originalBytes = await File(imagePath).readAsBytes();
-    final img.Image? decoded = img.decodeImage(originalBytes);
-    Uint8List outputBytes = originalBytes;
-    if (decoded != null) {
-      final int maxSide = 800;
-      final int width = decoded.width;
-      final int height = decoded.height;
-      img.Image target = decoded;
-      if (width > maxSide || height > maxSide) {
-        target = img.copyResize(
-          decoded,
-          width: width >= height ? maxSide : (width * maxSide ~/ height),
-          height: height > width ? maxSide : (height * maxSide ~/ width),
-          interpolation: img.Interpolation.cubic,
-        );
-      }
-      final List<int> jpg = img.encodeJpg(target, quality: 60);
-      outputBytes = Uint8List.fromList(jpg);
+    final Uint8List? compressedBytes =
+        await FlutterImageCompress.compressWithFile(
+      imagePath,
+      minWidth: 600,
+      minHeight: 600,
+      quality: 40,
+    );
+
+    if (compressedBytes == null) {
+      throw Exception("Image compression failed");
     }
-    final String base64Data = base64Encode(outputBytes);
+
+    final String base64Data = base64Encode(compressedBytes);
     return 'data:image/jpeg;base64,$base64Data';
   }
 
@@ -46,7 +37,6 @@ class PhotoService extends ApiService {
       );
       return image;
     } catch (e) {
-      print('Error picking image: $e');
       return null;
     }
   }
@@ -70,7 +60,6 @@ class PhotoService extends ApiService {
       final updated = await employeeService.getEmployee(employeeId);
       return updated;
     } catch (e) {
-      print('Error uploading profile photo: $e');
       throw Exception('Failed to upload photo: $e');
     }
   }
@@ -90,7 +79,6 @@ class PhotoService extends ApiService {
         employeeId: employee.employeeId,
       );
     } catch (e) {
-      print('Error uploading employee photo: $e');
       throw Exception('Failed to upload photo: $e');
     }
   }
@@ -108,7 +96,6 @@ class PhotoService extends ApiService {
       final updated = await employeeService.getEmployee(employeeId);
       return updated;
     } catch (e) {
-      print('Error deleting profile photo: $e');
       throw Exception('Failed to delete photo: $e');
     }
   }

@@ -325,7 +325,7 @@ class _NewProfilePageState extends State<NewProfilePage> {
 
                   // Evict the old image from the cache before updating the state.
                   // This is crucial for data URLs that don't change their "URL" but change content.
-                  if (user.profileImage.isNotEmpty) {
+                  if (user.profileImage.isNotEmpty&& user.profileImage.startsWith('data:image')) {
                     MemoryImage(base64Decode(user.profileImage.split(',').last))
                         .evict();
                   }

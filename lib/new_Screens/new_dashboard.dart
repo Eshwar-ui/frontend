@@ -266,7 +266,9 @@ class _new_dashboardState extends State<new_dashboard> {
     final month = dateForMonth.month;
     final year = dateForMonth.year;
 
-    debugPrint('📊 Loading analytics for ${DateFormat('MMMM yyyy').format(dateForMonth)}...');
+    debugPrint(
+      '📊 Loading analytics for ${DateFormat('MMMM yyyy').format(dateForMonth)}...',
+    );
 
     try {
       // Fetch all punches for the given month to calculate analytics.
@@ -285,50 +287,57 @@ class _new_dashboardState extends State<new_dashboard> {
       // Only count weekdays that have a punch.
       final presentDaysSet = <DateTime>{};
       for (var punch in allPunchesForMonth) {
-        final punchDay = DateTime(punch.punchIn.year, punch.punchIn.month, punch.punchIn.day);
-        if (punchDay.month == month && punchDay.year == year &&
-            punchDay.weekday != DateTime.saturday && punchDay.weekday != DateTime.sunday) {
+        final punchDay = DateTime(
+          punch.punchIn.year,
+          punch.punchIn.month,
+          punch.punchIn.day,
+        );
+        if (punchDay.month == month &&
+            punchDay.year == year &&
+            punchDay.weekday != DateTime.saturday &&
+            punchDay.weekday != DateTime.sunday) {
           presentDaysSet.add(punchDay);
         }
       }
 
-            // Fetch and calculate leave days for the selected month
+      // Fetch and calculate leave days for the selected month
 
-            int leaveDays = 0;
+      int leaveDays = 0;
 
-            final leaveDaysSet = <DateTime>{}; // Use a set to store unique leave days
+      final leaveDaysSet = <DateTime>{}; // Use a set to store unique leave days
 
-            try {
+      try {
+        final leaves = await _leaveService.getMyLeaves(user.employeeId);
 
-              final leaves = await _leaveService.getMyLeaves(user.employeeId);
+        final firstDayOfMonth = DateTime(year, month, 1);
 
-              final firstDayOfMonth = DateTime(year, month, 1);
+        final lastDayOfMonth = DateTime(year, month + 1, 0);
 
-              final lastDayOfMonth = DateTime(year, month + 1, 0);
-
-      
-
-      
-
-              for (var leave in leaves) {
+        for (var leave in leaves) {
           // To count all applied leaves, we don't filter by status.
           // if (leave.status.toLowerCase() != 'approved') continue;
-          
-          final leaveStartInMonth =
-              leave.from.isBefore(firstDayOfMonth) ? firstDayOfMonth : leave.from;
-          final leaveEndInMonth =
-              leave.to.isAfter(lastDayOfMonth) ? lastDayOfMonth : leave.to;
+
+          final leaveStartInMonth = leave.from.isBefore(firstDayOfMonth)
+              ? firstDayOfMonth
+              : leave.from;
+          final leaveEndInMonth = leave.to.isAfter(lastDayOfMonth)
+              ? lastDayOfMonth
+              : leave.to;
 
           if (leaveStartInMonth.isBefore(leaveEndInMonth) ||
               leaveStartInMonth.isAtSameMomentAs(leaveEndInMonth)) {
-            for (var day = leaveStartInMonth;
-                day.isBefore(leaveEndInMonth.add(const Duration(days: 1)));
-                day = day.add(const Duration(days: 1))) {
+            for (
+              var day = leaveStartInMonth;
+              day.isBefore(leaveEndInMonth.add(const Duration(days: 1)));
+              day = day.add(const Duration(days: 1))
+            ) {
               if (day.month == month &&
                   day.year == year &&
                   day.weekday != DateTime.saturday &&
                   day.weekday != DateTime.sunday) {
-                leaveDaysSet.add(DateTime(day.year, day.month, day.day)); // Add date only
+                leaveDaysSet.add(
+                  DateTime(day.year, day.month, day.day),
+                ); // Add date only
               }
             }
           }
@@ -342,21 +351,35 @@ class _new_dashboardState extends State<new_dashboard> {
       // Calculate present, absent, and leave days
       int presentCount = presentDaysSet.length;
       int absentCount = 0;
-      final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day); // Today's date without time
-      final daysInMonth = DateTime(year, month + 1, 0).day; // Number of days in the selected month
+      final today = DateTime(
+        DateTime.now().year,
+        DateTime.now().month,
+        DateTime.now().day,
+      ); // Today's date without time
+      final daysInMonth = DateTime(
+        year,
+        month + 1,
+        0,
+      ).day; // Number of days in the selected month
 
       for (int i = 1; i <= daysInMonth; i++) {
         final currentDay = DateTime(year, month, i);
 
         // Skip future days if the selected month is the current month
-        if (currentDay.isAfter(today) && currentDay.month == today.month && currentDay.year == today.year) {
+        if (currentDay.isAfter(today) &&
+            currentDay.month == today.month &&
+            currentDay.year == today.year) {
           continue; // Don't count future days in the current month as absent
         }
 
         // Only consider weekdays
-        if (currentDay.weekday != DateTime.saturday && currentDay.weekday != DateTime.sunday) {
+        if (currentDay.weekday != DateTime.saturday &&
+            currentDay.weekday != DateTime.sunday) {
           // If the day is not present and not a leave, it's an absent day
-          if (!presentDaysSet.contains(currentDay) && !leaveDaysSet.contains(DateTime(currentDay.year, currentDay.month, currentDay.day))) {
+          if (!presentDaysSet.contains(currentDay) &&
+              !leaveDaysSet.contains(
+                DateTime(currentDay.year, currentDay.month, currentDay.day),
+              )) {
             absentCount++;
           }
         }
@@ -366,7 +389,8 @@ class _new_dashboardState extends State<new_dashboard> {
         setState(() {
           _presentDays = presentCount;
           _absentDays = absentCount;
-          _leaveDays = leaveDays; // This is already calculated from leaveDaysSet.length
+          _leaveDays =
+              leaveDays; // This is already calculated from leaveDaysSet.length
         });
       }
       debugPrint(
@@ -515,84 +539,84 @@ class _new_dashboardState extends State<new_dashboard> {
                   _buildTimeline(),
 
                   // User Analytics Section: Attendance, Leaves, and Their Status
-                  SizedBox(height: 24),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Your Analytics',
-                              style: GoogleFonts.poppins(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                                color: colorScheme.onSurface,
-                              ),
-                            ),
-                            _buildMonthSelector(),
-                          ],
-                        ),
-                        SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // Attendance Card
-                            _AnalyticsCard(
-                              title: 'Attendance',
-                              count: _presentDays,
-                              status: 'Present',
-                              color: Colors.green,
-                              icon: Icons.check_circle,
-                            ),
-                            // Absent Card
-                            _AnalyticsCard(
-                              title: 'Absent',
-                              count: _absentDays,
-                              status: 'Absent',
-                              color: Colors.red,
-                              icon: Icons.cancel,
-                            ),
-                            // Leave Card
-                            _AnalyticsCard(
-                              title: 'Leaves',
-                              count: _leaveDays,
-                              status: 'On Leave',
-                              color: Colors.orange,
-                              icon: Icons.event_busy,
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 16),
-                        // Status Pills (present/absent/leave in past week)
-                        // Row(
-                        //   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        //   children: [
-                        //     _StatusPill(
-                        //       label: 'Present',
-                        //       value: '5',
-                        //       color: Colors.green,
-                        //       icon: Icons.check,
-                        //     ),
-                        //     _StatusPill(
-                        //       label: 'Absent',
-                        //       value: '1',
-                        //       color: Colors.red,
-                        //       icon: Icons.close,
-                        //     ),
-                        //     _StatusPill(
-                        //       label: 'Leave',
-                        //       value: '1',
-                        //       color: Colors.orange,
-                        //       icon: Icons.hourglass_empty,
-                        //     ),
-                        //   ],
-                        // ),
-                      ],
-                    ),
-                  ),
+                  // SizedBox(height: 24),
+                  // Padding(
+                  //   padding: const EdgeInsets.symmetric(horizontal: 24),
+                  //   child: Column(
+                  //     crossAxisAlignment: CrossAxisAlignment.start,
+                  //     children: [
+                  //       Row(
+                  //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  //         children: [
+                  //           Text(
+                  //             'Your Analytics',
+                  //             style: GoogleFonts.poppins(
+                  //               fontSize: 20,
+                  //               fontWeight: FontWeight.w600,
+                  //               color: colorScheme.onSurface,
+                  //             ),
+                  //           ),
+                  //           _buildMonthSelector(),
+                  //         ],
+                  //       ),
+                  //       SizedBox(height: 12),
+                  //       Row(
+                  //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  //         children: [
+                  //           // Attendance Card
+                  //           _AnalyticsCard(
+                  //             title: 'Attendance',
+                  //             count: _presentDays,
+                  //             status: 'Present',
+                  //             color: Colors.green,
+                  //             icon: Icons.check_circle,
+                  //           ),
+                  //           // Absent Card
+                  //           _AnalyticsCard(
+                  //             title: 'Absent',
+                  //             count: _absentDays,
+                  //             status: 'Absent',
+                  //             color: Colors.red,
+                  //             icon: Icons.cancel,
+                  //           ),
+                  //           // Leave Card
+                  //           _AnalyticsCard(
+                  //             title: 'Leaves',
+                  //             count: _leaveDays,
+                  //             status: 'On Leave',
+                  //             color: Colors.orange,
+                  //             icon: Icons.event_busy,
+                  //           ),
+                  //         ],
+                  //       ),
+                  //       SizedBox(height: 16),
+                  //       // Status Pills (present/absent/leave in past week)
+                  //       // Row(
+                  //       //   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  //       //   children: [
+                  //       //     _StatusPill(
+                  //       //       label: 'Present',
+                  //       //       value: '5',
+                  //       //       color: Colors.green,
+                  //       //       icon: Icons.check,
+                  //       //     ),
+                  //       //     _StatusPill(
+                  //       //       label: 'Absent',
+                  //       //       value: '1',
+                  //       //       color: Colors.red,
+                  //       //       icon: Icons.close,
+                  //       //     ),
+                  //       //     _StatusPill(
+                  //       //       label: 'Leave',
+                  //       //       value: '1',
+                  //       //       color: Colors.orange,
+                  //       //       icon: Icons.hourglass_empty,
+                  //       //     ),
+                  //       //   ],
+                  //       // ),
+                  //     ],
+                  //   ),
+                  // ),
                   SizedBox(height: 120), // Extra padding for nav bar
                 ],
               ),
@@ -602,7 +626,11 @@ class _new_dashboardState extends State<new_dashboard> {
 
   bool _isNextMonthAvailable() {
     final now = DateTime.now();
-    final nextMonth = DateTime(_selectedAnalyticsDate.year, _selectedAnalyticsDate.month + 1, 1);
+    final nextMonth = DateTime(
+      _selectedAnalyticsDate.year,
+      _selectedAnalyticsDate.month + 1,
+      1,
+    );
     return nextMonth.isBefore(DateTime(now.year, now.month + 1, 1));
   }
 
@@ -634,13 +662,22 @@ class _new_dashboardState extends State<new_dashboard> {
           ),
         ),
         IconButton(
-          icon: Icon(Icons.chevron_right, color: _isNextMonthAvailable() ? colorScheme.primary : Colors.grey),
-          onPressed: !_isNextMonthAvailable() ? null : () {
-            setState(() {
-              _selectedAnalyticsDate = DateTime(_selectedAnalyticsDate.year, _selectedAnalyticsDate.month + 1, 1);
-            });
-            _loadAnalyticsDataForMonth(_selectedAnalyticsDate);
-          },
+          icon: Icon(
+            Icons.chevron_right,
+            color: _isNextMonthAvailable() ? colorScheme.primary : Colors.grey,
+          ),
+          onPressed: !_isNextMonthAvailable()
+              ? null
+              : () {
+                  setState(() {
+                    _selectedAnalyticsDate = DateTime(
+                      _selectedAnalyticsDate.year,
+                      _selectedAnalyticsDate.month + 1,
+                      1,
+                    );
+                  });
+                  _loadAnalyticsDataForMonth(_selectedAnalyticsDate);
+                },
         ),
       ],
     );
@@ -1128,10 +1165,14 @@ class _new_dashboardState extends State<new_dashboard> {
           ),
           Spacer(),
           GestureDetector(
-onTap: () {
-              debugPrint("Current page before tap: ${Provider.of<NavigationProvider>(context, listen: false).currentPage}");
-              Provider.of<NavigationProvider>(context, listen: false)
-                  .setCurrentPage(NavigationPage.Profile);
+            onTap: () {
+              debugPrint(
+                "Current page before tap: ${Provider.of<NavigationProvider>(context, listen: false).currentPage}",
+              );
+              Provider.of<NavigationProvider>(
+                context,
+                listen: false,
+              ).setCurrentPage(NavigationPage.Profile);
             },
             child: _buildAvatar(userpicture, firstName, colorScheme),
           ),
@@ -1145,7 +1186,9 @@ onTap: () {
     DateTime? firstPunchInTime;
     if (_todayPunches.isNotEmpty) {
       final sortedTodayPunches = List<Attendance>.from(_todayPunches);
-      sortedTodayPunches.sort((a, b) => a.punchIn.compareTo(b.punchIn)); // Sort ascending for earliest
+      sortedTodayPunches.sort(
+        (a, b) => a.punchIn.compareTo(b.punchIn),
+      ); // Sort ascending for earliest
       firstPunchInTime = sortedTodayPunches.first.punchIn;
     }
 
