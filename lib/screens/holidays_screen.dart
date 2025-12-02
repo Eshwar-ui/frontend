@@ -23,25 +23,30 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   }
 
   Widget _buildHolidayCard(Holiday holiday) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Container(
         // margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         // elevation: 2,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Color(0xff0C0C0D).withOpacity(0.4),
-              blurRadius: 32,
-              offset: Offset(0, 16),
-              spreadRadius: -8,
+              color: isDark
+                  ? Colors.black.withOpacity(0.4)
+                  : Color(0xff0C0C0D).withOpacity(0.1),
+              blurRadius: 24,
+              offset: Offset(0, 8),
+              spreadRadius: -4,
             ),
           ],
         ),
         child: Padding(
-          padding: EdgeInsets.all(8),
+          padding: EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -53,21 +58,21 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                       style: AppTextStyles.subheading.copyWith(
                         fontWeight: FontWeight.bold,
                         fontSize: 20,
+                        color: colorScheme.onSurface,
                       ),
                     ),
                   ),
-
                   SizedBox(width: 12),
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
+                      color: colorScheme.surfaceVariant,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       holiday.day,
                       style: TextStyle(
-                        color: Colors.grey,
+                        color: colorScheme.onSurfaceVariant,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -78,24 +83,26 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               SizedBox(height: 12),
               Row(
                 children: [
-                  Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
+                  Icon(Icons.calendar_today,
+                      size: 16, color: colorScheme.onSurfaceVariant),
                   SizedBox(width: 8),
                   Text(
                     // Format the DateTime to a readable string
                     "${holiday.date.day.toString().padLeft(2, '0')}-${holiday.date.month.toString().padLeft(2, '0')}-${holiday.date.year}",
                     style: AppTextStyles.body.copyWith(
-                      color: Colors.grey[700],
+                      color: colorScheme.onSurface,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
 
                   Spacer(),
-                  Icon(Icons.person, size: 16, color: Colors.grey[600]),
+                  Icon(Icons.person,
+                      size: 16, color: colorScheme.onSurfaceVariant),
                   SizedBox(width: 8),
                   Text(
                     'Posted by ${holiday.action}',
                     style: AppTextStyles.body.copyWith(
-                      color: Colors.blue[700],
+                      color: colorScheme.primary,
                       fontWeight: FontWeight.w500,
                       fontSize: 12,
                     ),
@@ -115,13 +122,15 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.event_busy, size: 64, color: Colors.grey),
+            Icon(Icons.event_busy,
+                size: 64, color: Theme.of(context).colorScheme.onSurface),
             SizedBox(height: 16),
             Text(
               _searchQuery.isEmpty
                   ? 'No holidays found for $_selectedYear'
                   : 'No holidays match your search',
-              style: AppTextStyles.body.copyWith(color: Colors.grey),
+              style: AppTextStyles.body
+                  .copyWith(color: Theme.of(context).colorScheme.onSurface),
             ),
           ],
         ),
@@ -138,18 +147,20 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   }
 
   Widget _buildCompactTable(List<Holiday> filteredHolidays) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     if (filteredHolidays.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.event_busy, size: 64, color: Colors.grey),
+            Icon(Icons.event_busy, size: 64, color: colorScheme.onSurface),
             SizedBox(height: 16),
             Text(
               _searchQuery.isEmpty
                   ? 'No holidays found for $_selectedYear'
                   : 'No holidays match your search',
-              style: AppTextStyles.body.copyWith(color: Colors.grey),
+              style: AppTextStyles.body.copyWith(color: colorScheme.onSurface),
             ),
           ],
         ),
@@ -238,13 +249,13 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.grey[200],
+                    color: colorScheme.surfaceVariant,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     holiday.day.substring(0, 3),
                     style: TextStyle(
-                      color: Colors.white,
+                      color: colorScheme.onSurfaceVariant,
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
                     ),
@@ -255,7 +266,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                 Text(
                   holiday.action,
                   style: AppTextStyles.body.copyWith(
-                    color: Colors.blue[700],
+                    color: colorScheme.primary,
                     fontWeight: FontWeight.w500,
                     fontSize: 12,
                   ),
@@ -272,17 +283,12 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
-
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Holidays', style: TextStyle(color: Colors.white)),
-        backgroundColor: Color(0xFF1976D2),
-        foregroundColor: Colors.white,
+        title: Text('Holidays'),
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
       ),
       body: Column(
         children: [
@@ -329,20 +335,20 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
                             Icon(
                               Icons.error_outline,
                               size: 64,
-                              color: Colors.red,
+                              color: colorScheme.error,
                             ),
                             SizedBox(height: 16),
                             Text(
                               'Error loading holidays',
                               style: AppTextStyles.body.copyWith(
-                                color: Colors.red,
+                                color: colorScheme.error,
                               ),
                             ),
                             SizedBox(height: 8),
                             Text(
                               holidayProvider.error!,
                               style: AppTextStyles.body.copyWith(
-                                color: Colors.red,
+                                color: colorScheme.error,
                                 fontSize: 12,
                               ),
                               textAlign: TextAlign.center,

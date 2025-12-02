@@ -6,14 +6,15 @@ class AttendanceProvider with ChangeNotifier {
   final AttendanceService _attendanceService = AttendanceService();
 
   List<Attendance> _punches = [];
-  List<Map<String, dynamic>> _dateWiseData = [];
+  final Map<String, List<Map<String, dynamic>>> _dateWiseCache = {};
   List<Map<String, dynamic>> _adminAttendance = [];
   bool _isLoading = false;
   String? _error;
   double _totalWorkingTime = 0.0;
 
   List<Attendance> get punches => _punches;
-  List<Map<String, dynamic>> get dateWiseData => _dateWiseData;
+  List<Map<String, dynamic>> get dateWiseData =>
+      _dateWiseCache.values.expand((list) => list).toList();
   List<Map<String, dynamic>> get adminAttendance => _adminAttendance;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -113,17 +114,23 @@ class AttendanceProvider with ChangeNotifier {
     int? year,
     String? employeeName,
   }) async {
+    final cacheKey = '${employeeId}_${year}_$month';
+    if (_dateWiseCache.containsKey(cacheKey)) {
+      return; // Data is already cached
+    }
+
     _isLoading = true;
     _error = null;
     _safeNotifyListeners();
 
     try {
-      _dateWiseData = await _attendanceService.getDateWiseData(
+      final newData = await _attendanceService.getDateWiseData(
         employeeId,
         month: month,
         year: year,
         employeeName: employeeName,
       );
+      _dateWiseCache[cacheKey] = newData;
     } catch (e) {
       _error = e.toString();
     } finally {

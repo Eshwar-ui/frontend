@@ -270,6 +270,11 @@ class _LoginScreenState extends State<LoginScreen> {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
+    // Select the logo based on the current theme
+    final logoAsset = isDark
+        ? 'assets/logos/quantumlogo-h(dark).png' // Your dark theme logo
+        : 'assets/logos/quantumlogo-h(light).png'; // Your light theme logo
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SingleChildScrollView(
@@ -291,8 +296,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Spacer(),
-                      Image.asset(AppAssets.quantumLogoH, height: 50),
-
+                      Image.asset(logoAsset, height: 50),
                       SizedBox(height: 20),
                       Text(
                         textAlign: TextAlign.center,

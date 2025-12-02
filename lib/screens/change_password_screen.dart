@@ -67,7 +67,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     try {
       final authProvider = context.read<AuthProvider>();
       final user = authProvider.user;
-      
+
       if (user == null) {
         setState(() {
           _errorMessage = 'User not found. Please login again.';
@@ -100,13 +100,16 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         _errorMessage = 'An error occurred. Please try again.';
       });
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   void _showSuccessDialog() {
+    final colorScheme = Theme.of(context).colorScheme;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -114,7 +117,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         return AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.green, size: 24),
+              Icon(Icons.check_circle, color: colorScheme.primary, size: 24),
               SizedBox(width: 8),
               Text('Success'),
             ],
@@ -142,6 +145,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     required VoidCallback onToggle,
     required String? Function(String?) validator,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -150,6 +154,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           style: AppTextStyles.body.copyWith(
             fontWeight: FontWeight.w600,
             fontSize: 14,
+            color: colorScheme.onSurface,
           ),
         ),
         SizedBox(height: 8),
@@ -162,25 +167,25 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             hintText: hint,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderSide: BorderSide(color: colorScheme.outline),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderSide: BorderSide(color: colorScheme.outline),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.blue, width: 2),
+              borderSide: BorderSide(color: colorScheme.primary, width: 2),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.red, width: 2),
+              borderSide: BorderSide(color: colorScheme.error, width: 2),
             ),
             contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             suffixIcon: IconButton(
               icon: Icon(
                 obscureText ? Icons.visibility : Icons.visibility_off,
-                color: Colors.grey[600],
+                color: colorScheme.onSurfaceVariant,
               ),
               onPressed: onToggle,
             ),
@@ -193,6 +198,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   Widget _buildPasswordStrengthIndicator() {
     final password = _newPasswordController.text;
     if (password.isEmpty) return SizedBox.shrink();
+    final colorScheme = Theme.of(context).colorScheme;
 
     int strength = 0;
     if (password.length >= 6) strength++;
@@ -202,13 +208,13 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     if (password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) strength++;
 
     String strengthText = '';
-    Color strengthColor = Colors.red;
+    Color strengthColor = colorScheme.error;
 
     switch (strength) {
       case 0:
       case 1:
         strengthText = 'Very Weak';
-        strengthColor = Colors.red;
+        strengthColor = colorScheme.error;
         break;
       case 2:
         strengthText = 'Weak';
@@ -235,7 +241,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           Expanded(
             child: LinearProgressIndicator(
               value: strength / 5,
-              backgroundColor: Colors.grey[300],
+              backgroundColor: colorScheme.surfaceVariant,
               valueColor: AlwaysStoppedAnimation<Color>(strengthColor),
             ),
           ),
@@ -255,7 +261,11 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
+      appBar: AppBar(title: Text('Change Password'), elevation: 0),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(24),
         child: Form(
@@ -267,46 +277,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 'assets/illustrations/changepasswordimage.png',
                 fit: BoxFit.cover,
               ),
-              // Header
-              // Container(
-              //   padding: EdgeInsets.all(20),
-              //   decoration: BoxDecoration(
-              //     color: Colors.blue[50],
-              //     borderRadius: BorderRadius.circular(12),
-              //     border: Border.all(color: Colors.blue[200]!),
-              //   ),
-              //   child: Row(
-              //     children: [
-              //       Icon(Icons.security, color: Colors.blue[700], size: 32),
-              //       SizedBox(width: 16),
-              //       Expanded(
-              //         child: Column(
-              //           crossAxisAlignment: CrossAxisAlignment.start,
-              //           children: [
-              //             Text(
-              //               'Update Your Password',
-              //               style: AppTextStyles.body.copyWith(
-              //                 fontWeight: FontWeight.bold,
-              //                 fontSize: 18,
-              //                 color: Colors.blue[700],
-              //               ),
-              //             ),
-              //             SizedBox(height: 4),
-              //             Text(
-              //               'Choose a new secure password for your account',
-              //               style: AppTextStyles.body.copyWith(
-              //                 color: Colors.blue[600],
-              //                 fontSize: 14,
-              //               ),
-              //             ),
-              //           ],
-              //         ),
-              //       ),
-              //     ],
-              //   ),
-              // ),
-
-              // SizedBox(height: 32),
+              SizedBox(height: 32),
               CustomFloatingContainer(
                 child: Column(
                   spacing: 12,
@@ -321,7 +292,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       ),
                       validator: _validateNewPassword,
                     ),
-
                     _buildPasswordField(
                       controller: _confirmPasswordController,
                       label: 'Confirm New Password',
@@ -337,66 +307,34 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 ),
               ),
 
-              // New Password
+              SizedBox(height: 16),
+              _buildPasswordStrengthIndicator(),
 
-              // Password Strength Indicator
-              // _buildPasswordStrengthIndicator(),
-
-              // SizedBox(height: 16),
-
-              // // Password Requirements
-              // Container(
-              //   padding: EdgeInsets.all(12),
-              //   decoration: BoxDecoration(
-              //     color: Colors.grey[100],
-              //     borderRadius: BorderRadius.circular(8),
-              //   ),
-              //   child: Column(
-              //     crossAxisAlignment: CrossAxisAlignment.start,
-              //     children: [
-              //       Text(
-              //         'Password Requirements:',
-              //         style: TextStyle(
-              //           fontWeight: FontWeight.w600,
-              //           fontSize: 12,
-              //           color: Colors.grey[700],
-              //         ),
-              //       ),
-              //       SizedBox(height: 4),
-              //       Text(
-              //         '• At least 6 characters long\n• Include uppercase and lowercase letters\n• Include numbers and special characters',
-              //         style: TextStyle(
-              //           fontSize: 11,
-              //           color: Colors.grey[600],
-              //         ),
-              //       ),
-              //     ],
-              //   ),
-              // ),
-
-              // SizedBox(height: 24),
-
-              // Confirm Password
-
-              // Error Message
-              if (_errorMessage != null)
+              if (_errorMessage != null) ...[
+                SizedBox(height: 24),
                 Container(
                   width: double.infinity,
                   padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.red[50],
+                    color: colorScheme.errorContainer,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red[200]!),
+                    border: Border.all(
+                      color: colorScheme.error.withOpacity(0.5),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.error_outline, color: Colors.red, size: 20),
+                      Icon(
+                        Icons.error_outline,
+                        color: colorScheme.onErrorContainer,
+                        size: 20,
+                      ),
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           _errorMessage!,
                           style: TextStyle(
-                            color: Colors.red[700],
+                            color: colorScheme.onErrorContainer,
                             fontSize: 14,
                           ),
                         ),
@@ -404,28 +342,33 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     ],
                   ),
                 ),
+              ],
 
-              SizedBox(height: 16),
-
-              // Success Message
-              if (_successMessage != null)
+              if (_successMessage != null) ...[
+                SizedBox(height: 16),
                 Container(
                   width: double.infinity,
                   padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.green[50],
+                    color: colorScheme.primaryContainer.withOpacity(0.5),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green[200]!),
+                    border: Border.all(
+                      color: colorScheme.primary.withOpacity(0.5),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.check_circle, color: Colors.green, size: 20),
+                      Icon(
+                        Icons.check_circle,
+                        color: colorScheme.onPrimaryContainer,
+                        size: 20,
+                      ),
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           _successMessage!,
                           style: TextStyle(
-                            color: Colors.green[700],
+                            color: colorScheme.onPrimaryContainer,
                             fontSize: 14,
                           ),
                         ),
@@ -433,6 +376,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     ],
                   ),
                 ),
+              ],
 
               SizedBox(height: 24),
 
@@ -443,8 +387,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _changePassword,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFF1976D2),
-                    foregroundColor: Colors.white,
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: colorScheme.onPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -459,7 +403,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
+                                  colorScheme.onPrimary,
                                 ),
                               ),
                             ),

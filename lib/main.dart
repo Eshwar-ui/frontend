@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/new%20admin%20screens/new_admin_,main_screen.dart';
 import 'package:quantum_dashboard/new_Screens/main_screen.dart';
+import 'package:quantum_dashboard/prctice.dart';
 import 'package:quantum_dashboard/providers/attendance_provider.dart';
 import 'package:quantum_dashboard/providers/employee_provider.dart';
 import 'package:quantum_dashboard/providers/holiday_provider.dart';
@@ -46,7 +47,8 @@ class MyApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.themeMode,
-            home: SplashScreen(),
+            home:
+                SplashScreen(), // Or LoginScreen() if you want to go there directly
             routes: {
               '/login': (context) => LoginScreen(),
               '/dashboard': (context) => NavScreen(),

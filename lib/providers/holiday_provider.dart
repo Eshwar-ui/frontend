@@ -5,11 +5,12 @@ import 'package:quantum_dashboard/services/holiday_service.dart';
 class HolidayProvider with ChangeNotifier {
   final HolidayService _holidayService = HolidayService();
 
-  List<Holiday> _holidays = [];
+  final Map<int, List<Holiday>> _holidayCache = {};
   bool _isLoading = false;
   String? _error;
 
-  List<Holiday> get holidays => _holidays;
+  List<Holiday> get holidays =>
+      _holidayCache.values.expand((list) => list).toList();
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -33,9 +34,15 @@ class HolidayProvider with ChangeNotifier {
     _safeNotifyListeners();
 
     try {
-      _holidays = await _holidayService.getHolidays();
+      final List<Holiday> holidaysList = await _holidayService.getHolidays();
+      // Populate the _holidayCache by year
+      _holidayCache.clear();
+      for (final holiday in holidaysList) {
+        final int year = DateTime.parse(holiday.date.toString()).year;
+        _holidayCache.putIfAbsent(year, () => []).add(holiday);
+      }
       print(
-        'HolidayProvider: Successfully fetched ${_holidays.length} holidays',
+        'HolidayProvider: Successfully fetched ${holidaysList.length} holidays',
       );
     } catch (e) {
       print('HolidayProvider: Error fetching holidays: $e');
@@ -48,12 +55,16 @@ class HolidayProvider with ChangeNotifier {
 
   // Get holidays by year
   Future<void> getHolidaysByYear(int year) async {
+    if (_holidayCache.containsKey(year)) {
+      return; // Data is already cached
+    }
     _isLoading = true;
     _error = null;
     _safeNotifyListeners();
 
     try {
-      _holidays = await _holidayService.getHolidaysByYear(year);
+      final newHolidays = await _holidayService.getHolidaysByYear(year);
+      _holidayCache[year] = newHolidays;
     } catch (e) {
       _error = e.toString();
     } finally {

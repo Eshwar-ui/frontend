@@ -36,7 +36,7 @@ class _NewProfilePageState extends State<NewProfilePage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final user = Provider.of<AuthProvider>(context, listen: false).user;
+    final user = Provider.of<AuthProvider>(context).user;
 
     if (user == null) {
       return Scaffold(
@@ -321,11 +321,16 @@ class _NewProfilePageState extends State<NewProfilePage> {
                 employee: user,
                 size: 200,
                 onPhotoUploaded: (updatedEmployee) {
-                  if (!mounted ||
-                      _authProvider == null ||
-                      _scaffoldMessenger == null)
-                    return;
-                  _authProvider!.setUser(updatedEmployee);
+                  if (!mounted || _authProvider == null) return;
+
+                  // Evict the old image from the cache before updating the state.
+                  // This is crucial for data URLs that don't change their "URL" but change content.
+                  if (user.profileImage.isNotEmpty) {
+                    MemoryImage(base64Decode(user.profileImage.split(',').last))
+                        .evict();
+                  }
+
+                  _authProvider?.setUser(updatedEmployee);
                   Navigator.of(ctx).pop();
                   _scaffoldMessenger!.showSnackBar(
                     SnackBar(

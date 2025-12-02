@@ -35,12 +35,15 @@ class _new_dashboardState extends State<new_dashboard> {
   double _totalWorkTime = 0.0;
   double _totalBreakTime = 0.0;
   Timer? _workTimeTimer;
+  late DateTime _selectedAnalyticsDate;
 
   @override
   void initState() {
     super.initState();
+    _selectedAnalyticsDate = DateTime.now();
     // Wait for the widget to be fully built before accessing context
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAnalyticsDataForMonth(_selectedAnalyticsDate);
       _loadAttendanceData();
       _calculateTotalWorkTime(_todayPunches);
       _calculateTotalBreakTime(_todayPunches);
@@ -201,13 +204,6 @@ class _new_dashboardState extends State<new_dashboard> {
         year: currentYear,
       );
 
-      // Fetch month-wise attendance data for analytics
-      final dateWiseData = await _attendanceService.getDateWiseData(
-        user.employeeId,
-        month: currentMonth,
-        year: currentYear,
-      );
-
       // Check if still mounted after async operations
       if (!mounted) return;
 
@@ -234,93 +230,13 @@ class _new_dashboardState extends State<new_dashboard> {
         todayRecord = todayPunches.first;
       }
 
-      // If not found in punches, check dateWiseData as fallback
-      if (todayRecord == null) {
-        for (var data in dateWiseData) {
-          if (data['attendance'] != null) {
-            final attendance = Attendance.fromJson(data['attendance']);
-            final recordDate = DateTime(
-              attendance.punchIn.year,
-              attendance.punchIn.month,
-              attendance.punchIn.day,
-            );
-
-            if (recordDate.isAtSameMomentAs(today)) {
-              todayRecord = attendance;
-              break;
-            }
-          }
-        }
-      }
-
-      // Calculate analytics from dateWiseData
-      int present = 0;
-      int absent = 0;
-
-      for (var data in dateWiseData) {
-        final status = data['status'] as String?;
-        if (status == 'Present') present++;
-        if (status == 'Absent') absent++;
-      }
-
-      // Fetch and calculate leave days for current month
-      int leaveDays = 0;
-      try {
-        final leaves = await _leaveService.getMyLeaves(user.employeeId);
-
-        // Calculate first and last day of current month
-        final firstDayOfMonth = DateTime(currentYear, currentMonth, 1);
-        final lastDayOfMonth = DateTime(currentYear, currentMonth + 1, 0);
-
-        // Count approved leaves that overlap with current month
-        for (var leave in leaves) {
-          // Only count approved leaves
-          if (leave.status.toLowerCase() == 'approved') {
-            // Check if leave overlaps with current month
-            final leaveStart = DateTime(
-              leave.from.year,
-              leave.from.month,
-              leave.from.day,
-            );
-            final leaveEnd = DateTime(
-              leave.to.year,
-              leave.to.month,
-              leave.to.day,
-            );
-
-            // Check if leave period overlaps with current month
-            if (leaveEnd.isAfter(firstDayOfMonth.subtract(Duration(days: 1))) &&
-                leaveStart.isBefore(lastDayOfMonth.add(Duration(days: 1)))) {
-              // Calculate overlapping days
-              final overlapStart = leaveStart.isAfter(firstDayOfMonth)
-                  ? leaveStart
-                  : firstDayOfMonth;
-              final overlapEnd = leaveEnd.isBefore(lastDayOfMonth)
-                  ? leaveEnd
-                  : lastDayOfMonth;
-
-              // Count days in the overlap (inclusive)
-              final overlapDays =
-                  overlapEnd.difference(overlapStart).inDays + 1;
-              leaveDays += overlapDays > 0 ? overlapDays : 0;
-            }
-          }
-        }
-      } catch (e) {
-        debugPrint('Error fetching leave data: $e');
-        // Continue with leaveDays = 0 if there's an error
-      }
-
       if (mounted) {
         setState(() {
           _todayAttendance = todayRecord;
           _todayPunches = todayPunches;
-          _presentDays = present;
-          _absentDays = absent;
-          _leaveDays = leaveDays;
+          _isLoading = false;
           _totalWorkTime = calculatedWorkTime;
           _totalBreakTime = calculatedBreakTime;
-          _isLoading = false;
         });
 
         // Start timer to update work time if user is punched in
@@ -328,7 +244,7 @@ class _new_dashboardState extends State<new_dashboard> {
       }
 
       debugPrint(
-        '✅ Loaded attendance: Present=$present, Absent=$absent, Leaves=$leaveDays, TodayRecord=${todayRecord != null ? "Found" : "Not Found"}',
+        '✅ Loaded today\'s attendance: TodayRecord=${todayRecord != null ? "Found" : "Not Found"}',
       );
       debugPrint(
         '✅ Today attendance isPunchedIn: ${todayRecord?.isPunchedIn ?? false}',
@@ -337,6 +253,133 @@ class _new_dashboardState extends State<new_dashboard> {
       debugPrint('❌ Error loading attendance: $e');
       if (mounted) {
         setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _loadAnalyticsDataForMonth(DateTime dateForMonth) async {
+    if (!mounted) return;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isLoggedIn || authProvider.user == null) return;
+
+    final user = authProvider.user!;
+    final month = dateForMonth.month;
+    final year = dateForMonth.year;
+
+    debugPrint('📊 Loading analytics for ${DateFormat('MMMM yyyy').format(dateForMonth)}...');
+
+    try {
+      // Fetch all punches for the given month to calculate analytics.
+      // This is more reliable than dateWiseData which might have a different structure.
+      final punchesResult = await _attendanceService.getPunches(
+        user.employeeId,
+        month: month,
+        year: year,
+      );
+
+      if (!mounted) return;
+
+      final allPunchesForMonth = punchesResult['punches'] as List<Attendance>;
+
+      // Use a Set to count unique present days.
+      // Only count weekdays that have a punch.
+      final presentDaysSet = <DateTime>{};
+      for (var punch in allPunchesForMonth) {
+        final punchDay = DateTime(punch.punchIn.year, punch.punchIn.month, punch.punchIn.day);
+        if (punchDay.month == month && punchDay.year == year &&
+            punchDay.weekday != DateTime.saturday && punchDay.weekday != DateTime.sunday) {
+          presentDaysSet.add(punchDay);
+        }
+      }
+
+            // Fetch and calculate leave days for the selected month
+
+            int leaveDays = 0;
+
+            final leaveDaysSet = <DateTime>{}; // Use a set to store unique leave days
+
+            try {
+
+              final leaves = await _leaveService.getMyLeaves(user.employeeId);
+
+              final firstDayOfMonth = DateTime(year, month, 1);
+
+              final lastDayOfMonth = DateTime(year, month + 1, 0);
+
+      
+
+      
+
+              for (var leave in leaves) {
+          // To count all applied leaves, we don't filter by status.
+          // if (leave.status.toLowerCase() != 'approved') continue;
+          
+          final leaveStartInMonth =
+              leave.from.isBefore(firstDayOfMonth) ? firstDayOfMonth : leave.from;
+          final leaveEndInMonth =
+              leave.to.isAfter(lastDayOfMonth) ? lastDayOfMonth : leave.to;
+
+          if (leaveStartInMonth.isBefore(leaveEndInMonth) ||
+              leaveStartInMonth.isAtSameMomentAs(leaveEndInMonth)) {
+            for (var day = leaveStartInMonth;
+                day.isBefore(leaveEndInMonth.add(const Duration(days: 1)));
+                day = day.add(const Duration(days: 1))) {
+              if (day.month == month &&
+                  day.year == year &&
+                  day.weekday != DateTime.saturday &&
+                  day.weekday != DateTime.sunday) {
+                leaveDaysSet.add(DateTime(day.year, day.month, day.day)); // Add date only
+              }
+            }
+          }
+        }
+        leaveDays = leaveDaysSet.length;
+      } catch (e) {
+        debugPrint('Error fetching leave data for analytics: $e');
+        leaveDays = 0; // Ensure leaveDays is reset on error
+      }
+
+      // Calculate present, absent, and leave days
+      int presentCount = presentDaysSet.length;
+      int absentCount = 0;
+      final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day); // Today's date without time
+      final daysInMonth = DateTime(year, month + 1, 0).day; // Number of days in the selected month
+
+      for (int i = 1; i <= daysInMonth; i++) {
+        final currentDay = DateTime(year, month, i);
+
+        // Skip future days if the selected month is the current month
+        if (currentDay.isAfter(today) && currentDay.month == today.month && currentDay.year == today.year) {
+          continue; // Don't count future days in the current month as absent
+        }
+
+        // Only consider weekdays
+        if (currentDay.weekday != DateTime.saturday && currentDay.weekday != DateTime.sunday) {
+          // If the day is not present and not a leave, it's an absent day
+          if (!presentDaysSet.contains(currentDay) && !leaveDaysSet.contains(DateTime(currentDay.year, currentDay.month, currentDay.day))) {
+            absentCount++;
+          }
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _presentDays = presentCount;
+          _absentDays = absentCount;
+          _leaveDays = leaveDays; // This is already calculated from leaveDaysSet.length
+        });
+      }
+      debugPrint(
+        '✅ Analytics for ${DateFormat('MMMM yyyy').format(dateForMonth)}: Present=$presentCount, Absent=$absentCount, Leaves=$leaveDays',
+      );
+    } catch (e) {
+      debugPrint('❌ Error loading analytics data: $e');
+      if (mounted) {
+        setState(() {
+          _presentDays = 0;
+          _absentDays = 0;
+          _leaveDays = 0;
+        });
       }
     }
   }
@@ -400,6 +443,9 @@ class _new_dashboardState extends State<new_dashboard> {
 
       // Reload attendance data to get the actual server response
       await _loadAttendanceData();
+
+      // Reload analytics data for the currently selected month
+      await _loadAnalyticsDataForMonth(_selectedAnalyticsDate);
 
       // Show success message - check mounted and get ScaffoldMessenger only when needed
       if (mounted) {
@@ -475,13 +521,19 @@ class _new_dashboardState extends State<new_dashboard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Your Analytics',
-                          style: GoogleFonts.poppins(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.onSurface,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Your Analytics',
+                              style: GoogleFonts.poppins(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                            _buildMonthSelector(),
+                          ],
                         ),
                         SizedBox(height: 12),
                         Row(
@@ -545,6 +597,52 @@ class _new_dashboardState extends State<new_dashboard> {
                 ],
               ),
             ),
+    );
+  }
+
+  bool _isNextMonthAvailable() {
+    final now = DateTime.now();
+    final nextMonth = DateTime(_selectedAnalyticsDate.year, _selectedAnalyticsDate.month + 1, 1);
+    return nextMonth.isBefore(DateTime(now.year, now.month + 1, 1));
+  }
+
+  Widget _buildMonthSelector() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Row(
+      children: [
+        IconButton(
+          icon: Icon(Icons.chevron_left, color: colorScheme.primary),
+          onPressed: () {
+            setState(() {
+              _selectedAnalyticsDate = DateTime(
+                _selectedAnalyticsDate.year,
+                _selectedAnalyticsDate.month - 1,
+                1,
+              );
+            });
+            _loadAnalyticsDataForMonth(_selectedAnalyticsDate);
+          },
+        ),
+        Text(
+          DateFormat('MMM yyyy').format(_selectedAnalyticsDate),
+          style: GoogleFonts.poppins(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: colorScheme.onSurface,
+          ),
+        ),
+        IconButton(
+          icon: Icon(Icons.chevron_right, color: _isNextMonthAvailable() ? colorScheme.primary : Colors.grey),
+          onPressed: !_isNextMonthAvailable() ? null : () {
+            setState(() {
+              _selectedAnalyticsDate = DateTime(_selectedAnalyticsDate.year, _selectedAnalyticsDate.month + 1, 1);
+            });
+            _loadAnalyticsDataForMonth(_selectedAnalyticsDate);
+          },
+        ),
+      ],
     );
   }
 
@@ -649,7 +747,7 @@ class _new_dashboardState extends State<new_dashboard> {
               boxShadow: [
                 // Neumorphic dark shadow - bottom right
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.8),
+                  color: Colors.black.withOpacity(0.8),
                   offset: Offset(15, 15),
                   blurRadius: 30,
                   spreadRadius: -30,
@@ -678,14 +776,14 @@ class _new_dashboardState extends State<new_dashboard> {
                 boxShadow: [
                   // Inner dark shadow
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.8),
+                    color: Colors.black.withOpacity(0.8),
                     offset: Offset(10, 10),
                     blurRadius: 20,
                     spreadRadius: -5,
                   ),
                   // Inner light highlight
                   BoxShadow(
-                    color: Colors.white.withValues(alpha: 0.15),
+                    color: Colors.white.withOpacity(0.15),
                     offset: Offset(-10, -10),
                     blurRadius: 20,
                     spreadRadius: -5,
@@ -700,14 +798,14 @@ class _new_dashboardState extends State<new_dashboard> {
                   boxShadow: [
                     // Deep inner dark shadow
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.7),
+                      color: Colors.black.withOpacity(0.7),
                       offset: Offset(8, 8),
                       blurRadius: 24,
                       spreadRadius: -10,
                     ),
                     // Deep inner light highlight
                     BoxShadow(
-                      color: Colors.white.withValues(alpha: 0.12),
+                      color: Colors.white.withOpacity(0.12),
                       offset: Offset(-8, -8),
                       blurRadius: 24,
                       spreadRadius: -10,
@@ -764,14 +862,14 @@ class _new_dashboardState extends State<new_dashboard> {
             boxShadow: [
               // Outer shadow
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
+                color: Colors.black.withOpacity(0.1),
                 offset: Offset(0, 8),
                 blurRadius: 24,
                 spreadRadius: 0,
               ),
               // Outer highlight - top left
               BoxShadow(
-                color: Colors.white.withValues(alpha: 0.5),
+                color: Colors.white.withOpacity(0.5),
                 offset: Offset(-12, -12),
                 blurRadius: 24,
                 spreadRadius: 0,
@@ -790,13 +888,13 @@ class _new_dashboardState extends State<new_dashboard> {
               boxShadow: [
                 // Inner shadow effect - creates the inset ring
                 BoxShadow(
-                  color: Color(0xFFB8BEC5).withValues(alpha: 0.6),
+                  color: const Color(0xFFB8BEC5).withOpacity(0.6),
                   offset: Offset(8, 8),
                   blurRadius: 16,
                   spreadRadius: -4,
                 ),
                 BoxShadow(
-                  color: Colors.white.withValues(alpha: 0.9),
+                  color: Colors.white.withOpacity(0.9),
                   offset: Offset(-8, -8),
                   blurRadius: 16,
                   spreadRadius: -4,
@@ -811,13 +909,13 @@ class _new_dashboardState extends State<new_dashboard> {
                 boxShadow: [
                   // Deep inner shadow for the center
                   BoxShadow(
-                    color: Color(0xFFD1D5DB).withValues(alpha: 0.5),
+                    color: const Color(0xFFD1D5DB).withOpacity(0.5),
                     offset: Offset(6, 6),
                     blurRadius: 20,
                     spreadRadius: -8,
                   ),
                   BoxShadow(
-                    color: Colors.white.withValues(alpha: 0.7),
+                    color: Colors.white.withOpacity(0.7),
                     offset: Offset(-6, -6),
                     blurRadius: 20,
                     spreadRadius: -8,
@@ -1045,28 +1143,18 @@ onTap: () {
   Widget _buildPunchHistory() {
     // Get first punch in time for today (the earliest punchIn among today's attendance records)
     DateTime? firstPunchInTime;
-    if (_todayAttendance != null &&
-        _todayAttendance is List<Attendance> &&
-        (_todayAttendance as List).isNotEmpty) {
-      // If _todayAttendance is a List<Attendance>
-      final todayPunches = (_todayAttendance as List<Attendance>);
-      todayPunches.sort((a, b) => a.punchIn.compareTo(b.punchIn));
-      firstPunchInTime = todayPunches.first.punchIn;
-    } else if (_todayAttendance?.punchIn != null) {
-      // Fallback: If only a single Attendance instance
-      firstPunchInTime = _todayAttendance?.punchIn;
+    if (_todayPunches.isNotEmpty) {
+      final sortedTodayPunches = List<Attendance>.from(_todayPunches);
+      sortedTodayPunches.sort((a, b) => a.punchIn.compareTo(b.punchIn)); // Sort ascending for earliest
+      firstPunchInTime = sortedTodayPunches.first.punchIn;
     }
 
     // Convert work time from seconds to duration
-    final workSeconds = _totalWorkTime > 86400
-        ? (_totalWorkTime / 1000).toInt()
-        : _totalWorkTime.toInt();
+    final workSeconds = _totalWorkTime.toInt();
     final totalWorkDuration = Duration(seconds: workSeconds);
 
     // Convert break time from seconds to duration
-    final breakSeconds = _totalBreakTime > 86400
-        ? (_totalBreakTime / 1000).toInt()
-        : _totalBreakTime.toInt();
+    final breakSeconds = _totalBreakTime.toInt();
     final totalBreakDuration = Duration(seconds: breakSeconds);
 
     // Formatting functions
