@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:quantum_dashboard/models/attendance_model.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/providers/attendance_provider.dart';
@@ -129,7 +128,7 @@ class _new_calender_screenState extends State<new_calender_screen> {
     }
   }
 
-  void _showDayDetailsBottomSheet(DateTime date) {
+  Widget _buildDayDetails(DateTime date) {
     final attendance = Provider.of<AttendanceProvider>(context, listen: false);
     final holidays = Provider.of<HolidayProvider>(context, listen: false);
     final dateWiseData = attendance.dateWiseData;
@@ -226,25 +225,20 @@ class _new_calender_screenState extends State<new_calender_screen> {
           Holiday(id: '', title: '', date: DateTime.now(), day: '', action: ''),
     );
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _buildDayDetailsBottomSheet(
-        date,
-        status,
-        color,
-        icon,
-        workingHours,
-        breakHours,
-        firstPunchIn,
-        lastPunchOut,
-        holiday,
-      ),
+    return _buildDayDetailsWidget(
+      date,
+      status,
+      color,
+      icon,
+      workingHours,
+      breakHours,
+      firstPunchIn,
+      lastPunchOut,
+      holiday,
     );
   }
 
-  Widget _buildDayDetailsBottomSheet(
+  Widget _buildDayDetailsWidget(
     DateTime date,
     String status,
     Color color,
@@ -920,6 +914,7 @@ class _new_calender_screenState extends State<new_calender_screen> {
               ],
             ),
           ),
+          SizedBox(height: 16),
 
           TableCalendar(
             firstDay: DateTime(2020),
@@ -982,7 +977,6 @@ class _new_calender_screenState extends State<new_calender_screen> {
                   _buildDayCell(date, dateWiseData, holidays, false, true),
             ),
           ),
-          // _buildCalendarLegend(),
         ],
       ),
     );
@@ -1149,30 +1143,152 @@ class _new_calender_screenState extends State<new_calender_screen> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                if (!isSelected &&
-                    !isToday &&
-                    status.isNotEmpty &&
-                    status != 'Weekend')
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: color.withOpacity(0.5),
-                          blurRadius: 3,
-                          offset: Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                  ),
+                // if (!isSelected &&
+                //     !isToday &&
+                //     status.isNotEmpty &&
+                //     status != 'Weekend')
+                //   Container(
+                //     width: 6,
+                //     height: 6,
+                //     decoration: BoxDecoration(
+                //       color: color,
+                //       shape: BoxShape.circle,
+                //       boxShadow: [
+                //         BoxShadow(
+                //           color: color.withOpacity(0.5),
+                //           blurRadius: 3,
+                //           offset: Offset(0, 1),
+                //         ),
+                //       ],
+                //     ),
+                //   ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCalendarLegend() {
+    // Define the order of legend items to display
+    final legendOrder = [
+      'present',
+      'halfday',
+      'absent',
+      'holiday',
+      'weekend',
+      'today',
+      'selected',
+    ];
+
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    final backgroundColor = isDark ? colorScheme.surface : colorScheme.surface;
+    final textColor = isDark ? colorScheme.onSurface : Colors.grey[800];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: const BorderRadius.all(Radius.circular(12)),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.05),
+              blurRadius: 6,
+              offset: Offset(0, 1),
+            ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Attendance Legend',
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+            ),
+          ),
+          SizedBox(height: 12),
+          Wrap(
+            spacing: 16,
+            runSpacing: 8,
+            children: legendOrder.map((status) {
+              final config = _getAttendanceConfig(status);
+              if (config != null) {
+                // For highest contrast and a slightly lighter/darker dot for dark/light theme
+                final dotColor = isDark
+                    ? (config['color'] as Color).withOpacity(0.8)
+                    : (config['color'] as Color);
+                final labelColor = isDark
+                    ? colorScheme.onSurface
+                    : Colors.grey[700];
+
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: dotColor,
+                        shape: BoxShape.circle,
+                        border: isDark
+                            ? Border.all(
+                                color: colorScheme.outline.withOpacity(0.32),
+                                width: 1,
+                              )
+                            : null,
+                      ),
+                    ),
+                    SizedBox(width: 6),
+                    Icon(config['icon'] as IconData, size: 16, color: dotColor),
+                    SizedBox(width: 4),
+                    Text(
+                      config['label'] as String,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: labelColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                );
+              }
+              return SizedBox.shrink();
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLegendItem(String label, Color color, IconData icon) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 16,
+          height: 16,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        SizedBox(width: 6),
+        Icon(icon, size: 16, color: color),
+        SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[700],
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 
@@ -1208,11 +1324,78 @@ class _new_calender_screenState extends State<new_calender_screen> {
     return '${DateFormat('MMM d').format(start)} - ${DateFormat('MMM d, yyyy').format(end)}';
   }
 
+  Widget _buildTimeCard(
+    String label,
+    DateTime? time,
+    IconData icon,
+    Color color,
+  ) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    String formatTime(DateTime? dt) {
+      if (dt == null) return '--:--';
+      return DateFormat.jm().format(dt.toLocal());
+    }
+
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: colorScheme.outline.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  formatTime(time),
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final attendance = Provider.of<AttendanceProvider>(context);
     final holidays = Provider.of<HolidayProvider>(context);
-    final dateWiseData = attendance.dateWiseData;
+    final dateWiseData = attendance.getDateWiseData(
+      _focusedDay.month.toString() + '_' + _focusedDay.year.toString(),
+    );
     final holidayList = holidays.holidays;
 
     final weekDates = _weekFor(_selectedDay ?? DateTime.now());
@@ -1242,354 +1425,23 @@ class _new_calender_screenState extends State<new_calender_screen> {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: _buildCalendar(dateWiseData, holidayList),
+              child: _buildCalendar(attendance.dateWiseData, holidayList),
             ),
           ),
           SliverToBoxAdapter(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.calendar_view_week,
-                    size: 20,
-                    color: colorScheme.onSurface.withOpacity(0.7),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Week Report',
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.onSurface,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _formatDateRange(weekDates.first, weekDates.last),
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: colorScheme.onSurface.withOpacity(0.6),
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: _selectedDay != null
+                  ? _buildDayDetails(_selectedDay!)
+                  : const SizedBox(),
             ),
           ),
-          SliverList(
-            delegate: SliverChildBuilderDelegate((context, index) {
-              final date = weekDates[index];
-              final status = _getAttendanceStatus(
-                date,
-                dateWiseData,
-                holidayList,
-              );
-              final color = _getStatusColor(status);
-
-              final key =
-                  '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}';
-              final dayData = dateWiseData.firstWhere(
-                (d) => d['_id'] == key,
-                orElse: () => {'totalWorkingTime': 0.0, 'punches': []},
-              );
-              final workingHours =
-                  ((dayData['totalWorkingTime'] ?? 0.0) as num).toDouble() /
-                  3600.0;
-              final punches = (dayData['punches'] as List?) ?? [];
-              // Get break hours from backend instead of calculating
-              final breakHours =
-                  ((dayData['totalBreakTime'] ?? 0.0) as num).toDouble() /
-                  3600.0;
-
-              // Check for holiday
-              final holiday = holidayList.firstWhere(
-                (h) => isSameDay(h.date, date),
-                orElse: () => Holiday(
-                  id: '',
-                  title: '',
-                  date: DateTime.now(),
-                  day: '',
-                  action: '',
-                ),
-              );
-
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(
-                  color: theme.cardColor,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: (theme.brightness == Brightness.dark
-                          ? Colors.black.withOpacity(0.5)
-                          : Colors.black.withOpacity(0.06)),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                  border: Border.all(
-                    color: isSameDay(date, DateTime.now())
-                        ? Colors.orange.withOpacity(0.5)
-                        : Colors.transparent,
-                    width: 2,
-                  ),
-                ),
-                child: InkWell(
-                  onTap: () => _showDayDetailsBottomSheet(date),
-                  borderRadius: BorderRadius.circular(16),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    leading: Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.15),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: color.withOpacity(0.3),
-                          width: 2,
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(_getStatusIcon(status), color: color, size: 22),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${date.day}',
-                            style: GoogleFonts.poppins(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: color,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    title: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                DateFormat('EEEE').format(date),
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: colorScheme.onSurface,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                DateFormat('MMM d, yyyy').format(date),
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  color: colorScheme.onSurface.withOpacity(0.6),
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (isSameDay(date, DateTime.now())) ...[
-                          SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'TODAY',
-                              style: GoogleFonts.poppins(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.orange[800],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            if (status.isNotEmpty)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: color.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: color.withOpacity(0.3),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      _getStatusIcon(status),
-                                      size: 14,
-                                      color: color,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      status,
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: color,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            if (workingHours > 0)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.timer,
-                                      size: 14,
-                                      color: Colors.blue,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      _formatHours(workingHours),
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.blue[800],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            if (breakHours > 0)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.pause_circle_outline,
-                                      size: 14,
-                                      color: Colors.orange,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      _formatHours(breakHours),
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.orange[800],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                          ],
-                        ),
-                        if (holiday.id.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.celebration,
-                                size: 14,
-                                color: Colors.purple[600],
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  holiday.title,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.purple[800],
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        if (punches.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          ...punches
-                              .take(2)
-                              .map(
-                                (p) => Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.schedule,
-                                        size: 14,
-                                        color: Colors.grey[600],
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Expanded(
-                                        child: Text(
-                                          _formatPunch(
-                                            p['punchIn'],
-                                            p['punchOut'],
-                                          ),
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 12,
-                                            color: Colors.grey[700],
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }, childCount: 7),
-          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: _buildCalendarLegend(),
+            ),
+          ), // Extra padding for nav bar
           const SliverToBoxAdapter(
             child: SizedBox(height: 120),
           ), // Extra padding for nav bar
