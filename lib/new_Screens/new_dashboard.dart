@@ -6,13 +6,25 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/services/attendance_service.dart';
-import 'package:quantum_dashboard/services/leave_service.dart';
+// import 'package:quantum_dashboard/services/leave_service.dart';
 import 'package:quantum_dashboard/models/attendance_model.dart';
-import 'package:quantum_dashboard/models/leave_model.dart';
 import 'package:timeline_tile/timeline_tile.dart';
 import 'package:intl/intl.dart';
 import 'package:lottie/lottie.dart';
 import 'package:quantum_dashboard/providers/navigation_provider.dart';
+import 'package:geolocator/geolocator.dart';
+
+class OfficeLocation {
+  final String name;
+  final double latitude;
+  final double longitude;
+
+  const OfficeLocation({
+    required this.name,
+    required this.latitude,
+    required this.longitude,
+  });
+}
 
 class new_dashboard extends StatefulWidget {
   const new_dashboard({super.key});
@@ -23,27 +35,37 @@ class new_dashboard extends StatefulWidget {
 
 class _new_dashboardState extends State<new_dashboard> {
   final AttendanceService _attendanceService = AttendanceService();
-  final LeaveService _leaveService = LeaveService();
+
+  // Predefined office locations
+  final List<OfficeLocation> _officeLocations = [
+    OfficeLocation(
+      name: 'Head Office',
+      // latitude: 17.4483265, // Replace with actual latitude
+      // longitude: 78.3919326,
+      // // Replace with actual longitude
+      latitude: 17.44837,
+      longitude: 78.39188,
+    ),
+    OfficeLocation(
+      name: 'Branch Office',
+      latitude: 12.971599, // Replace with actual latitude
+      longitude: 77.594563, // Replace with actual longitude
+    ),
+  ];
 
   // Attendance data
   bool _isLoading = true;
   Attendance? _todayAttendance;
   List<Attendance> _todayPunches = [];
-  int _presentDays = 0;
-  int _absentDays = 0;
-  int _leaveDays = 0;
   double _totalWorkTime = 0.0;
   double _totalBreakTime = 0.0;
   Timer? _workTimeTimer;
-  late DateTime _selectedAnalyticsDate;
 
   @override
   void initState() {
     super.initState();
-    _selectedAnalyticsDate = DateTime.now();
     // Wait for the widget to be fully built before accessing context
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadAnalyticsDataForMonth(_selectedAnalyticsDate);
       _loadAttendanceData();
       _calculateTotalWorkTime(_todayPunches);
       _calculateTotalBreakTime(_todayPunches);
@@ -257,183 +279,248 @@ class _new_dashboardState extends State<new_dashboard> {
     }
   }
 
-  Future<void> _loadAnalyticsDataForMonth(DateTime dateForMonth) async {
-    if (!mounted) return;
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    if (!authProvider.isLoggedIn || authProvider.user == null) return;
-
-    final user = authProvider.user!;
-    final month = dateForMonth.month;
-    final year = dateForMonth.year;
-
-    debugPrint(
-      '📊 Loading analytics for ${DateFormat('MMMM yyyy').format(dateForMonth)}...',
-    );
-
-    try {
-      // Fetch all punches for the given month to calculate analytics.
-      // This is more reliable than dateWiseData which might have a different structure.
-      final punchesResult = await _attendanceService.getPunches(
-        user.employeeId,
-        month: month,
-        year: year,
-      );
-
-      if (!mounted) return;
-
-      final allPunchesForMonth = punchesResult['punches'] as List<Attendance>;
-
-      // Use a Set to count unique present days.
-      // Only count weekdays that have a punch.
-      final presentDaysSet = <DateTime>{};
-      for (var punch in allPunchesForMonth) {
-        final punchDay = DateTime(
-          punch.punchIn.year,
-          punch.punchIn.month,
-          punch.punchIn.day,
+  void _showLocationSelectionSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        final theme = Theme.of(context);
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          decoration: BoxDecoration(
+            color: theme.scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16, left: 8),
+                child: Text(
+                  'Select Your Location',
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _officeLocations.length,
+                  separatorBuilder: (context, index) =>
+                      Divider(color: theme.dividerColor.withOpacity(0.1)),
+                  itemBuilder: (context, index) {
+                    final location = _officeLocations[index];
+                    return ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.location_on,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      title: Text(
+                        location.name,
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w500,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: theme.colorScheme.onSurface.withOpacity(0.5),
+                        ),
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _verifyLocationAndPunch(location);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         );
-        if (punchDay.month == month &&
-            punchDay.year == year &&
-            punchDay.weekday != DateTime.saturday &&
-            punchDay.weekday != DateTime.sunday) {
-          presentDaysSet.add(punchDay);
-        }
-      }
-
-      // Fetch and calculate leave days for the selected month
-
-      int leaveDays = 0;
-
-      final leaveDaysSet = <DateTime>{}; // Use a set to store unique leave days
-
-      try {
-        final leaves = await _leaveService.getMyLeaves(user.employeeId);
-
-        final firstDayOfMonth = DateTime(year, month, 1);
-
-        final lastDayOfMonth = DateTime(year, month + 1, 0);
-
-        for (var leave in leaves) {
-          // To count all applied leaves, we don't filter by status.
-          // if (leave.status.toLowerCase() != 'approved') continue;
-
-          final leaveStartInMonth = leave.from.isBefore(firstDayOfMonth)
-              ? firstDayOfMonth
-              : leave.from;
-          final leaveEndInMonth = leave.to.isAfter(lastDayOfMonth)
-              ? lastDayOfMonth
-              : leave.to;
-
-          if (leaveStartInMonth.isBefore(leaveEndInMonth) ||
-              leaveStartInMonth.isAtSameMomentAs(leaveEndInMonth)) {
-            for (
-              var day = leaveStartInMonth;
-              day.isBefore(leaveEndInMonth.add(const Duration(days: 1)));
-              day = day.add(const Duration(days: 1))
-            ) {
-              if (day.month == month &&
-                  day.year == year &&
-                  day.weekday != DateTime.saturday &&
-                  day.weekday != DateTime.sunday) {
-                leaveDaysSet.add(
-                  DateTime(day.year, day.month, day.day),
-                ); // Add date only
-              }
-            }
-          }
-        }
-        leaveDays = leaveDaysSet.length;
-      } catch (e) {
-        debugPrint('Error fetching leave data for analytics: $e');
-        leaveDays = 0; // Ensure leaveDays is reset on error
-      }
-
-      // Calculate present, absent, and leave days
-      int presentCount = presentDaysSet.length;
-      int absentCount = 0;
-      final today = DateTime(
-        DateTime.now().year,
-        DateTime.now().month,
-        DateTime.now().day,
-      ); // Today's date without time
-      final daysInMonth = DateTime(
-        year,
-        month + 1,
-        0,
-      ).day; // Number of days in the selected month
-
-      for (int i = 1; i <= daysInMonth; i++) {
-        final currentDay = DateTime(year, month, i);
-
-        // Skip future days if the selected month is the current month
-        if (currentDay.isAfter(today) &&
-            currentDay.month == today.month &&
-            currentDay.year == today.year) {
-          continue; // Don't count future days in the current month as absent
-        }
-
-        // Only consider weekdays
-        if (currentDay.weekday != DateTime.saturday &&
-            currentDay.weekday != DateTime.sunday) {
-          // If the day is not present and not a leave, it's an absent day
-          if (!presentDaysSet.contains(currentDay) &&
-              !leaveDaysSet.contains(
-                DateTime(currentDay.year, currentDay.month, currentDay.day),
-              )) {
-            absentCount++;
-          }
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          _presentDays = presentCount;
-          _absentDays = absentCount;
-          _leaveDays =
-              leaveDays; // This is already calculated from leaveDaysSet.length
-        });
-      }
-      debugPrint(
-        '✅ Analytics for ${DateFormat('MMMM yyyy').format(dateForMonth)}: Present=$presentCount, Absent=$absentCount, Leaves=$leaveDays',
-      );
-    } catch (e) {
-      debugPrint('❌ Error loading analytics data: $e');
-      if (mounted) {
-        setState(() {
-          _presentDays = 0;
-          _absentDays = 0;
-          _leaveDays = 0;
-        });
-      }
-    }
+      },
+    );
   }
 
-  Future<void> _handlePunchInOut() async {
+  Future<void> _verifyLocationAndPunch(OfficeLocation targetLocation) async {
     // Check if widget is still mounted before accessing context
     if (!mounted) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isLoggedIn) return;
 
-    // Store user data before async operations
+    // 1. Check Location Services
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Location services are disabled. Please enable them.',
+            ),
+            action: SnackBarAction(
+              label: 'Enable',
+              onPressed: () => Geolocator.openLocationSettings(),
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
+    // 2. Check Permissions
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Location permission denied')));
+        }
+        return;
+      }
+    }
+    if (permission == LocationPermission.deniedForever) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Location permission permanently denied')),
+        );
+      }
+      return;
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Verifying location...'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    }
+
+    Position? position;
+
+    // 3. Fast Path: Try Last Known Position (Latency Reduction)
+    try {
+      final lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null) {
+        final now = DateTime.now();
+        // On some platforms/versions timestamp might be null, handle that safely if needed,
+        // but standard Geolocator Position usually has it.
+        // Check age of location
+        final difference = now.difference(lastKnown.timestamp);
+        // Use cached location if it's less than 2 minutes old
+        if (difference.inMinutes < 2) {
+          debugPrint(
+            "🚀 Using cached location (Age: ${difference.inSeconds}s)",
+          );
+          position = lastKnown;
+        }
+      }
+    } catch (e) {
+      debugPrint("⚠️ Error getting last known position: $e");
+      // Continue to fetch fresh location
+    }
+
+    // 4. Slow Path: Get Fresh Position (if cached is missing or stale)
+    if (position == null) {
+      try {
+        debugPrint("📡 Fetching fresh location...");
+        // Set a timeout to prevent infinite hanging
+        position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 15),
+        );
+      } catch (e) {
+        if (mounted) {
+          String errorMsg = 'Error getting location: $e';
+          if (e is TimeoutException) {
+            errorMsg = 'Location request timed out. Please ensure GPS is on.';
+          }
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(errorMsg)));
+        }
+        return;
+      }
+    }
+
+    if (position == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not retrieve location.')));
+      }
+      return;
+    }
+
+    // Calculate distance
+    double distanceInMeters = Geolocator.distanceBetween(
+      position.latitude,
+      position.longitude,
+      targetLocation.latitude,
+      targetLocation.longitude,
+    );
+
+    debugPrint('📍 User Location: ${position.latitude}, ${position.longitude}');
+    debugPrint(
+      '🏢 Target Location: ${targetLocation.latitude}, ${targetLocation.longitude}',
+    );
+    debugPrint('📏 Distance: ${distanceInMeters.toStringAsFixed(2)} meters');
+
+    if (distanceInMeters > 500) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'You are ${distanceInMeters.toStringAsFixed(0)}m away from ${targetLocation.name}. Must be within 500m.',
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+      return;
+    }
+
+    // Proceed to punch
+    await _performPunch(position);
+  }
+
+  Future<void> _performPunch(Position position) async {
+    if (!mounted) return;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = authProvider.user;
     if (user == null) return;
 
     final isPunchedIn = _todayAttendance?.isPunchedIn ?? false;
 
     // Optimistically update the UI immediately for better UX
-    // This creates a temporary attendance record to show the new state
     if (mounted) {
       setState(() {
         if (isPunchedIn) {
           // Punching out - set punchOut time (but keep the attendance object)
           if (_todayAttendance != null) {
-            // We'll reload the actual data, but this prevents the button from flickering
             _isLoading = true;
           }
         } else {
-          // Punching in - create a temporary attendance record with current time
-          // This will be replaced with actual data from the server
+          // Punching in - create a temporary attendance record
           final now = DateTime.now();
           _todayAttendance = Attendance(
             id: 'temp',
@@ -453,25 +540,32 @@ class _new_dashboardState extends State<new_dashboard> {
       if (isPunchedIn) {
         // Punch Out
         debugPrint('⏰ Punching out...');
-        await _attendanceService.punchOut(user.employeeId, user.fullName);
+        await _attendanceService.punchOut(
+          user.employeeId,
+          user.fullName,
+          position.latitude,
+          position.longitude,
+        );
         debugPrint('✅ Punched out successfully!');
       } else {
         // Punch In
         debugPrint('⏰ Punching in...');
-        await _attendanceService.punchIn(user.employeeId, user.fullName);
+        await _attendanceService.punchIn(
+          user.employeeId,
+          user.fullName,
+          position.latitude,
+          position.longitude,
+        );
         debugPrint('✅ Punched in successfully!');
       }
 
       // Check if still mounted after async operation
       if (!mounted) return;
 
-      // Reload attendance data to get the actual server response
+      // Reload attendance data
       await _loadAttendanceData();
 
-      // Reload analytics data for the currently selected month
-      await _loadAnalyticsDataForMonth(_selectedAnalyticsDate);
-
-      // Show success message - check mounted and get ScaffoldMessenger only when needed
+      // Show success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -488,7 +582,7 @@ class _new_dashboardState extends State<new_dashboard> {
     } catch (e) {
       debugPrint('❌ Error during punch: $e');
 
-      // On error, reload the actual data to revert optimistic update
+      // On error, reload the actual data
       if (mounted) {
         await _loadAttendanceData();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -500,6 +594,10 @@ class _new_dashboardState extends State<new_dashboard> {
         );
       }
     }
+  }
+
+  Future<void> _handlePunchInOut() async {
+    _showLocationSelectionSheet();
   }
 
   @override
@@ -621,65 +719,6 @@ class _new_dashboardState extends State<new_dashboard> {
                 ],
               ),
             ),
-    );
-  }
-
-  bool _isNextMonthAvailable() {
-    final now = DateTime.now();
-    final nextMonth = DateTime(
-      _selectedAnalyticsDate.year,
-      _selectedAnalyticsDate.month + 1,
-      1,
-    );
-    return nextMonth.isBefore(DateTime(now.year, now.month + 1, 1));
-  }
-
-  Widget _buildMonthSelector() {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Row(
-      children: [
-        IconButton(
-          icon: Icon(Icons.chevron_left, color: colorScheme.primary),
-          onPressed: () {
-            setState(() {
-              _selectedAnalyticsDate = DateTime(
-                _selectedAnalyticsDate.year,
-                _selectedAnalyticsDate.month - 1,
-                1,
-              );
-            });
-            _loadAnalyticsDataForMonth(_selectedAnalyticsDate);
-          },
-        ),
-        Text(
-          DateFormat('MMM yyyy').format(_selectedAnalyticsDate),
-          style: GoogleFonts.poppins(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-            color: colorScheme.onSurface,
-          ),
-        ),
-        IconButton(
-          icon: Icon(
-            Icons.chevron_right,
-            color: _isNextMonthAvailable() ? colorScheme.primary : Colors.grey,
-          ),
-          onPressed: !_isNextMonthAvailable()
-              ? null
-              : () {
-                  setState(() {
-                    _selectedAnalyticsDate = DateTime(
-                      _selectedAnalyticsDate.year,
-                      _selectedAnalyticsDate.month + 1,
-                      1,
-                    );
-                  });
-                  _loadAnalyticsDataForMonth(_selectedAnalyticsDate);
-                },
-        ),
-      ],
     );
   }
 
@@ -1538,79 +1577,6 @@ class _new_dashboardState extends State<new_dashboard> {
                 ),
               );
             }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Analytics Card Component
-class _AnalyticsCard extends StatelessWidget {
-  final String title;
-  final int count;
-  final String status;
-  final Color color;
-  final IconData icon;
-
-  const _AnalyticsCard({
-    required this.title,
-    required this.count,
-    required this.status,
-    required this.color,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Container(
-      width: 105,
-      height: 120,
-      decoration: BoxDecoration(
-        color: isDark ? colorScheme.surfaceContainerHighest : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withOpacity(isDark ? 0.5 : 0.3),
-          width: 2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withOpacity(0.25)
-                : color.withOpacity(0.1),
-            offset: Offset(0, 4),
-            blurRadius: 12,
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 32),
-          SizedBox(height: 8),
-          Text(
-            count.toString(),
-            style: GoogleFonts.poppins(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: isDark ? colorScheme.onSurface : Colors.black87,
-            ),
-          ),
-          SizedBox(height: 4),
-          Text(
-            title,
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: isDark
-                  ? colorScheme.onSurface.withOpacity(0.7)
-                  : Colors.black54,
-            ),
           ),
         ],
       ),

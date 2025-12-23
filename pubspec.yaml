@@ -54,6 +54,7 @@ dependencies:
   flutter_animate: ^4.5.2
   image_cropper: ^11.0.0
   flutter_image_compress: ^2.3.0
+  geolocator: ^14.0.2
 
 dev_dependencies:
   # The "flutter_lints" package below contains a set of recommended lints to

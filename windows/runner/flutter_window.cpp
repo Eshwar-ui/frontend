@@ -1,6 +1,8 @@
 #include "flutter_window.h"
 
 #include <optional>
+#include <wtsapi32.h>
+#include <flutter/standard_method_codec.h>
 
 #include "flutter/generated_plugin_registrant.h"
 
@@ -27,6 +29,14 @@ bool FlutterWindow::OnCreate() {
   RegisterPlugins(flutter_controller_->engine());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
+  // Initialize MethodChannel
+  channel_ = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+      flutter_controller_->engine()->messenger(), "com.quantum.dashboard/windows",
+      &flutter::StandardMethodCodec::GetInstance());
+
+  // Register for session notifications to detect lock/unlock
+  WTSRegisterSessionNotification(GetHandle(), NOTIFY_FOR_THIS_SESSION);
+
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
   });
@@ -43,6 +53,9 @@ void FlutterWindow::OnDestroy() {
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
   }
+  
+  // Unregister session notification
+  WTSUnRegisterSessionNotification(GetHandle());
 
   Win32Window::OnDestroy();
 }
@@ -64,6 +77,13 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   switch (message) {
     case WM_FONTCHANGE:
       flutter_controller_->engine()->ReloadSystemFonts();
+      break;
+    case WM_WTSSESSION_CHANGE:
+      if (wparam == WTS_SESSION_LOCK) {
+        if (channel_) {
+          channel_->InvokeMethod("onWindowLocked", nullptr);
+        }
+      }
       break;
   }
 

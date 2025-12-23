@@ -1,15 +1,24 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/new_Screens/new_calender_screen.dart';
 import 'package:quantum_dashboard/new_Screens/new_dashboard.dart';
 import 'package:quantum_dashboard/new_Screens/new_profile_page.dart';
 import 'package:quantum_dashboard/new_Screens/new_search_screen.dart';
+import 'package:quantum_dashboard/providers/attendance_provider.dart';
+import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/providers/navigation_provider.dart';
 
-class NavScreen extends StatelessWidget {
+class NavScreen extends StatefulWidget {
   const NavScreen({super.key});
 
+  @override
+  State<NavScreen> createState() => _NavScreenState();
+}
+
+class _NavScreenState extends State<NavScreen> {
   static const Map<NavigationPage, int> _pageMap = {
     NavigationPage.Dashboard: 0,
     NavigationPage.Leaves: 1, // Assuming calendar is for leaves
@@ -24,6 +33,74 @@ class NavScreen extends StatelessWidget {
     NewProfilePage(),
   ];
 
+  static const MethodChannel _platformChannel =
+      MethodChannel('com.quantum.dashboard/windows');
+
+  @override
+  void initState() {
+    super.initState();
+    _platformChannel.setMethodCallHandler(_handleMethodCall);
+  }
+
+  Future<void> _handleMethodCall(MethodCall call) async {
+    if (call.method == 'onWindowLocked') {
+      debugPrint('Windows locked detected. Attempting to punch out...');
+      await _handleAutoPunchOut();
+    }
+  }
+
+  Future<void> _handleAutoPunchOut() async {
+    if (!mounted) return;
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final attendanceProvider =
+        Provider.of<AttendanceProvider>(context, listen: false);
+    final user = authProvider.user;
+
+    if (user == null) {
+      debugPrint('Auto Punch Out: No user logged in.');
+      return;
+    }
+
+    try {
+      // Check if we have location permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          debugPrint('Auto Punch Out: Location permission denied.');
+          return;
+        }
+      }
+      
+      if (permission == LocationPermission.deniedForever) {
+          debugPrint('Auto Punch Out: Location permission denied forever.');
+          return;
+      }
+
+      // Get current location
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
+      );
+
+      debugPrint('Auto Punch Out: Location obtained. Punching out...');
+
+      // Call punch out
+      final result = await attendanceProvider.punchOut(
+        user.employeeId,
+        user.fullName,
+        position.latitude,
+        position.longitude,
+      );
+
+      debugPrint('Auto Punch Out Result: $result');
+
+    } catch (e) {
+      debugPrint('Auto Punch Out Error: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -33,7 +110,7 @@ class NavScreen extends StatelessWidget {
 
     int _selectedIndex = _pageMap[currentPage] ?? 0;
     debugPrint("Building NavScreen with selectedIndex: $_selectedIndex");
-    
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(

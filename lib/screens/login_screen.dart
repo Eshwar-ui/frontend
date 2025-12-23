@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/utils/constants.dart';
+import 'package:quantum_dashboard/utils/allowed_users.dart';
 import 'package:quantum_dashboard/widgets/custom_button.dart';
 import 'package:quantum_dashboard/widgets/custom_floating_container.dart';
 import 'package:quantum_dashboard/widgets/loading_dots_animation.dart';
@@ -27,6 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _rememberMe = false;
   String? _connectivityMessage;
+  String? _validationError;
   AuthProvider? _authProvider;
   NavigatorState? _navigator;
 
@@ -72,6 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       setState(() {
         _connectivityMessage = null;
+        _validationError = null;
       });
       _authProvider!.clearError();
     } catch (e) {
@@ -209,8 +213,40 @@ class _LoginScreenState extends State<LoginScreen> {
 
     _clearErrors();
 
+    final email = _emailController.text.trim();
+    if (!AllowedUsers.emails.contains(email)) {
+      if (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS) {
+        // Mobile platform, show AlertDialog
+        showDialog(
+          context: context,
+          builder: (BuildContext dialogContext) {
+            return AlertDialog(
+              title: Text('Login Unauthorized'),
+              content: Text('This email is not authorized to login.'),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('OK'),
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      } else {
+        // Other platforms (web, desktop), use existing error display
+        setState(() {
+          _validationError = 'This email is not authorized to login.';
+        });
+      }
+      return;
+    }
+
+    // No SnackBar for allowed users as per new requirement
+
     final success = await _authProvider!.login(
-      _emailController.text.trim(),
+      email,
       _passwordController.text,
     );
 
@@ -585,7 +621,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             Consumer<AuthProvider>(
                               builder: (context, authProvider, child) {
-                                if (authProvider.error != null) {
+                                final errorText = _validationError ?? authProvider.error;
+                                if (errorText != null) {
                                   return Padding(
                                     padding: EdgeInsets.only(top: 10),
                                     child: Container(
@@ -610,8 +647,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                           SizedBox(width: 8),
                                           Expanded(
                                             child: Text(
+                                              errorText,
                                               maxLines: 3,
-                                              authProvider.error!,
                                               style: TextStyle(
                                                 color: Colors.red.shade700,
                                                 fontSize: 14,

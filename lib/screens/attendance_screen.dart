@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -471,20 +472,36 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final user = authProvider.user;
 
     if (user != null) {
-      final result = await attendanceProvider.punchIn(
-        user.employeeId,
-        user.fullName,
-      );
-      if (result['message'] != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(result['message'])));
-        // Refresh data after a short delay to avoid setState during build
-        Future.delayed(Duration(milliseconds: 100), () {
-          if (mounted) {
-            _loadAttendance();
-          }
-        });
+      try {
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+          if (permission == LocationPermission.denied) return;
+        }
+
+        Position position = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high);
+
+        final result = await attendanceProvider.punchIn(
+          user.employeeId,
+          user.fullName,
+          position.latitude,
+          position.longitude,
+        );
+        if (result['message'] != null) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(result['message'])));
+          // Refresh data after a short delay to avoid setState during build
+          Future.delayed(Duration(milliseconds: 100), () {
+            if (mounted) {
+              _loadAttendance();
+            }
+          });
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
       }
     }
   }
@@ -495,20 +512,36 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final user = authProvider.user;
 
     if (user != null) {
-      final result = await attendanceProvider.punchOut(
-        user.employeeId,
-        user.fullName,
-      );
-      if (result['message'] != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(result['message'])));
-        // Refresh data after a short delay to avoid setState during build
-        Future.delayed(Duration(milliseconds: 100), () {
-          if (mounted) {
-            _loadAttendance();
-          }
-        });
+      try {
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+          if (permission == LocationPermission.denied) return;
+        }
+
+        Position position = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high);
+
+        final result = await attendanceProvider.punchOut(
+          user.employeeId,
+          user.fullName,
+          position.latitude,
+          position.longitude,
+        );
+        if (result['message'] != null) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(result['message'])));
+          // Refresh data after a short delay to avoid setState during build
+          Future.delayed(Duration(milliseconds: 100), () {
+            if (mounted) {
+              _loadAttendance();
+            }
+          });
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
       }
     }
   }

@@ -36,13 +36,15 @@ class AttendanceProvider with ChangeNotifier {
   Future<Map<String, dynamic>> punchIn(
     String employeeId,
     String employeeName,
+    double latitude,
+    double longitude,
   ) async {
     _isLoading = true;
     _error = null;
     _safeNotifyListeners();
 
     try {
-      final result = await _attendanceService.punchIn(employeeId, employeeName);
+      final result = await _attendanceService.punchIn(employeeId, employeeName, latitude, longitude);
       _isLoading = false;
       _safeNotifyListeners();
       return result;
@@ -58,6 +60,8 @@ class AttendanceProvider with ChangeNotifier {
   Future<Map<String, dynamic>> punchOut(
     String employeeId,
     String employeeName,
+    double latitude,
+    double longitude,
   ) async {
     _isLoading = true;
     _error = null;
@@ -67,6 +71,8 @@ class AttendanceProvider with ChangeNotifier {
       final result = await _attendanceService.punchOut(
         employeeId,
         employeeName,
+        latitude,
+        longitude,
       );
       _isLoading = false;
       _safeNotifyListeners();

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/models/attendance_model.dart';
@@ -131,16 +132,36 @@ class _DashboardContentState extends State<DashboardContent> {
     }
 
     try {
+      // Check location permissions
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw Exception('Location permission denied');
+        }
+      }
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception('Location permission permanently denied');
+      }
+
+      // Get current location
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+
       Map<String, dynamic> result;
       if (_isCheckedIn) {
         result = await attendanceProvider.punchOut(
           user.employeeId,
           user.fullName,
+          position.latitude,
+          position.longitude,
         );
       } else {
         result = await attendanceProvider.punchIn(
           user.employeeId,
           user.fullName,
+          position.latitude,
+          position.longitude,
         );
       }
 

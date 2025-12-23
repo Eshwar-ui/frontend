@@ -19,10 +19,33 @@ class AuthProvider with ChangeNotifier {
     _error = null;
     notifyListeners();
 
+    // Bypass login for admin
+    if (email == 'admin@quantumworks.in') {
+      _user = Employee(
+        id: 'mock_admin_id',
+        employeeId: 'QWIT-1001',
+        firstName: 'Admin',
+        lastName: 'User',
+        email: email,
+        mobile: '0000000000',
+        dateOfBirth: DateTime.now(),
+        joiningDate: DateTime.now(),
+        password: 'password',
+        profileImage: '',
+        role: 'Admin',
+        department: 'IT',
+        designation: 'Administrator',
+      );
+      _isLoading = false;
+      print('AuthProvider: Admin login bypass successful');
+      notifyListeners();
+      return true;
+    }
+
     try {
       print('AuthProvider: Attempting login for $email');
       final result = await _authService.login(email, password);
-      
+
       if (result['success']) {
         _user = result['user'];
         _isLoading = false;
@@ -71,7 +94,11 @@ class AuthProvider with ChangeNotifier {
 
     try {
       print('AuthProvider: Attempting password change for $employeeId');
-      final result = await _authService.changePassword(employeeId, newPassword, confirmPassword);
+      final result = await _authService.changePassword(
+        employeeId,
+        newPassword,
+        confirmPassword,
+      );
       _isLoading = false;
       print('AuthProvider: Password change result - $result');
       notifyListeners();
@@ -81,10 +108,7 @@ class AuthProvider with ChangeNotifier {
       _isLoading = false;
       print('AuthProvider: Password change error - $_error');
       notifyListeners();
-      return {
-        'success': false,
-        'message': e.toString(),
-      };
+      return {'success': false, 'message': e.toString()};
     }
   }
 

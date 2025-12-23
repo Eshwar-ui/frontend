@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/providers/theme_provider.dart';
 
 import 'package:quantum_dashboard/providers/local_auth_provider.dart';
+import 'package:quantum_dashboard/screens/add_head_office_location_screen.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -47,6 +48,23 @@ class SettingsPage extends StatelessWidget {
                 _buildSectionTitle('Security', Icons.security, Colors.red),
                 const SizedBox(height: 12),
                 _buildDeviceLockSettings(context),
+                const SizedBox(height: 32),
+                _buildSectionTitle('Company Settings', Icons.business, Colors.green),
+                const SizedBox(height: 12),
+                _buildSettingsTile(
+                  context,
+                  Icons.add_location_alt_outlined,
+                  'Add Head Office Location',
+                  'Configure company head office location',
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AddHeadOfficeLocationScreen(),
+                      ),
+                    );
+                  },
+                ),
                 const SizedBox(height: 32),
                 _buildSectionTitle('Preferences', Icons.tune, Colors.blue),
                 const SizedBox(height: 12),
