@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/network_config.dart';
+import '../utils/server_error_exception.dart';
+import '../utils/app_logger.dart';
 
 class ApiService {
   // Get the base URL from NetworkConfig
@@ -28,17 +30,55 @@ class ApiService {
   // Get headers with authorization
   Future<Map<String, String>> getHeaders() async {
     final token = await getToken();
+    final hasToken = token != null && token.isNotEmpty;
+    AppLogger.debug('ApiService: Getting headers', {
+      'hasToken': hasToken,
+      if (hasToken) 'tokenLength': token.length,
+    });
     return {
       'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
+      if (hasToken) 'Authorization': 'Bearer $token',
     };
   }
 
   // Handle API response
   dynamic handleResponse(http.Response response) {
-    print('API Response Status: ${response.statusCode}');
-    print('API Response Body: ${response.body}');
-    print('API Response Headers: ${response.headers}');
+    AppLogger.debug('API Response received', {
+      'statusCode': response.statusCode,
+      'url': response.request?.url.toString(),
+    });
+    AppLogger.trace('API Response Body', response.body);
+    AppLogger.trace('API Response Headers', response.headers);
+
+    // Check for 400 or 500 errors and throw ServerErrorException for admin mock data fallback
+    if (response.statusCode == 400 || response.statusCode == 500) {
+      // Try to extract meaningful error message from response
+      String errorMessage = 'Bad Request (400)';
+      if (response.statusCode == 500) {
+        errorMessage = 'Internal Server Error (500)';
+      } else {
+        // Try to parse error message from response
+        try {
+          final errorData = json.decode(response.body);
+          if (errorData is Map && errorData['message'] != null) {
+            errorMessage = errorData['message'];
+          } else if (errorData is String) {
+            errorMessage = errorData;
+          }
+        } catch (e) {
+          // If response is not JSON, use the body as string (for backend middleware responses)
+          errorMessage = response.body.isNotEmpty
+              ? response.body
+              : 'Bad Request (400)';
+        }
+      }
+
+      AppLogger.error(
+        'API returned ${response.statusCode} error: $errorMessage',
+        null,
+      );
+      throw ServerErrorException(errorMessage, statusCode: response.statusCode);
+    }
 
     try {
       final data = json.decode(response.body);
@@ -52,8 +92,16 @@ class ApiService {
         throw Exception(errorMessage);
       }
     } catch (e) {
+      // Don't wrap ServerErrorException
+      if (e is ServerErrorException) {
+        rethrow;
+      }
       if (e is FormatException) {
-        print('Failed to parse response body as JSON: ${response.body}');
+        AppLogger.error('Failed to parse response body as JSON', {
+          'responseBody': response.body.length > 200
+              ? response.body.substring(0, 200) + '...'
+              : response.body,
+        });
         throw Exception(
           'Invalid response format. Server returned: ${response.body.length > 200 ? response.body.substring(0, 200) + "..." : response.body}',
         );

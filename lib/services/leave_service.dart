@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:quantum_dashboard/models/leave_model.dart';
 import 'package:quantum_dashboard/services/api_service.dart';
 import 'package:quantum_dashboard/utils/api_endpoints.dart';
+import '../utils/app_logger.dart';
 
 class LeaveService extends ApiService {
   // Apply for leave
@@ -37,33 +38,58 @@ class LeaveService extends ApiService {
 
   // Get my leaves
   Future<List<Leave>> getMyLeaves(String employeeId) async {
-    print('LeaveService: Fetching leaves for employee: $employeeId');
-    print(
-      'LeaveService: API URL: ${ApiService.baseUrl}/api/get-leaves/$employeeId',
-    );
+    AppLogger.debug('LeaveService: Fetching leaves for employee', {
+      'employeeId': employeeId,
+      'url': '${ApiService.baseUrl}/api/get-leaves/$employeeId',
+    });
 
     final response = await http.get(
       Uri.parse('${ApiService.baseUrl}/api/get-leaves/$employeeId'),
       headers: await getHeaders(),
     );
 
-    print('LeaveService: Response status: ${response.statusCode}');
-    print('LeaveService: Response body: ${response.body}');
+    AppLogger.debug('LeaveService: Response received', {
+      'statusCode': response.statusCode,
+      'employeeId': employeeId,
+    });
 
     final data = handleResponse(response);
-    print('LeaveService: Parsed data: $data');
-    return (data as List).map((json) => Leave.fromJson(json)).toList();
+    final leaves = (data as List).map((json) => Leave.fromJson(json)).toList();
+    AppLogger.info('LeaveService: Successfully fetched leaves', {
+      'employeeId': employeeId,
+      'count': leaves.length,
+    });
+    return leaves;
   }
 
   // Get all leaves (Admin only)
   Future<List<Leave>> getAllLeaves() async {
+    AppLogger.debug('LeaveService: Fetching all leaves', {
+      'url': '${ApiService.baseUrl}/api/all-leaves',
+    });
+
+    // Check if we have a token
+    final token = await getToken();
+    if (token == null || token.isEmpty) {
+      AppLogger.warning('LeaveService: No token found, cannot fetch leaves');
+      throw Exception('Authentication required. Please login again.');
+    }
+
     final response = await http.get(
       Uri.parse('${ApiService.baseUrl}/api/all-leaves'),
       headers: await getHeaders(),
     );
 
+    AppLogger.debug('LeaveService: Response received', {
+      'statusCode': response.statusCode,
+    });
+
     final data = handleResponse(response);
-    return (data as List).map((json) => Leave.fromJson(json)).toList();
+    final leaves = (data as List).map((json) => Leave.fromJson(json)).toList();
+    AppLogger.info('LeaveService: Successfully fetched all leaves', {
+      'count': leaves.length,
+    });
+    return leaves;
   }
 
   // Get all leave requests (Admin only) - simplified for admin screen

@@ -12,6 +12,9 @@ enum NavigationPage {
   AdminEmployees,
   AdminLeaveRequests,
   AdminHolidays,
+  AdminDepartments,
+  AdminLeaveTypes,
+  AdminPayslips,
 }
 
 class NavigationProvider with ChangeNotifier {

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
+import '../utils/app_logger.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -19,50 +20,54 @@ class AuthProvider with ChangeNotifier {
     _error = null;
     notifyListeners();
 
-    // Bypass login for admin
-    if (email == 'admin@quantumworks.in') {
-      _user = Employee(
-        id: 'mock_admin_id',
-        employeeId: 'QWIT-1001',
-        firstName: 'Admin',
-        lastName: 'User',
-        email: email,
-        mobile: '0000000000',
-        dateOfBirth: DateTime.now(),
-        joiningDate: DateTime.now(),
-        password: 'password',
-        profileImage: '',
-        role: 'Admin',
-        department: 'IT',
-        designation: 'Administrator',
-      );
-      _isLoading = false;
-      print('AuthProvider: Admin login bypass successful');
-      notifyListeners();
-      return true;
-    }
+    // // Bypass login for admin
+    // if (email == 'admin@quantumworks.in') {
+    //   _user = Employee(
+    //     id: 'mock_admin_id',
+    //     employeeId: 'QWIT-1001',
+    //     firstName: 'Admin',
+    //     lastName: 'User',
+    //     email: email,
+    //     mobile: '0000000000',
+    //     dateOfBirth: DateTime.now(),
+    //     joiningDate: DateTime.now(),
+    //     password: 'password',
+    //     profileImage: '',
+    //     role: 'Admin',
+    //     department: 'IT',
+    //     designation: 'Administrator',
+    //   );
+    //   _isLoading = false;
+    //   print('AuthProvider: Admin login bypass successful');
+    //   notifyListeners();
+    //   return true;
+    // }
 
     try {
-      print('AuthProvider: Attempting login for $email');
+      AppLogger.info('AuthProvider: Attempting login', {'email': email});
       final result = await _authService.login(email, password);
 
       if (result['success']) {
         _user = result['user'];
         _isLoading = false;
-        print('AuthProvider: Login successful for ${_user?.fullName}');
+        AppLogger.info('AuthProvider: Login successful', {
+          'fullName': _user?.fullName,
+          'employeeId': _user?.employeeId,
+          'role': _user?.role,
+        });
         notifyListeners();
         return true;
       } else {
         _error = result['message'] ?? 'Login failed';
         _isLoading = false;
-        print('AuthProvider: Login failed - $_error');
+        AppLogger.warning('AuthProvider: Login failed', {'error': _error});
         notifyListeners();
         return false;
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       _error = e.toString();
       _isLoading = false;
-      print('AuthProvider: Login exception - $_error');
+      AppLogger.error('AuthProvider: Login exception', e, stackTrace);
       notifyListeners();
       return false;
     }
@@ -70,14 +75,14 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> logout() async {
     try {
-      print('AuthProvider: Logging out user');
+      AppLogger.info('AuthProvider: Logging out user');
       await _authService.logout();
       _user = null;
       _error = null;
       notifyListeners();
-      print('AuthProvider: Logout successful');
-    } catch (e) {
-      print('AuthProvider: Logout error - $e');
+      AppLogger.info('AuthProvider: Logout successful');
+    } catch (e, stackTrace) {
+      AppLogger.error('AuthProvider: Logout error', e, stackTrace);
       _error = e.toString();
       notifyListeners();
     }
@@ -93,20 +98,22 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      print('AuthProvider: Attempting password change for $employeeId');
+      AppLogger.info('AuthProvider: Attempting password change', {
+        'employeeId': employeeId,
+      });
       final result = await _authService.changePassword(
         employeeId,
         newPassword,
         confirmPassword,
       );
       _isLoading = false;
-      print('AuthProvider: Password change result - $result');
+      AppLogger.info('AuthProvider: Password change result', result);
       notifyListeners();
       return result;
-    } catch (e) {
+    } catch (e, stackTrace) {
       _error = e.toString();
       _isLoading = false;
-      print('AuthProvider: Password change error - $_error');
+      AppLogger.error('AuthProvider: Password change error', e, stackTrace);
       notifyListeners();
       return {'success': false, 'message': e.toString()};
     }
@@ -120,7 +127,10 @@ class AuthProvider with ChangeNotifier {
   // Set user (useful for initializing from stored data)
   void setUser(Employee user) {
     _user = user;
-    print('AuthProvider: User set to ${user.fullName}');
+    AppLogger.debug('AuthProvider: User set', {
+      'fullName': user.fullName,
+      'employeeId': user.employeeId,
+    });
     notifyListeners();
   }
 
@@ -140,11 +150,13 @@ class AuthProvider with ChangeNotifier {
 
   // Debug method to print current state
   void debugPrintState() {
-    print('AuthProvider State:');
-    print('  User: ${_user?.fullName ?? 'None'}');
-    print('  Role: ${_user?.role ?? 'None'}');
-    print('  IsLoading: $_isLoading');
-    print('  Error: $_error');
-    print('  IsLoggedIn: $isLoggedIn');
+    AppLogger.debug('AuthProvider State', {
+      'user': _user?.fullName ?? 'None',
+      'role': _user?.role ?? 'None',
+      'employeeId': _user?.employeeId ?? 'None',
+      'isLoading': _isLoading,
+      'error': _error,
+      'isLoggedIn': isLoggedIn,
+    });
   }
 }

@@ -44,7 +44,12 @@ class AttendanceProvider with ChangeNotifier {
     _safeNotifyListeners();
 
     try {
-      final result = await _attendanceService.punchIn(employeeId, employeeName, latitude, longitude);
+      final result = await _attendanceService.punchIn(
+        employeeId,
+        employeeName,
+        latitude,
+        longitude,
+      );
       _isLoading = false;
       _safeNotifyListeners();
       return result;
@@ -91,6 +96,7 @@ class AttendanceProvider with ChangeNotifier {
     String? fromDate,
     int? month,
     int? year,
+    bool forceRefresh = false,
   }) async {
     _isLoading = true;
     _error = null;
@@ -119,9 +125,10 @@ class AttendanceProvider with ChangeNotifier {
     int? month,
     int? year,
     String? employeeName,
+    bool forceRefresh = false,
   }) async {
     final cacheKey = '${employeeId}_${year}_$month';
-    if (_dateWiseCache.containsKey(cacheKey)) {
+    if (!forceRefresh && _dateWiseCache.containsKey(cacheKey)) {
       return; // Data is already cached
     }
 
@@ -143,6 +150,20 @@ class AttendanceProvider with ChangeNotifier {
       _isLoading = false;
       _safeNotifyListeners();
     }
+  }
+
+  // Clear cache for specific employee and month/year
+  void clearDateWiseCache(String employeeId, {int? month, int? year}) {
+    if (month != null && year != null) {
+      final cacheKey = '${employeeId}_${year}_$month';
+      _dateWiseCache.remove(cacheKey);
+    } else {
+      // Clear all cache entries for this employee
+      _dateWiseCache.removeWhere(
+        (key, value) => key.startsWith('${employeeId}_'),
+      );
+    }
+    _safeNotifyListeners();
   }
 
   // Get admin attendance data

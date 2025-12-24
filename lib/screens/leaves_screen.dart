@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:quantum_dashboard/providers/leave_provider.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/widgets/apply_leave_dialog.dart';
 import 'package:quantum_dashboard/widgets/leave_accordion.dart';
-import 'package:quantum_dashboard/utils/text_styles.dart';
 import 'package:quantum_dashboard/models/leave_model.dart';
 import 'package:intl/intl.dart';
 
@@ -22,14 +22,6 @@ class _LeavesScreenState extends State<LeavesScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _authProvider != null && _leaveProvider != null) {
-        final user = _authProvider!.user;
-        if (user != null) {
-          _leaveProvider!.getMyLeaves(user.employeeId);
-        }
-      }
-    });
   }
 
   @override
@@ -39,6 +31,19 @@ class _LeavesScreenState extends State<LeavesScreen> {
     try {
       _authProvider = Provider.of<AuthProvider>(context, listen: false);
       _leaveProvider = Provider.of<LeaveProvider>(context, listen: false);
+
+      // Load leaves data after providers are available
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _authProvider != null && _leaveProvider != null) {
+          final user = _authProvider!.user;
+          if (user != null) {
+            _leaveProvider!.getMyLeaves(user.employeeId);
+          } else {
+            // If no user, still try to load mock data
+            _leaveProvider!.getMyLeaves('QWIT-1001');
+          }
+        }
+      });
     } catch (e) {
       // Handle case where context is no longer valid
       print('Error accessing providers in didChangeDependencies: $e');
@@ -76,14 +81,19 @@ class _LeavesScreenState extends State<LeavesScreen> {
     showDialog(
       context: parentContext,
       builder: (dialogContext) => AlertDialog(
-        title: Text('Delete Leave'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Delete Leave',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+        ),
         content: Text(
           'Are you sure you want to delete this leave request? This action cannot be undone.',
+          style: GoogleFonts.poppins(),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text('Cancel'),
+            child: Text('Cancel', style: GoogleFonts.poppins()),
           ),
           TextButton(
             onPressed: () async {
@@ -147,7 +157,10 @@ class _LeavesScreenState extends State<LeavesScreen> {
                 }
               }
             },
-            child: Text('Delete', style: TextStyle(color: Colors.red)),
+            child: Text(
+              'Delete',
+              style: GoogleFonts.poppins(color: Colors.red),
+            ),
           ),
         ],
       ),
@@ -156,74 +169,193 @@ class _LeavesScreenState extends State<LeavesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
       appBar: AppBar(
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        title: Text(
-          'Leaves',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-            fontFamily: 'Poppins',
+        title: Text('My Leaves'),
+        backgroundColor: colorScheme.surface,
+        foregroundColor: colorScheme.onSurface,
+        actions: [
+          ElevatedButton.icon(
+            onPressed: _applyForLeave,
+            icon: Icon(Icons.add, size: 20),
+            label: Text('Apply'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colorScheme.primary,
+              foregroundColor: colorScheme.onPrimary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              minimumSize: Size(100, 40),
+            ),
           ),
+        ],
+      ),
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Modern Header
+            // Container(
+            //   padding: EdgeInsets.fromLTRB(24, 24, 24, 16),
+            //   child: Row(
+            //     children: [
+            //       Column(
+            //         crossAxisAlignment: CrossAxisAlignment.start,
+            //         children: [
+            //           Text(
+            //             'My Leaves',
+            //             style: GoogleFonts.poppins(
+            //               fontSize: 28,
+            //               fontWeight: FontWeight.bold,
+            //               color: colorScheme.onSurface,
+            //             ),
+            //           ),
+            //           Text(
+            //             'View and manage your leave requests',
+            //             style: GoogleFonts.poppins(
+            //               fontSize: 14,
+            //               fontWeight: FontWeight.w400,
+            //               color: colorScheme.onSurface.withOpacity(0.7),
+            //             ),
+            //           ),
+            //         ],
+            //       ),
+            //       Spacer(),
+            //       ElevatedButton.icon(
+            //         onPressed: _applyForLeave,
+            //         icon: Icon(Icons.add, size: 20),
+            //         label: Text('Apply'),
+            //         style: ElevatedButton.styleFrom(
+            //           backgroundColor: colorScheme.primary,
+            //           foregroundColor: colorScheme.onPrimary,
+            //           shape: RoundedRectangleBorder(
+            //             borderRadius: BorderRadius.circular(12),
+            //           ),
+            //           padding: EdgeInsets.symmetric(
+            //             horizontal: 16,
+            //             vertical: 12,
+            //           ),
+            //         ),
+            //       ),
+            //     ],
+            //   ),
+            // ),
+            SizedBox(height: 16),
+            // Leaves List
+            Expanded(
+              child: Consumer<LeaveProvider>(
+                builder: (context, leaveProvider, child) {
+                  // Show error as a snackbar without blocking the whole screen
+                  if (leaveProvider.error != null &&
+                      leaveProvider.error != _lastErrorMessage) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (!mounted) return;
+                      _lastErrorMessage = leaveProvider.error;
+                      final raw = leaveProvider.error!.toString();
+                      final msg = raw.startsWith('Exception: ')
+                          ? raw.substring('Exception: '.length)
+                          : raw;
+                      final lower = msg.toLowerCase();
+                      final showApi =
+                          lower.contains('already') || lower.contains('exists');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            showApi
+                                ? msg
+                                : 'Something went wrong. Please try again.',
+                          ),
+                          backgroundColor: Colors.red,
+                          duration: Duration(seconds: 3),
+                        ),
+                      );
+                    });
+                  }
+
+                  // Trigger data load if not already loading and no data
+                  if (!leaveProvider.isLoading &&
+                      leaveProvider.leaves.isEmpty) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted && _leaveProvider != null) {
+                        if (_authProvider?.user != null) {
+                          _leaveProvider!.getMyLeaves(
+                            _authProvider!.user!.employeeId,
+                          );
+                        } else {
+                          // Load mock data if no user
+                          _leaveProvider!.getMyLeaves('QWIT-1001');
+                        }
+                      }
+                    });
+                  }
+
+                  // Only block the screen on initial load when there is no data yet
+                  if (leaveProvider.isLoading && leaveProvider.leaves.isEmpty) {
+                    return Center(child: CircularProgressIndicator());
+                  } else if (leaveProvider.leaves.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.event_busy, size: 64, color: Colors.grey),
+                          SizedBox(height: 16),
+                          Text(
+                            'No leaves found',
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Apply for a leave to get started',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: colorScheme.onSurface.withOpacity(0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final leaves = leaveProvider.leaves;
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      if (_authProvider?.user != null) {
+                        await leaveProvider.getMyLeaves(
+                          _authProvider!.user!.employeeId,
+                        );
+                      }
+                    },
+                    child: ListView.builder(
+                      padding: EdgeInsets.fromLTRB(
+                        24,
+                        0,
+                        24,
+                        120,
+                      ), // Bottom padding for nav bar
+                      itemCount: leaves.length,
+                      itemBuilder: (context, index) {
+                        final leave = leaves[index];
+                        return LeaveAccordion(
+                          leave: leave,
+                          onEdit: () => _editLeave(leave),
+                          onDelete: () => _deleteLeave(leave),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
-      ),
-      body: Consumer<LeaveProvider>(
-        builder: (context, leaveProvider, child) {
-          // Show error as a snackbar without blocking the whole screen
-          if (leaveProvider.error != null &&
-              leaveProvider.error != _lastErrorMessage) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!mounted) return;
-              _lastErrorMessage = leaveProvider.error;
-              final raw = leaveProvider.error!.toString();
-              final msg = raw.startsWith('Exception: ')
-                  ? raw.substring('Exception: '.length)
-                  : raw;
-              final lower = msg.toLowerCase();
-              final showApi =
-                  lower.contains('already') || lower.contains('exists');
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    showApi ? msg : 'Something went wrong. Please try again.',
-                  ),
-                  backgroundColor: Colors.red,
-                  duration: Duration(seconds: 3),
-                ),
-              );
-            });
-          }
-
-          // Only block the screen on initial load when there is no data yet
-          if (leaveProvider.isLoading && leaveProvider.leaves.isEmpty) {
-            return Center(child: CircularProgressIndicator());
-          } else if (leaveProvider.leaves.isEmpty) {
-            return Center(
-              child: Text('No leaves found.', style: AppTextStyles.body),
-            );
-          }
-
-          final leaves = leaveProvider.leaves;
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: leaves.length,
-            itemBuilder: (context, index) {
-              final leave = leaves[index];
-              return LeaveAccordion(
-                leave: leave,
-                onEdit: () => _editLeave(leave),
-                onDelete: () => _deleteLeave(leave),
-              );
-            },
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _applyForLeave,
-        child: Icon(Icons.add),
       ),
     );
   }
@@ -447,22 +579,37 @@ class _EditLeaveDialogState extends State<_EditLeaveDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return AlertDialog(
-      title: Text('Edit Leave Request'),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Text(
+        'Edit Leave Request',
+        style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+      ),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Leave Type Dropdown
-            Text('Leave Type', style: AppTextStyles.subheading),
+            Text(
+              'Leave Type',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
             SizedBox(height: 8),
             DropdownButtonFormField<String>(
               value: _leaveTypes.contains(_selectedLeaveType)
                   ? _selectedLeaveType
                   : null,
               decoration: InputDecoration(
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 contentPadding: EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 8,
@@ -482,21 +629,36 @@ class _EditLeaveDialogState extends State<_EditLeaveDialog> {
             SizedBox(height: 16),
 
             // From Date
-            Text('From Date', style: AppTextStyles.subheading),
+            Text(
+              'From Date',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
             SizedBox(height: 8),
             InkWell(
               onTap: () => _selectDate(context, true),
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: colorScheme.outline.withOpacity(0.3),
+                  ),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.calendar_today, size: 20),
-                    SizedBox(width: 8),
-                    Text(DateFormat.yMMMd().format(_fromDate)),
+                    Icon(
+                      Icons.calendar_today,
+                      size: 20,
+                      color: colorScheme.primary,
+                    ),
+                    SizedBox(width: 12),
+                    Text(
+                      DateFormat.yMMMd().format(_fromDate),
+                      style: GoogleFonts.poppins(),
+                    ),
                   ],
                 ),
               ),
@@ -504,21 +666,36 @@ class _EditLeaveDialogState extends State<_EditLeaveDialog> {
             SizedBox(height: 16),
 
             // To Date
-            Text('To Date', style: AppTextStyles.subheading),
+            Text(
+              'To Date',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
             SizedBox(height: 8),
             InkWell(
               onTap: () => _selectDate(context, false),
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: colorScheme.outline.withOpacity(0.3),
+                  ),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.calendar_today, size: 20),
-                    SizedBox(width: 8),
-                    Text(DateFormat.yMMMd().format(_toDate)),
+                    Icon(
+                      Icons.calendar_today,
+                      size: 20,
+                      color: colorScheme.primary,
+                    ),
+                    SizedBox(width: 12),
+                    Text(
+                      DateFormat.yMMMd().format(_toDate),
+                      style: GoogleFonts.poppins(),
+                    ),
                   ],
                 ),
               ),
@@ -526,20 +703,32 @@ class _EditLeaveDialogState extends State<_EditLeaveDialog> {
             SizedBox(height: 16),
 
             // Reason
-            Text('Reason', style: AppTextStyles.subheading),
+            Text(
+              'Reason',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
             SizedBox(height: 8),
             TextField(
               controller: _reasonController,
               maxLines: 3,
+              style: GoogleFonts.poppins(),
               decoration: InputDecoration(
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 hintText: 'Enter reason for leave...',
               ),
             ),
             SizedBox(height: 8),
             Text(
               'Duration: ${_toDate.difference(_fromDate).inDays + 1} day${_toDate.difference(_fromDate).inDays + 1 != 1 ? 's' : ''}',
-              style: AppTextStyles.caption.copyWith(color: Colors.grey[600]),
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: colorScheme.onSurface.withOpacity(0.6),
+              ),
             ),
           ],
         ),
@@ -547,17 +736,22 @@ class _EditLeaveDialogState extends State<_EditLeaveDialog> {
       actions: [
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-          child: Text('Cancel'),
+          child: Text('Cancel', style: GoogleFonts.poppins()),
         ),
         ElevatedButton(
           onPressed: _isLoading ? null : _updateLeave,
+          style: ElevatedButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
           child: _isLoading
               ? SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Text('Update'),
+              : Text('Update', style: GoogleFonts.poppins()),
         ),
       ],
     );

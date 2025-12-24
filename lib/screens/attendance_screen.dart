@@ -5,9 +5,11 @@ import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:quantum_dashboard/models/attendance_model.dart';
 import 'package:quantum_dashboard/models/holiday_model.dart';
+import 'package:quantum_dashboard/models/leave_model.dart';
 import 'package:quantum_dashboard/providers/attendance_provider.dart';
 import 'package:quantum_dashboard/providers/holiday_provider.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
+import 'package:quantum_dashboard/providers/leave_provider.dart';
 import 'package:quantum_dashboard/utils/text_styles.dart';
 import 'package:quantum_dashboard/widgets/loading_dots_animation.dart';
 
@@ -23,6 +25,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   DateTime? _selectedDay;
   Map<DateTime, List<Attendance>> _events = {};
   Map<DateTime, Holiday> _holidays = {};
+  Map<DateTime, Leave> _leaves = {}; // Map to store leaves by date
   bool _isLoadingCalendarData = false;
 
   // Centralized attendance legend configuration
@@ -342,6 +345,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       // Load holidays for the focused year
       await holidayProvider.getHolidaysByYear(focusedYear);
 
+      // Load leaves for the employee
+      final leaveProvider = context.read<LeaveProvider>();
+      await leaveProvider.getMyLeaves(employeeId);
+
       // Group attendance by date from both sources
       final Map<DateTime, List<Attendance>> events = {};
 
@@ -429,10 +436,55 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
       print('Final events count: ${events.length} dates with attendance data');
 
+      // Group leaves by date
+      final Map<DateTime, Leave> leavesMap = {};
+      print(
+        '=== Processing ${leaveProvider.leaves.length} leaves for employee $employeeId ===',
+      );
+      for (var leave in leaveProvider.leaves) {
+        print(
+          'Processing leave: ID=${leave.id}, type=${leave.type}, status="${leave.status}", from=${leave.from}, to=${leave.to}, employeeId=${leave.employeeId}',
+        );
+        // Normalize dates to remove time component
+        final fromDate = DateTime(
+          leave.from.year,
+          leave.from.month,
+          leave.from.day,
+        );
+        final toDate = DateTime(leave.to.year, leave.to.month, leave.to.day);
+        print('Leave date range: from=$fromDate, to=$toDate');
+
+        var currentDate = fromDate;
+        int daysAdded = 0;
+        while (!currentDate.isAfter(toDate)) {
+          final dateKey = DateTime(
+            currentDate.year,
+            currentDate.month,
+            currentDate.day,
+          );
+          // Only store one leave per date (prefer the first one found)
+          if (!leavesMap.containsKey(dateKey)) {
+            leavesMap[dateKey] = leave;
+            daysAdded++;
+            print(
+              '  ✓ Mapped leave to date: $dateKey (${dateKey.year}-${dateKey.month}-${dateKey.day}), status="${leave.status}"',
+            );
+          }
+          currentDate = currentDate.add(Duration(days: 1));
+        }
+        print('  Added $daysAdded days for this leave');
+      }
+      print('=== Total leaves mapped: ${leavesMap.length} dates ===');
+      // Print all mapped dates for debugging
+      leavesMap.forEach((date, leave) {
+        print('  Date: $date -> Leave: ${leave.type} (${leave.status})');
+      });
+
       if (mounted) {
         setState(() {
           _events = events;
           _holidays = holidayMap;
+          _leaves = leavesMap;
         });
       }
     } catch (e) {
@@ -466,6 +518,30 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
+  Leave? _getLeaveForDay(DateTime day) {
+    try {
+      final date = DateTime(day.year, day.month, day.day);
+      final leave = _leaves[date];
+      if (leave != null) {
+        print(
+          'Found leave for date $date: type=${leave.type}, status="${leave.status}", from=${leave.from}, to=${leave.to}',
+        );
+      } else {
+        // Debug: check all leaves to see if any match
+        print('No leave found for date $date. Available leaves:');
+        _leaves.forEach((key, value) {
+          print(
+            '  Leave date: $key, status="${value.status}", from=${value.from}, to=${value.to}',
+          );
+        });
+      }
+      return leave;
+    } catch (e) {
+      print('Error getting leave for day: $e');
+      return null;
+    }
+  }
+
   Future<void> _punchIn() async {
     final authProvider = context.read<AuthProvider>();
     final attendanceProvider = context.read<AttendanceProvider>();
@@ -480,7 +556,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         }
 
         Position position = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.high);
+          desiredAccuracy: LocationAccuracy.high,
+        );
 
         final result = await attendanceProvider.punchIn(
           user.employeeId,
@@ -500,8 +577,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           });
         }
       } catch (e) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     }
   }
@@ -520,7 +598,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         }
 
         Position position = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.high);
+          desiredAccuracy: LocationAccuracy.high,
+        );
 
         final result = await attendanceProvider.punchOut(
           user.employeeId,
@@ -540,8 +619,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           });
         }
       } catch (e) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     }
   }
@@ -995,20 +1075,92 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   return _buildCalendarDay(date, isToday: true);
                 },
                 markerBuilder: (context, date, events) {
+                  final leave = _getLeaveForDay(date);
+
+                  // If there's attendance data, check if it's absent and if there's a leave
                   if (events.isNotEmpty && events.first != null) {
                     final attendance = events.first as Attendance;
+                    String attendanceStatus = attendance.attendanceStatus
+                        .toLowerCase()
+                        .trim();
+                    if (attendanceStatus.isEmpty) {
+                      attendanceStatus = 'absent';
+                    }
+
+                    // Check for incomplete check-in
+                    bool hasIncompleteCheckIn = attendance.isPunchedIn;
+                    if (hasIncompleteCheckIn && attendanceStatus != 'absent') {
+                      attendanceStatus = 'absent';
+                    }
+
+                    // If absent, check for leave first
+                    if (attendanceStatus == 'absent') {
+                      // Always check for leave when absent
+                      final leaveForDay = _getLeaveForDay(date);
+                      if (leaveForDay != null) {
+                        final leaveStatus = leaveForDay.status
+                            .toLowerCase()
+                            .trim();
+                        final isApproved =
+                            leaveStatus == 'approved' ||
+                            leaveStatus == 'approve' ||
+                            leaveStatus.contains('approv');
+                        print(
+                          'Marker: Absent day with leave, status="$leaveStatus", isApproved=$isApproved',
+                        );
+                        return Positioned(
+                          bottom: 1,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isApproved ? Colors.green : Colors.red,
+                            ),
+                            width: 8,
+                            height: 8,
+                          ),
+                        );
+                      }
+                      // No leave found for absent day - return null (no marker)
+                      return null;
+                    } else if (attendanceStatus != 'absent') {
+                      // Show attendance marker if not absent
+                      return Positioned(
+                        bottom: 1,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _getMarkerColor(attendance.attendanceStatus),
+                          ),
+                          width: 8,
+                          height: 8,
+                        ),
+                      );
+                    }
+                  }
+
+                  // Check for leave if no attendance data
+                  if (leave != null) {
+                    final leaveStatus = leave.status.toLowerCase().trim();
+                    final isApproved =
+                        leaveStatus == 'approved' ||
+                        leaveStatus == 'approve' ||
+                        leaveStatus.contains('approv');
+                    print(
+                      'Marker: Leave found for date ${date.day}/${date.month}, status="$leaveStatus", isApproved=$isApproved',
+                    );
                     return Positioned(
                       bottom: 1,
                       child: Container(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: _getMarkerColor(attendance.attendanceStatus),
+                          color: isApproved ? Colors.green : Colors.red,
                         ),
                         width: 8,
                         height: 8,
                       ),
                     );
                   }
+
                   return null;
                 },
               ),
@@ -1027,13 +1179,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }) {
     final events = _getEventsForDay(date);
     final holiday = _getHolidayForDay(date);
+    final leave = _getLeaveForDay(date); // Always get leave for this date
     final isWeekend =
         date.weekday == DateTime.saturday || date.weekday == DateTime.sunday;
 
     // Debug log for specific dates
-    if (events.isNotEmpty || holiday != null) {
+    if (events.isNotEmpty || holiday != null || leave != null) {
       print(
-        'Calendar Day ${date.day}/${date.month}: events=${events.length}, holiday=${holiday?.title}',
+        'Calendar Day ${date.day}/${date.month}/${date.year}: events=${events.length}, holiday=${holiday?.title}, leave=${leave?.type} (status: "${leave?.status}")',
       );
     }
 
@@ -1046,7 +1199,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       backgroundColor = holidayColor.withOpacity(0.2);
       textColor = _getDarkerShade(holidayColor);
     }
-    // Then check attendance status
+    // Then check attendance status to see if it's absent
     else if (events.isNotEmpty) {
       try {
         final attendance = events.first;
@@ -1056,11 +1209,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         if (attendanceStatus.isEmpty) {
           attendanceStatus = 'absent'; // Default to absent if no status
         }
-
-        // Debug log for calendar days
-        print(
-          'Calendar Day ${date.day}/${date.month}: ID=${attendance.id}, Status=${attendanceStatus}, WorkingTime=${attendance.totalWorkingTime}',
-        );
 
         // Check if there are incomplete check-ins (no check-out)
         bool hasIncompleteCheckIn = attendance.isPunchedIn;
@@ -1072,15 +1220,76 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           effectiveStatus = 'absent';
         }
 
-        // Use centralized color configuration
-        final statusColor = _getStatusColor(effectiveStatus);
-        backgroundColor = statusColor.withOpacity(0.2);
-        textColor = _getDarkerShade(statusColor);
+        // If status is absent, check for leave first (leave takes priority over absent)
+        if (effectiveStatus == 'absent') {
+          // Always check for leave when absent
+          final leaveForDay = _getLeaveForDay(date);
+          if (leaveForDay != null) {
+            final leaveStatus = leaveForDay.status.toLowerCase().trim();
+            print(
+              'Absent day with leave: ${date.day}/${date.month}/${date.year}, leave status="$leaveStatus" (original: "${leaveForDay.status}")',
+            );
+            final isApproved =
+                leaveStatus == 'approved' ||
+                leaveStatus == 'approve' ||
+                leaveStatus.contains('approv');
+            if (isApproved) {
+              // Green for approved leave (even if attendance shows absent)
+              backgroundColor = Colors.green.withOpacity(0.3);
+              textColor = _getDarkerShade(Colors.green);
+              print('✓ Absent day with approved leave - showing GREEN');
+            } else {
+              // Red for non-approved leave
+              backgroundColor = Colors.red.withOpacity(0.3);
+              textColor = _getDarkerShade(Colors.red);
+              print(
+                '✗ Absent day with leave status: $leaveStatus - showing RED',
+              );
+            }
+          } else {
+            // Absent with no leave - show red
+            backgroundColor = Colors.red.withOpacity(0.2);
+            textColor = _getDarkerShade(Colors.red);
+            print('Absent day with NO leave - showing red for absent');
+          }
+        } else if (effectiveStatus != 'absent') {
+          // Use centralized color configuration for non-absent attendance
+          final statusColor = _getStatusColor(effectiveStatus);
+          backgroundColor = statusColor.withOpacity(0.2);
+          textColor = _getDarkerShade(statusColor);
+        } else {
+          // Absent with no leave - show red
+          backgroundColor = Colors.red.withOpacity(0.2);
+          textColor = _getDarkerShade(Colors.red);
+        }
       } catch (e) {
         print('Error processing attendance data for calendar day: $e');
         // Fallback to default styling
         backgroundColor = Colors.grey.withOpacity(0.1);
         textColor = Colors.grey[700] ?? Colors.grey;
+      }
+    }
+    // Check for leave if no attendance data
+    else if (leave != null) {
+      final leaveStatus = leave.status.toLowerCase().trim();
+      print(
+        'Leave found for date ${date.day}/${date.month}: status="$leaveStatus" (original: "${leave.status}")',
+      );
+      // Check for approved status (case-insensitive, handle variations)
+      final isApproved =
+          leaveStatus == 'approved' ||
+          leaveStatus == 'approve' ||
+          leaveStatus.contains('approv');
+      if (isApproved) {
+        // Green for approved leave
+        backgroundColor = Colors.green.withOpacity(0.3);
+        textColor = _getDarkerShade(Colors.green);
+        print('Setting green color for approved leave');
+      } else {
+        // Red for pending, new, rejected, declined, or any other status
+        backgroundColor = Colors.red.withOpacity(0.3);
+        textColor = _getDarkerShade(Colors.red);
+        print('Setting red color for leave status: $leaveStatus');
       }
     }
     // Then check if it's weekend
@@ -1336,6 +1545,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   void _showAttendanceDetails(DateTime selectedDate) {
     final events = _getEventsForDay(selectedDate);
     final holiday = _getHolidayForDay(selectedDate);
+    final leave = _getLeaveForDay(selectedDate);
     final isWeekend =
         selectedDate.weekday == DateTime.saturday ||
         selectedDate.weekday == DateTime.sunday;
@@ -1344,8 +1554,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) =>
-          _buildAttendanceModal(selectedDate, events, holiday, isWeekend),
+      builder: (context) => _buildAttendanceModal(
+        selectedDate,
+        events,
+        holiday,
+        leave,
+        isWeekend,
+      ),
     );
   }
 
@@ -1353,6 +1568,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     DateTime date,
     List<Attendance> events,
     Holiday? holiday,
+    Leave? leave,
     bool isWeekend,
   ) {
     return Container(
@@ -1410,19 +1626,44 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   SizedBox(height: 20),
 
                   // Status indicator
-                  _buildStatusIndicator(events, holiday, isWeekend),
+                  _buildStatusIndicator(events, holiday, leave, isWeekend),
                   SizedBox(height: 20),
 
                   // Attendance details
-                  if (events.isNotEmpty) ...[
-                    _buildAttendanceSection(events.first),
-                  ] else if (holiday != null) ...[
-                    _buildHolidaySection(holiday),
-                  ] else if (isWeekend) ...[
-                    _buildWeekendSection(),
-                  ] else ...[
-                    _buildNoDataSection(),
-                  ],
+                  // If there's a leave on an absent day, show leave info instead of absent
+                  Builder(
+                    builder: (context) {
+                      if (leave != null && events.isNotEmpty) {
+                        final attendance = events.first;
+                        final attendanceStatus = attendance.attendanceStatus
+                            .toLowerCase()
+                            .trim();
+                        final isAbsent =
+                            attendanceStatus == 'absent' ||
+                            attendance.id.startsWith('absent_') ||
+                            attendance.id.startsWith('synthetic_');
+
+                        if (isAbsent) {
+                          // Show leave section instead of attendance for absent days with leave
+                          return _buildLeaveSection(leave);
+                        } else {
+                          // Show attendance if not absent
+                          return _buildAttendanceSection(attendance);
+                        }
+                      } else if (events.isNotEmpty) {
+                        return _buildAttendanceSection(events.first);
+                      } else if (leave != null) {
+                        // Show leave if no attendance data
+                        return _buildLeaveSection(leave);
+                      } else if (holiday != null) {
+                        return _buildHolidaySection(holiday);
+                      } else if (isWeekend) {
+                        return _buildWeekendSection();
+                      } else {
+                        return _buildNoDataSection();
+                      }
+                    },
+                  ),
                 ],
               ),
             ),
@@ -1435,6 +1676,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget _buildStatusIndicator(
     List<Attendance> events,
     Holiday? holiday,
+    Leave? leave,
     bool isWeekend,
   ) {
     String status;
@@ -1446,6 +1688,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       status = 'Holiday - ${holiday.title}';
       statusColor = _getStatusColor('holiday');
       statusIcon = _getStatusIcon('holiday');
+    } else if (leave != null) {
+      // Leave takes priority - show leave status
+      status = 'Leave - ${leave.type}';
+      final leaveStatus = leave.status.toLowerCase().trim();
+      final isApproved =
+          leaveStatus == 'approved' ||
+          leaveStatus == 'approve' ||
+          leaveStatus.contains('approv');
+      if (isApproved) {
+        statusColor = Colors.green;
+        statusIcon = Icons.check_circle;
+        additionalInfo = 'Approved Leave';
+      } else {
+        statusColor = Colors.red;
+        statusIcon = Icons.cancel;
+        additionalInfo = 'Leave Status: ${leave.status}';
+      }
     } else if (events.isNotEmpty) {
       try {
         final attendance = events.first;
@@ -1842,6 +2101,105 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 ),
               ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLeaveSection(Leave leave) {
+    final leaveStatus = leave.status.toLowerCase().trim();
+    final isApproved = leaveStatus == 'approved';
+    final statusColor = isApproved ? Colors.green : Colors.red;
+    final darkColor = isApproved
+        ? Color.fromRGBO(0, 100, 0, 1) // Dark green
+        : Color.fromRGBO(139, 0, 0, 1); // Dark red
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: statusColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: statusColor.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isApproved ? Icons.check_circle : Icons.cancel,
+                size: 32,
+                color: statusColor,
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Leave Request',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: darkColor,
+                      ),
+                    ),
+                    Text(
+                      'Status: ${leave.status}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: statusColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          _buildLeaveInfoRow('Type', leave.type),
+          SizedBox(height: 8),
+          _buildLeaveInfoRow(
+            'Period',
+            '${DateFormat('dd MMM yyyy').format(leave.from)} - ${DateFormat('dd MMM yyyy').format(leave.to)}',
+          ),
+          SizedBox(height: 8),
+          _buildLeaveInfoRow('Days', '${leave.days} day(s)'),
+          if (leave.reason.isNotEmpty) ...[
+            SizedBox(height: 8),
+            _buildLeaveInfoRow('Reason', leave.reason),
+          ],
+          if (leave.actionBy.isNotEmpty && leave.actionBy != '-') ...[
+            SizedBox(height: 8),
+            _buildLeaveInfoRow('Action By', leave.actionBy),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLeaveInfoRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 80,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(fontSize: 14, color: Colors.grey[800]),
           ),
         ),
       ],

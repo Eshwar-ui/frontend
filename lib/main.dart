@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:quantum_dashboard/new%20admin%20screens/new_admin_,main_screen.dart';
+import 'package:quantum_dashboard/admin_screens/admin_nav_screen.dart';
 import 'package:quantum_dashboard/new_Screens/main_screen.dart';
 import 'package:quantum_dashboard/prctice.dart';
 import 'package:quantum_dashboard/providers/attendance_provider.dart';
@@ -59,7 +59,13 @@ class MyApp extends StatelessWidget {
               '/change_password': (context) => ChangePasswordScreen(),
               '/auth': (context) => Consumer<AuthProvider>(
                 builder: (context, authProvider, child) {
-                  return authProvider.isLoggedIn ? NavScreen() : LoginScreen();
+                  if (!authProvider.isLoggedIn) {
+                    return LoginScreen();
+                  }
+                  if (authProvider.isAdmin) {
+                    return AdminNavScreen();
+                  }
+                  return NavScreen();
                 },
               ),
               // Add other routes

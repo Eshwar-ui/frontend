@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import 'api_service.dart';
 import 'employee_service.dart';
+import '../utils/app_logger.dart';
 
 class AuthService extends ApiService {
   // Login
@@ -29,27 +30,40 @@ class AuthService extends ApiService {
 
       final data = handleResponse(response);
 
-      // Debug: Print the response data
-      print('AuthService: Login response data: $data');
+      AppLogger.info('AuthService: Login response received', {
+        'hasToken': data['token'] != null,
+        'empType': data['empType'],
+      });
 
       if (data['token'] != null) {
         await storeToken(data['token']);
+        AppLogger.info('AuthService: Token stored successfully');
+        // Verify token was stored
+        final storedToken = await getToken();
+        AppLogger.debug('AuthService: Token verification', {
+          'stored': storedToken != null && storedToken.isNotEmpty,
+        });
         try {
           // Fetch complete employee data using the individual employee API
           final employeeId = data['payload']['employeeId'];
           final employeeService = EmployeeService();
           final user = await employeeService.getEmployee(employeeId);
-          print(
-            'AuthService: Successfully fetched Employee object: ${user.fullName}',
-          );
+          AppLogger.info('AuthService: Successfully fetched Employee object', {
+            'fullName': user.fullName,
+            'employeeId': employeeId,
+          });
           return {
             'success': true,
             'user': user,
             'token': data['token'],
             'empType': data['empType'],
           };
-        } catch (e) {
-          print('AuthService: Error fetching Employee data: $e');
+        } catch (e, stackTrace) {
+          AppLogger.error(
+            'AuthService: Error fetching Employee data',
+            e,
+            stackTrace,
+          );
           throw Exception('Failed to fetch user data: $e');
         }
       }
@@ -77,8 +91,10 @@ class AuthService extends ApiService {
       );
 
       final data = handleResponse(response);
+      AppLogger.info('AuthService: Password changed successfully');
       return {'success': true, 'message': data.toString()};
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppLogger.error('AuthService: Error changing password', e, stackTrace);
       return {'success': false, 'message': e.toString()};
     }
   }

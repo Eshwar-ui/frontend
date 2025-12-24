@@ -15,14 +15,18 @@ class PayslipProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  // Get payslips for specific employee
-  Future<void> getPayslips(String empId, {int? month, int? year}) async {
+  // Get payslips for specific employee or all payslips
+  Future<void> getPayslips(String? empId, {int? month, int? year}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      _payslips = await _payslipService.getPayslips(empId, month: month, year: year);
+      _payslips = await _payslipService.getPayslips(
+        empId,
+        month: month,
+        year: year,
+      );
     } catch (e) {
       _error = e.toString();
     } finally {

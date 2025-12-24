@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:quantum_dashboard/models/leave_model.dart';
-import 'package:quantum_dashboard/utils/text_styles.dart';
 
 class LeaveAccordion extends StatelessWidget {
   final Leave leave;
@@ -17,42 +17,61 @@ class LeaveAccordion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: isDark ? colorScheme.surfaceContainerHighest : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+        tilePadding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        childrenPadding: EdgeInsets.fromLTRB(20, 0, 20, 20),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        collapsedShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
         ),
-        title: _buildTileTitle(),
-        subtitle: _buildTileSubtitle(),
-        trailing: _buildStatusChip(),
-        children: [
-          _buildExpandedContent(context),
-        ],
+        title: _buildTileTitle(colorScheme),
+        subtitle: _buildTileSubtitle(colorScheme),
+        trailing: _buildStatusChip(colorScheme),
+        children: [_buildExpandedContent(context, colorScheme, isDark)],
       ),
     );
   }
 
-  Widget _buildTileTitle() {
+  Widget _buildTileTitle(ColorScheme colorScheme) {
     return Row(
       children: [
-        Icon(
-          _getLeaveTypeIcon(leave.type),
-          color: _getStatusColor(leave.status),
-          size: 20,
+        Container(
+          padding: EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: _getStatusColor(leave.status).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            _getLeaveTypeIcon(leave.type),
+            color: _getStatusColor(leave.status),
+            size: 20,
+          ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: 12),
         Expanded(
           child: Text(
             leave.type,
-            style: AppTextStyles.subheading.copyWith(
+            style: GoogleFonts.poppins(
+              fontSize: 16,
               fontWeight: FontWeight.w600,
+              color: colorScheme.onSurface,
             ),
           ),
         ),
@@ -60,33 +79,32 @@ class LeaveAccordion extends StatelessWidget {
     );
   }
 
-  Widget _buildTileSubtitle() {
+  Widget _buildTileSubtitle(ColorScheme colorScheme) {
     return Padding(
-      padding: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.only(top: 4, left: 44),
       child: Text(
         '${DateFormat.yMMMd().format(leave.fromDate)} - ${DateFormat.yMMMd().format(leave.toDate)}',
-        style: AppTextStyles.body.copyWith(
-          color: Colors.grey[600],
+        style: GoogleFonts.poppins(
+          fontSize: 12,
+          color: colorScheme.onSurface.withOpacity(0.6),
         ),
       ),
     );
   }
 
-  Widget _buildStatusChip() {
+  Widget _buildStatusChip(ColorScheme colorScheme) {
+    final statusColor = _getStatusColor(leave.status);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: _getStatusColor(leave.status).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: _getStatusColor(leave.status).withOpacity(0.3),
-          width: 1,
-        ),
+        color: statusColor.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: statusColor.withOpacity(0.3), width: 1.5),
       ),
       child: Text(
         leave.status.toUpperCase(),
-        style: AppTextStyles.caption.copyWith(
-          color: _getStatusColor(leave.status),
+        style: GoogleFonts.poppins(
+          color: statusColor,
           fontWeight: FontWeight.w600,
           fontSize: 11,
         ),
@@ -94,110 +112,145 @@ class LeaveAccordion extends StatelessWidget {
     );
   }
 
-  Widget _buildExpandedContent(BuildContext context) {
+  Widget _buildExpandedContent(
+    BuildContext context,
+    ColorScheme colorScheme,
+    bool isDark,
+  ) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
+        color: isDark
+            ? colorScheme.surfaceContainerHighest
+            : colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.grey[200]!,
+          color: colorScheme.outline.withOpacity(0.1),
           width: 1,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildDetailRow('Duration', '${leave.totalDays} day${leave.totalDays != 1 ? 's' : ''}'),
-          const SizedBox(height: 8),
-          _buildDetailRow('Reason', leave.reason),
-          const SizedBox(height: 8),
-          _buildDetailRow('Applied Date', DateFormat.yMMMd().format(leave.appliedDate)),
-          const SizedBox(height: 8),
-          _buildDetailRow('Action By', leave.actionBy),
+          _buildDetailRow(
+            'Duration',
+            '${leave.totalDays} day${leave.totalDays != 1 ? 's' : ''}',
+            Icons.schedule_outlined,
+            colorScheme,
+          ),
+          SizedBox(height: 16),
+          _buildDetailRow(
+            'Reason',
+            leave.reason,
+            Icons.comment_outlined,
+            colorScheme,
+          ),
+          SizedBox(height: 16),
+          _buildDetailRow(
+            'Applied Date',
+            DateFormat.yMMMd().format(leave.appliedDate),
+            Icons.calendar_today_outlined,
+            colorScheme,
+          ),
+          SizedBox(height: 16),
+          _buildDetailRow(
+            'Action By',
+            leave.actionBy,
+            Icons.person_outline,
+            colorScheme,
+          ),
           if (leave.action.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            _buildDetailRow('Action', leave.action),
+            SizedBox(height: 16),
+            _buildDetailRow(
+              'Action',
+              leave.action,
+              Icons.info_outline,
+              colorScheme,
+            ),
           ],
-          const SizedBox(height: 16),
-          _buildActionButtons(context),
+          SizedBox(height: 20),
+          Divider(color: colorScheme.outline.withOpacity(0.1)),
+          SizedBox(height: 16),
+          _buildActionButtons(context, colorScheme),
         ],
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(
+    String label,
+    String value,
+    IconData icon,
+    ColorScheme colorScheme,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 80,
-          child: Text(
-            '$label:',
-            style: AppTextStyles.caption.copyWith(
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[700],
-            ),
-          ),
-        ),
+        Icon(icon, size: 18, color: colorScheme.onSurface.withOpacity(0.5)),
+        SizedBox(width: 12),
         Expanded(
-          child: Text(
-            value,
-            style: AppTextStyles.body.copyWith(
-              color: Colors.grey[800],
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: colorScheme.onSurface.withOpacity(0.5),
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                value,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildActionButtons(BuildContext context) {
+  Widget _buildActionButtons(BuildContext context, ColorScheme colorScheme) {
     return Row(
       children: [
         Expanded(
-          child: _buildActionButton(
-            context: context,
-            icon: Icons.edit,
-            label: 'Edit',
-            color: Colors.blue,
+          child: OutlinedButton.icon(
             onPressed: onEdit,
+            icon: Icon(Icons.edit_outlined, size: 18),
+            label: Text('Edit'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: colorScheme.primary,
+              side: BorderSide(color: colorScheme.primary),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: EdgeInsets.symmetric(vertical: 12),
+            ),
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Expanded(
-          child: _buildActionButton(
-            context: context,
-            icon: Icons.delete,
-            label: 'Delete',
-            color: Colors.red,
+          child: OutlinedButton.icon(
             onPressed: onDelete,
+            icon: Icon(Icons.delete_outline, size: 18),
+            label: Text('Delete'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: colorScheme.error,
+              side: BorderSide(color: colorScheme.error),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: EdgeInsets.symmetric(vertical: 12),
+            ),
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildActionButton({
-    required BuildContext context,
-    required IconData icon,
-    required String label,
-    required Color color,
-    VoidCallback? onPressed,
-  }) {
-    return ElevatedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 18),
-      label: Text(label),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-      ),
     );
   }
 

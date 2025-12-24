@@ -5,12 +5,16 @@ import 'package:quantum_dashboard/models/payslip_model.dart';
 import 'package:quantum_dashboard/services/api_service.dart';
 
 class PayslipService extends ApiService {
-  
-  // Get payslips for specific employee
-  Future<List<Payslip>> getPayslips(String empId, {int? month, int? year}) async {
-    final queryParams = <String, String>{
-      'empId': empId, // Always include empId
-    };
+  // Get payslips for specific employee or all payslips
+  Future<List<Payslip>> getPayslips(
+    String? empId, {
+    int? month,
+    int? year,
+  }) async {
+    final queryParams = <String, String>{};
+    if (empId != null && empId.isNotEmpty) {
+      queryParams['empId'] = empId;
+    }
     if (month != null) queryParams['month'] = month.toString();
     if (year != null) queryParams['year'] = year.toString();
 
@@ -22,8 +26,10 @@ class PayslipService extends ApiService {
     final response = await http.get(uri, headers: headers);
 
     final data = handleResponse(response);
-    final payslips = (data as List).map((json) => Payslip.fromJson(json)).toList();
-    
+    final payslips = (data as List)
+        .map((json) => Payslip.fromJson(json))
+        .toList();
+
     return payslips;
   }
 
@@ -31,15 +37,14 @@ class PayslipService extends ApiService {
   Future<List<EmployeePayslip>> getEmployeePayslips(String employeeId) async {
     final url = '${ApiService.baseUrl}/api/employee-payslip/$employeeId';
     final headers = await getHeaders();
-    
-    final response = await http.get(
-      Uri.parse(url),
-      headers: headers,
-    );
+
+    final response = await http.get(Uri.parse(url), headers: headers);
 
     final data = handleResponse(response);
-    final employeePayslips = (data as List).map((json) => EmployeePayslip.fromJson(json)).toList();
-    
+    final employeePayslips = (data as List)
+        .map((json) => EmployeePayslip.fromJson(json))
+        .toList();
+
     return employeePayslips;
   }
 
