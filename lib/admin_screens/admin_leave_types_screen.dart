@@ -93,6 +93,93 @@ class _AdminLeaveTypesScreenState extends State<AdminLeaveTypesScreen> {
     }
   }
 
+  Future<void> _editLeaveType(LeaveType leaveType) async {
+    final leaveTypeController = TextEditingController(
+      text: leaveType.leaveType,
+    );
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Edit Leave Type'),
+        content: TextField(
+          controller: leaveTypeController,
+          decoration: InputDecoration(
+            labelText: 'Leave Type',
+            hintText: 'e.g., Sick Leave',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (leaveTypeController.text.isNotEmpty) {
+                Navigator.of(context).pop(true);
+              }
+            },
+            child: Text('Update'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      try {
+        await _leaveTypeService.updateLeaveType(
+          id: leaveType.id,
+          leaveType: leaveTypeController.text.trim(),
+        );
+        _loadLeaveTypes();
+        SnackbarUtils.showSuccess(context, 'Leave type updated successfully!');
+      } catch (e) {
+        SnackbarUtils.showError(
+          context,
+          'Failed to update leave type: ${e.toString()}',
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteLeaveType(LeaveType leaveType) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete Leave Type'),
+        content: Text(
+          'Are you sure you want to delete ${leaveType.leaveType}? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _leaveTypeService.deleteLeaveType(leaveType.id);
+        _loadLeaveTypes();
+        SnackbarUtils.showSuccess(context, 'Leave type deleted successfully!');
+      } catch (e) {
+        SnackbarUtils.showError(
+          context,
+          'Failed to delete leave type: ${e.toString()}',
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -239,6 +326,23 @@ class _AdminLeaveTypesScreenState extends State<AdminLeaveTypesScreen> {
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: Icon(Icons.edit, size: 20),
+                                color: colorScheme.primary,
+                                onPressed: () => _editLeaveType(leaveType),
+                                tooltip: 'Edit',
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.delete, size: 20),
+                                color: colorScheme.error,
+                                onPressed: () => _deleteLeaveType(leaveType),
+                                tooltip: 'Delete',
+                              ),
+                            ],
                           ),
                         ),
                       );

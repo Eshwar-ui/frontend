@@ -12,6 +12,8 @@ import 'package:timeline_tile/timeline_tile.dart';
 import 'package:intl/intl.dart';
 import 'package:lottie/lottie.dart';
 import 'package:quantum_dashboard/providers/navigation_provider.dart';
+import 'package:quantum_dashboard/providers/notification_provider.dart';
+import 'package:quantum_dashboard/widgets/notification_icon_widget.dart';
 import 'package:geolocator/geolocator.dart';
 
 class OfficeLocation {
@@ -69,6 +71,12 @@ class _new_dashboardState extends State<new_dashboard> {
       _loadAttendanceData();
       _calculateTotalWorkTime(_todayPunches);
       _calculateTotalBreakTime(_todayPunches);
+      // Start notification polling
+      final notificationProvider = Provider.of<NotificationProvider>(
+        context,
+        listen: false,
+      );
+      notificationProvider.startPolling();
     });
   }
 
@@ -1203,6 +1211,8 @@ class _new_dashboardState extends State<new_dashboard> {
             ],
           ),
           Spacer(),
+          NotificationIconWidget(),
+          SizedBox(width: 12),
           GestureDetector(
             onTap: () {
               debugPrint(

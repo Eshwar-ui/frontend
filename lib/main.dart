@@ -12,6 +12,7 @@ import 'package:quantum_dashboard/providers/navigation_provider.dart';
 import 'package:quantum_dashboard/providers/location_provider.dart';
 import 'package:quantum_dashboard/providers/payslip_provider.dart';
 import 'package:quantum_dashboard/providers/theme_provider.dart';
+import 'package:quantum_dashboard/providers/notification_provider.dart';
 import 'package:quantum_dashboard/utils/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'screens/login_screen.dart';
@@ -39,6 +40,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => LeaveProvider()),
         ChangeNotifierProvider(create: (_) => PayslipProvider()),
         ChangeNotifierProvider(create: (_) => LocationProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
         // Add other providers here
       ],
       child: Consumer<ThemeProvider>(

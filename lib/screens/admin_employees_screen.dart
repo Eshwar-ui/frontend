@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/providers/employee_provider.dart';
@@ -345,7 +346,12 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
           radius: 24,
           backgroundColor: colorScheme.primary.withOpacity(0.1),
           child: Text(
-            employee.firstName.substring(0, 1).toUpperCase(),
+            (employee.firstName.isNotEmpty
+                    ? employee.firstName.substring(0, 1)
+                    : employee.fullName.isNotEmpty
+                    ? employee.fullName.substring(0, 1)
+                    : '?')
+                .toUpperCase(),
             style: GoogleFonts.poppins(
               color: colorScheme.primary,
               fontWeight: FontWeight.bold,
@@ -877,8 +883,19 @@ class _EditEmployeeDialogState extends State<EditEmployeeDialog> {
   late TextEditingController _addressController;
   late TextEditingController _departmentController;
   late TextEditingController _designationController;
+  late TextEditingController _gradeController;
+  late TextEditingController _banknameController;
+  late TextEditingController _accountnumberController;
+  late TextEditingController _ifsccodeController;
+  late TextEditingController _PANnoController;
+  late TextEditingController _UANnoController;
+  late TextEditingController _ESInoController;
+  late TextEditingController _fathernameController;
 
   late String _selectedRole;
+  late String? _selectedGender;
+  late DateTime _dateOfBirth;
+  late DateTime _joiningDate;
   bool _isLoading = false;
 
   @override
@@ -899,7 +916,26 @@ class _EditEmployeeDialogState extends State<EditEmployeeDialog> {
     _designationController = TextEditingController(
       text: widget.employee.designation ?? '',
     );
+    _gradeController = TextEditingController(text: widget.employee.grade ?? '');
+    _banknameController = TextEditingController(
+      text: widget.employee.bankname ?? '',
+    );
+    _accountnumberController = TextEditingController(
+      text: widget.employee.accountnumber ?? '',
+    );
+    _ifsccodeController = TextEditingController(
+      text: widget.employee.ifsccode ?? '',
+    );
+    _PANnoController = TextEditingController(text: widget.employee.PANno ?? '');
+    _UANnoController = TextEditingController(text: widget.employee.UANno ?? '');
+    _ESInoController = TextEditingController(text: widget.employee.ESIno ?? '');
+    _fathernameController = TextEditingController(
+      text: widget.employee.fathername ?? '',
+    );
     _selectedRole = widget.employee.role ?? 'employee';
+    _selectedGender = widget.employee.gender;
+    _dateOfBirth = widget.employee.dateOfBirth;
+    _joiningDate = widget.employee.joiningDate;
   }
 
   @override
@@ -1008,22 +1044,130 @@ class _EditEmployeeDialogState extends State<EditEmployeeDialog> {
                         ],
                       ),
                       SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        value: _selectedRole,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedRole,
+                              decoration: InputDecoration(
+                                labelText: 'Role',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              items: ['employee', 'admin', 'hr'].map((role) {
+                                return DropdownMenuItem(
+                                  value: role,
+                                  child: Text(role.toUpperCase()),
+                                );
+                              }).toList(),
+                              onChanged: (value) =>
+                                  setState(() => _selectedRole = value!),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<String?>(
+                              value: _selectedGender,
+                              decoration: InputDecoration(
+                                labelText: 'Gender',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              items: [
+                                DropdownMenuItem<String?>(
+                                  value: null,
+                                  child: Text('Not Specified'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'Male',
+                                  child: Text('Male'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'Female',
+                                  child: Text('Female'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'Other',
+                                  child: Text('Other'),
+                                ),
+                              ],
+                              onChanged: (value) =>
+                                  setState(() => _selectedGender = value),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 12),
+                      TextFormField(
+                        controller: _gradeController,
                         decoration: InputDecoration(
-                          labelText: 'Role',
+                          labelText: 'Grade',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        items: ['employee', 'admin', 'hr'].map((role) {
-                          return DropdownMenuItem(
-                            value: role,
-                            child: Text(role.toUpperCase()),
-                          );
-                        }).toList(),
-                        onChanged: (value) =>
-                            setState(() => _selectedRole = value!),
+                      ),
+                      SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: _dateOfBirth,
+                                  firstDate: DateTime(1950),
+                                  lastDate: DateTime.now(),
+                                );
+                                if (picked != null) {
+                                  setState(() => _dateOfBirth = picked);
+                                }
+                              },
+                              child: InputDecorator(
+                                decoration: InputDecoration(
+                                  labelText: 'Date of Birth',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  suffixIcon: Icon(Icons.calendar_today),
+                                ),
+                                child: Text(
+                                  DateFormat('dd-MM-yyyy').format(_dateOfBirth),
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: InkWell(
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: _joiningDate,
+                                  firstDate: DateTime(2000),
+                                  lastDate: DateTime.now(),
+                                );
+                                if (picked != null) {
+                                  setState(() => _joiningDate = picked);
+                                }
+                              },
+                              child: InputDecorator(
+                                decoration: InputDecoration(
+                                  labelText: 'Joining Date',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  suffixIcon: Icon(Icons.calendar_today),
+                                ),
+                                child: Text(
+                                  DateFormat('dd-MM-yyyy').format(_joiningDate),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       SizedBox(height: 12),
                       TextFormField(
@@ -1035,6 +1179,108 @@ class _EditEmployeeDialogState extends State<EditEmployeeDialog> {
                           ),
                         ),
                         maxLines: 2,
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        'Bank Details',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      TextFormField(
+                        controller: _banknameController,
+                        decoration: InputDecoration(
+                          labelText: 'Bank Name',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _accountnumberController,
+                              decoration: InputDecoration(
+                                labelText: 'Account Number',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _ifsccodeController,
+                              decoration: InputDecoration(
+                                labelText: 'IFSC Code',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        'Government IDs',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      TextFormField(
+                        controller: _PANnoController,
+                        decoration: InputDecoration(
+                          labelText: 'PAN Number',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _UANnoController,
+                              decoration: InputDecoration(
+                                labelText: 'UAN Number',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _ESInoController,
+                              decoration: InputDecoration(
+                                labelText: 'ESI Number',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 12),
+                      TextFormField(
+                        controller: _fathernameController,
+                        decoration: InputDecoration(
+                          labelText: 'Father\'s Name',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -1102,7 +1348,18 @@ class _EditEmployeeDialogState extends State<EditEmployeeDialog> {
         'department': _departmentController.text.trim(),
         'designation': _designationController.text.trim(),
         'role': _selectedRole,
+        'gender': _selectedGender,
+        'grade': _gradeController.text.trim(),
+        'dateOfBirth': _dateOfBirth.toIso8601String(),
+        'joiningDate': _joiningDate.toIso8601String(),
         'address': _addressController.text.trim(),
+        'bankname': _banknameController.text.trim(),
+        'accountnumber': _accountnumberController.text.trim(),
+        'ifsccode': _ifsccodeController.text.trim(),
+        'PANno': _PANnoController.text.trim(),
+        'UANno': _UANnoController.text.trim(),
+        'ESIno': _ESInoController.text.trim(),
+        'fathername': _fathernameController.text.trim(),
       };
 
       final result = await employeeProvider.updateEmployee(
@@ -1145,6 +1402,14 @@ class _EditEmployeeDialogState extends State<EditEmployeeDialog> {
     _addressController.dispose();
     _departmentController.dispose();
     _designationController.dispose();
+    _gradeController.dispose();
+    _banknameController.dispose();
+    _accountnumberController.dispose();
+    _ifsccodeController.dispose();
+    _PANnoController.dispose();
+    _UANnoController.dispose();
+    _ESInoController.dispose();
+    _fathernameController.dispose();
     super.dispose();
   }
 }

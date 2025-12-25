@@ -110,6 +110,112 @@ class _AdminDepartmentsScreenState extends State<AdminDepartmentsScreen> {
     }
   }
 
+  Future<void> _editDepartment(Department department) async {
+    final departmentController = TextEditingController(
+      text: department.department,
+    );
+    final designationController = TextEditingController(
+      text: department.designation,
+    );
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Edit Department'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: departmentController,
+              decoration: InputDecoration(
+                labelText: 'Department',
+                hintText: 'e.g., Engineering',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            SizedBox(height: 16),
+            TextField(
+              controller: designationController,
+              decoration: InputDecoration(
+                labelText: 'Designation',
+                hintText: 'e.g., Software Developer',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (departmentController.text.isNotEmpty &&
+                  designationController.text.isNotEmpty) {
+                Navigator.of(context).pop(true);
+              }
+            },
+            child: Text('Update'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      try {
+        await _departmentService.updateDepartment(
+          id: department.id,
+          department: departmentController.text.trim(),
+          designation: designationController.text.trim(),
+        );
+        _loadDepartments();
+        SnackbarUtils.showSuccess(context, 'Department updated successfully!');
+      } catch (e) {
+        SnackbarUtils.showError(
+          context,
+          'Failed to update department: ${e.toString()}',
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteDepartment(Department department) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete Department'),
+        content: Text(
+          'Are you sure you want to delete ${department.department} - ${department.designation}? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _departmentService.deleteDepartment(department.id);
+        _loadDepartments();
+        SnackbarUtils.showSuccess(context, 'Department deleted successfully!');
+      } catch (e) {
+        SnackbarUtils.showError(
+          context,
+          'Failed to delete department: ${e.toString()}',
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -263,6 +369,23 @@ class _AdminDepartmentsScreenState extends State<AdminDepartmentsScreen> {
                               fontSize: 14,
                               color: colorScheme.onSurface.withOpacity(0.7),
                             ),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: Icon(Icons.edit, size: 20),
+                                color: colorScheme.primary,
+                                onPressed: () => _editDepartment(dept),
+                                tooltip: 'Edit',
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.delete, size: 20),
+                                color: colorScheme.error,
+                                onPressed: () => _deleteDepartment(dept),
+                                tooltip: 'Delete',
+                              ),
+                            ],
                           ),
                         ),
                       );

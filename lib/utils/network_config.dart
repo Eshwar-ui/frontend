@@ -11,9 +11,9 @@ class NetworkConfig {
   // static const String _productionUrl = 'https://quantum-dashboard-backend.onrender.com';
 
   // Development settings (for local development)
-  static const String _devMachineIp =
-      '192.168.1.26'; // Android emulator default
-  // static const String _devMachineIp = '10.0.2.2';
+  // static const String _devMachineIp =
+  //     '192.168.0.134'; // Android emulator default
+  static const String _devMachineIp = '10.0.2.2';
   static const int _serverPort = 4444; // Backend runs on port 4444
 
   // Set to true to use production backend, false for local development

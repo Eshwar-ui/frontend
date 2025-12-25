@@ -5,6 +5,7 @@ import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/providers/navigation_provider.dart';
 import 'package:quantum_dashboard/providers/employee_provider.dart';
 import 'package:quantum_dashboard/providers/payslip_provider.dart';
+import 'package:quantum_dashboard/providers/notification_provider.dart';
 import 'package:quantum_dashboard/models/payslip_model.dart';
 import 'package:quantum_dashboard/widgets/generate_payslip_dialog.dart';
 import 'package:quantum_dashboard/utils/snackbar_utils.dart';
@@ -96,6 +97,18 @@ class _AdminPayslipsScreenState extends State<AdminPayslipsScreen> {
         if (mounted) {
           SnackbarUtils.showSuccess(context, 'Payslip generated successfully!');
           _loadPayslips();
+
+          // Notification is created automatically by backend
+          // Refresh notification count if provider is available
+          try {
+            final notificationProvider = Provider.of<NotificationProvider>(
+              context,
+              listen: false,
+            );
+            await notificationProvider.loadUnreadCount();
+          } catch (e) {
+            // Notification provider might not be available, ignore
+          }
         }
       } catch (e) {
         if (mounted) {

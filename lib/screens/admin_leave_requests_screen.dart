@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:quantum_dashboard/models/leave_model.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/providers/leave_provider.dart';
+import 'package:quantum_dashboard/providers/notification_provider.dart';
 import 'package:quantum_dashboard/utils/text_styles.dart';
 
 class AdminLeaveRequestsScreen extends StatefulWidget {
@@ -569,6 +570,18 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
         ),
       );
       _refreshLeaveRequests();
+
+      // Notification is created automatically by backend
+      // Refresh notification count if provider is available
+      try {
+        final notificationProvider = Provider.of<NotificationProvider>(
+          context,
+          listen: false,
+        );
+        await notificationProvider.loadUnreadCount();
+      } catch (e) {
+        // Notification provider might not be available, ignore
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -598,7 +611,20 @@ class _StatusUpdateDialogState extends State<StatusUpdateDialog> {
   @override
   void initState() {
     super.initState();
-    _selectedStatus = widget.leave.status;
+    // Normalize the status to match dropdown items
+    final currentStatus = widget.leave.status.toLowerCase().trim();
+    if (currentStatus == 'declined' ||
+        currentStatus == 'reject' ||
+        currentStatus.contains('reject')) {
+      _selectedStatus = 'rejected';
+    } else if (currentStatus == 'approve' || currentStatus.contains('approv')) {
+      _selectedStatus = 'approved';
+    } else if (currentStatus == 'pending' || currentStatus.contains('pend')) {
+      _selectedStatus = 'pending';
+    } else {
+      // Default to pending if status doesn't match
+      _selectedStatus = 'pending';
+    }
     _commentsController.text = widget.leave.action;
   }
 

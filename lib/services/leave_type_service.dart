@@ -47,4 +47,30 @@ class LeaveTypeService extends ApiService {
     final data = handleResponse(response);
     return data;
   }
+
+  // Update leave type
+  Future<Map<String, dynamic>> updateLeaveType({
+    required String id,
+    required String leaveType,
+  }) async {
+    final response = await http.put(
+      Uri.parse('${ApiService.baseUrl}/api/leaveType/$id'),
+      headers: await getHeaders(),
+      body: json.encode({'leaveType': leaveType}),
+    );
+
+    final data = handleResponse(response);
+    return data;
+  }
+
+  // Delete leave type
+  Future<Map<String, dynamic>> deleteLeaveType(String id) async {
+    final response = await http.delete(
+      Uri.parse('${ApiService.baseUrl}/api/leaveType/$id'),
+      headers: await getHeaders(),
+    );
+
+    final data = handleResponse(response);
+    return data;
+  }
 }
