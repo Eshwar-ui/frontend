@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/admin_screens/admin_nav_screen.dart';
 import 'package:quantum_dashboard/new_Screens/main_screen.dart';
-import 'package:quantum_dashboard/prctice.dart';
 import 'package:quantum_dashboard/providers/attendance_provider.dart';
 import 'package:quantum_dashboard/providers/employee_provider.dart';
 import 'package:quantum_dashboard/providers/holiday_provider.dart';
@@ -13,6 +12,8 @@ import 'package:quantum_dashboard/providers/location_provider.dart';
 import 'package:quantum_dashboard/providers/payslip_provider.dart';
 import 'package:quantum_dashboard/providers/theme_provider.dart';
 import 'package:quantum_dashboard/providers/notification_provider.dart';
+import 'package:quantum_dashboard/providers/notification_settings_provider.dart';
+import 'package:quantum_dashboard/services/local_notification_service.dart';
 import 'package:quantum_dashboard/utils/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'screens/login_screen.dart';
@@ -21,7 +22,18 @@ import 'package:quantum_dashboard/screens/profile_screen.dart';
 import 'screens/splashscreen.dart';
 import 'screens/change_password_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize local notifications
+  try {
+    await LocalNotificationService().initialize();
+    await LocalNotificationService().requestPermissions();
+  } catch (e) {
+    debugPrint('Error initializing local notifications: $e');
+    // Continue app initialization even if notifications fail
+  }
+
   runApp(MyApp());
 }
 
@@ -41,6 +53,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PayslipProvider()),
         ChangeNotifierProvider(create: (_) => LocationProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationSettingsProvider()),
         // Add other providers here
       ],
       child: Consumer<ThemeProvider>(

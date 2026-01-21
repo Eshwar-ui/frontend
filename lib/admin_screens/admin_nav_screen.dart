@@ -5,6 +5,10 @@ import 'package:quantum_dashboard/admin_screens/admin_dashboard_screen.dart';
 import 'package:quantum_dashboard/admin_screens/admin_departments_screen.dart';
 import 'package:quantum_dashboard/admin_screens/admin_leave_types_screen.dart';
 import 'package:quantum_dashboard/admin_screens/admin_payslips_screen.dart';
+import 'package:quantum_dashboard/admin_screens/admin_mobile_access_screen.dart';
+import 'package:quantum_dashboard/admin_screens/admin_company_locations_screen.dart';
+import 'package:quantum_dashboard/admin_screens/admin_employee_locations_screen.dart';
+import 'package:quantum_dashboard/admin_screens/admin_attendance_screen.dart';
 import 'package:quantum_dashboard/screens/admin_employees_screen.dart';
 import 'package:quantum_dashboard/screens/admin_holidays_screen.dart';
 import 'package:quantum_dashboard/screens/admin_leave_requests_screen.dart';
@@ -28,6 +32,10 @@ class _AdminNavScreenState extends State<AdminNavScreen> {
     NavigationPage.AdminDepartments: 0, // Show in dashboard area
     NavigationPage.AdminLeaveTypes: 0, // Show in dashboard area
     NavigationPage.AdminPayslips: 0, // Show in dashboard area
+    NavigationPage.AdminMobileAccess: 0, // Show in dashboard area
+    NavigationPage.AdminCompanyLocations: 0, // Show in dashboard area
+    NavigationPage.AdminEmployeeLocations: 0, // Show in dashboard area
+    NavigationPage.AdminAttendance: 0, // Show in dashboard area
   };
 
   late final List<Widget> _widgetOptions;
@@ -59,6 +67,14 @@ class _AdminNavScreenState extends State<AdminNavScreen> {
         return AdminLeaveTypesScreen();
       case NavigationPage.AdminPayslips:
         return AdminPayslipsScreen();
+      case NavigationPage.AdminMobileAccess:
+        return AdminMobileAccessScreen();
+      case NavigationPage.AdminCompanyLocations:
+        return AdminCompanyLocationsScreen();
+      case NavigationPage.AdminEmployeeLocations:
+        return AdminEmployeeLocationsScreen();
+      case NavigationPage.AdminAttendance:
+        return AdminAttendanceScreen();
       default:
         return AdminDashboardScreen();
     }
@@ -81,10 +97,20 @@ class _AdminNavScreenState extends State<AdminNavScreen> {
 
     debugPrint("Building AdminNavScreen with selectedIndex: $_selectedIndex");
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Stack(
+    return PopScope(
+      canPop: currentPage == NavigationPage.Dashboard,
+      onPopInvoked: (bool didPop) {
+        if (didPop) return;
+        
+        // If we are not on the dashboard, go back to dashboard
+        if (currentPage != NavigationPage.Dashboard) {
+           navigationProvider.setCurrentPage(NavigationPage.Dashboard);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: SafeArea(
+          child: Stack(
           children: [
             // Main content with bottom padding to prevent overlap with nav bar
             Consumer<NavigationProvider>(
@@ -105,6 +131,18 @@ class _AdminNavScreenState extends State<AdminNavScreen> {
                     break;
                   case NavigationPage.AdminPayslips:
                     currentScreen = AdminPayslipsScreen();
+                    break;
+                  case NavigationPage.AdminMobileAccess:
+                    currentScreen = AdminMobileAccessScreen();
+                    break;
+                  case NavigationPage.AdminCompanyLocations:
+                    currentScreen = AdminCompanyLocationsScreen();
+                    break;
+                  case NavigationPage.AdminEmployeeLocations:
+                    currentScreen = AdminEmployeeLocationsScreen();
+                    break;
+                  case NavigationPage.AdminAttendance:
+                    currentScreen = AdminAttendanceScreen();
                     break;
                   default:
                     currentScreen = _widgetOptions[_selectedIndex];
@@ -230,6 +268,7 @@ class _AdminNavScreenState extends State<AdminNavScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 

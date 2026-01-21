@@ -6,7 +6,10 @@ import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/providers/employee_provider.dart';
 import 'package:quantum_dashboard/utils/text_styles.dart';
+import 'package:quantum_dashboard/utils/error_handler.dart';
+import 'package:quantum_dashboard/widgets/error_widget.dart';
 import 'package:quantum_dashboard/screens/employee_detail_screen.dart';
+import 'package:quantum_dashboard/screens/add_employee_screen.dart';
 
 class AdminEmployeesScreen extends StatefulWidget {
   @override
@@ -117,7 +120,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                   ),
                   Spacer(),
                   ElevatedButton.icon(
-                    onPressed: () => _showAddEmployeeDialog(),
+                    onPressed: () => _showAddEmployeeScreen(),
                     icon: Icon(Icons.add, size: 20),
                     label: Text('Add'),
                     style: ElevatedButton.styleFrom(
@@ -180,48 +183,15 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
         Expanded(
           child: Consumer<EmployeeProvider>(
             builder: (context, employeeProvider, child) {
-              // Trigger data load if not already loading and no data
-              if (!employeeProvider.isLoading &&
-                  employeeProvider.employees.isEmpty) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) {
-                    final provider = Provider.of<EmployeeProvider>(
-                      context,
-                      listen: false,
-                    );
-                    provider.getAllEmployees();
-                  }
-                });
-              }
-
               if (employeeProvider.isLoading) {
                 return Center(child: CircularProgressIndicator());
               }
 
               if (employeeProvider.error != null) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.error_outline, size: 64, color: Colors.red),
-                      SizedBox(height: 16),
-                      Text(
-                        'Error loading employees',
-                        style: AppTextStyles.subheading,
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        employeeProvider.error!,
-                        style: AppTextStyles.body,
-                        textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _refreshEmployees,
-                        child: Text('Retry'),
-                      ),
-                    ],
-                  ),
+                return ErrorStateWidget(
+                  title: 'Unable to load employees',
+                  message: ErrorHandler.getErrorMessage(employeeProvider.error),
+                  onRetry: _refreshEmployees,
                 );
               }
 
@@ -244,7 +214,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                       ),
                       SizedBox(height: 16),
                       ElevatedButton.icon(
-                        onPressed: () => _showAddEmployeeDialog(),
+                        onPressed: () => _showAddEmployeeScreen(),
                         icon: Icon(Icons.add),
                         label: Text('Add Employee'),
                       ),
@@ -509,11 +479,13 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
     );
   }
 
-  void _showAddEmployeeDialog() {
-    showDialog(
-      context: context,
-      builder: (context) =>
-          AddEmployeeDialog(onEmployeeAdded: _refreshEmployees),
+  void _showAddEmployeeScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            AddEmployeeScreen(onEmployeeAdded: _refreshEmployees),
+      ),
     );
   }
 
@@ -588,280 +560,6 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
   }
 }
 
-// Add Employee Dialog
-class AddEmployeeDialog extends StatefulWidget {
-  final VoidCallback onEmployeeAdded;
-
-  AddEmployeeDialog({required this.onEmployeeAdded});
-
-  @override
-  _AddEmployeeDialogState createState() => _AddEmployeeDialogState();
-}
-
-class _AddEmployeeDialogState extends State<AddEmployeeDialog> {
-  final _formKey = GlobalKey<FormState>();
-
-  final _firstNameController = TextEditingController();
-  final _lastNameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _addressController = TextEditingController();
-  final _salaryController = TextEditingController();
-  final _employeeIdController = TextEditingController();
-  final _departmentController = TextEditingController();
-  final _designationController = TextEditingController();
-
-  String _selectedRole = 'employee';
-  DateTime _joinDate = DateTime.now();
-  bool _isLoading = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-        padding: EdgeInsets.all(24),
-        constraints: BoxConstraints(maxHeight: 600),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Add New Employee',
-              style: GoogleFonts.poppins(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 20),
-            Expanded(
-              child: Form(
-                key: _formKey,
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _firstNameController,
-                              decoration: InputDecoration(
-                                labelText: 'First Name',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              validator: (value) =>
-                                  value?.isEmpty ?? true ? 'Required' : null,
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _lastNameController,
-                              decoration: InputDecoration(
-                                labelText: 'Last Name',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              validator: (value) =>
-                                  value?.isEmpty ?? true ? 'Required' : null,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 12),
-                      TextFormField(
-                        controller: _emailController,
-                        decoration: InputDecoration(
-                          labelText: 'Email',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value?.isEmpty ?? true) return 'Required';
-                          if (!value!.contains('@')) return 'Invalid email';
-                          return null;
-                        },
-                      ),
-                      SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _employeeIdController,
-                              decoration: InputDecoration(
-                                labelText: 'Employee ID',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              validator: (value) =>
-                                  value?.isEmpty ?? true ? 'Required' : null,
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _selectedRole,
-                              decoration: InputDecoration(
-                                labelText: 'Role',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              items: ['employee', 'admin', 'hr'].map((role) {
-                                return DropdownMenuItem(
-                                  value: role,
-                                  child: Text(role.toUpperCase()),
-                                );
-                              }).toList(),
-                              onChanged: (value) =>
-                                  setState(() => _selectedRole = value!),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 12),
-                      TextFormField(
-                        controller: _departmentController,
-                        decoration: InputDecoration(
-                          labelText: 'Department',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      TextFormField(
-                        controller: _phoneController,
-                        decoration: InputDecoration(
-                          labelText: 'Phone',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      TextFormField(
-                        controller: _addressController,
-                        decoration: InputDecoration(
-                          labelText: 'Address',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        maxLines: 2,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text('Cancel'),
-                    style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _addEmployee,
-                    child: _isLoading
-                        ? SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text('Add Employee'),
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _addEmployee() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
-    try {
-      final employeeProvider = Provider.of<EmployeeProvider>(
-        context,
-        listen: false,
-      );
-      final employeeData = {
-        'employeeId': _employeeIdController.text.trim(),
-        'firstName': _firstNameController.text.trim(),
-        'lastName': _lastNameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'mobile': _phoneController.text.trim(),
-        'dateOfBirth': DateTime.now().subtract(Duration(days: 25 * 365)),
-        'joiningDate': _joinDate,
-        'password': 'defaultPassword123',
-        'role': _selectedRole,
-        'department': _departmentController.text.trim(),
-        'address': _addressController.text.trim(),
-      };
-
-      final result = await employeeProvider.addEmployee(employeeData);
-      if (result['success'] != false) {
-        Navigator.pop(context);
-        widget.onEmployeeAdded();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Success'), backgroundColor: Colors.green),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Error'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  @override
-  void dispose() {
-    _firstNameController.dispose();
-    _lastNameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _addressController.dispose();
-    _salaryController.dispose();
-    _employeeIdController.dispose();
-    _departmentController.dispose();
-    _designationController.dispose();
-    super.dispose();
-  }
-}
-
 // Edit Employee Dialog
 class EditEmployeeDialog extends StatefulWidget {
   final Employee employee;
@@ -896,6 +594,7 @@ class _EditEmployeeDialogState extends State<EditEmployeeDialog> {
   late String? _selectedGender;
   late DateTime _dateOfBirth;
   late DateTime _joiningDate;
+  late bool _mobileAccessEnabled;
   bool _isLoading = false;
 
   @override
@@ -932,10 +631,11 @@ class _EditEmployeeDialogState extends State<EditEmployeeDialog> {
     _fathernameController = TextEditingController(
       text: widget.employee.fathername ?? '',
     );
-    _selectedRole = widget.employee.role ?? 'employee';
+    _selectedRole = (widget.employee.role ?? 'employee').toLowerCase();
     _selectedGender = widget.employee.gender;
     _dateOfBirth = widget.employee.dateOfBirth;
     _joiningDate = widget.employee.joiningDate;
+    _mobileAccessEnabled = widget.employee.mobileAccessEnabled ?? false;
   }
 
   @override
@@ -1282,6 +982,30 @@ class _EditEmployeeDialogState extends State<EditEmployeeDialog> {
                           ),
                         ),
                       ),
+                      SizedBox(height: 12),
+                      SwitchListTile(
+                        title: Text(
+                          'Enable Mobile Access',
+                          style: GoogleFonts.poppins(fontSize: 14),
+                        ),
+                        subtitle: Text(
+                          'Allow employee to log in via mobile app',
+                          style: GoogleFonts.poppins(fontSize: 12),
+                        ),
+                        value: _mobileAccessEnabled,
+                        onChanged: (value) {
+                          setState(() => _mobileAccessEnabled = value);
+                        },
+                        secondary: Icon(
+                          Icons.phone_android,
+                          color: Colors.blue,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(color: Colors.grey.withOpacity(0.3)),
+                        ),
+                      ),
+                      SizedBox(height: 12),
                     ],
                   ),
                 ),
@@ -1360,10 +1084,13 @@ class _EditEmployeeDialogState extends State<EditEmployeeDialog> {
         'UANno': _UANnoController.text.trim(),
         'ESIno': _ESInoController.text.trim(),
         'fathername': _fathernameController.text.trim(),
+        'mobileAccessEnabled': _mobileAccessEnabled,
       };
 
       final result = await employeeProvider.updateEmployee(
-        widget.employee.employeeId,
+        widget.employee.id.isNotEmpty
+            ? widget.employee.id
+            : widget.employee.employeeId,
         employeeData,
       );
 

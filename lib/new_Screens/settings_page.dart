@@ -4,7 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/providers/theme_provider.dart';
 
 import 'package:quantum_dashboard/providers/local_auth_provider.dart';
-import 'package:quantum_dashboard/screens/add_head_office_location_screen.dart';
+import 'package:quantum_dashboard/new_Screens/notification_settings_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -49,23 +50,6 @@ class SettingsPage extends StatelessWidget {
                 const SizedBox(height: 12),
                 _buildDeviceLockSettings(context),
                 const SizedBox(height: 32),
-                _buildSectionTitle('Company Settings', Icons.business, Colors.green),
-                const SizedBox(height: 12),
-                _buildSettingsTile(
-                  context,
-                  Icons.add_location_alt_outlined,
-                  'Add Head Office Location',
-                  'Configure company head office location',
-                  () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AddHeadOfficeLocationScreen(),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 32),
                 _buildSectionTitle('Preferences', Icons.tune, Colors.blue),
                 const SizedBox(height: 12),
                 _buildSettingsTile(
@@ -74,10 +58,11 @@ class SettingsPage extends StatelessWidget {
                   'Notifications',
                   'Manage notification preferences',
                   () {
-                    _showSettingsDialog(
+                    Navigator.push(
                       context,
-                      'Notifications',
-                      'Notification settings coming soon!',
+                      MaterialPageRoute(
+                        builder: (context) => NotificationSettingsScreen(),
+                      ),
                     );
                   },
                 ),
@@ -338,36 +323,6 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  void _showSettingsDialog(BuildContext context, String title, String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(
-            title,
-            style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-          ),
-          content: Text(message, style: GoogleFonts.poppins()),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'OK',
-                style: GoogleFonts.poppins(
-                  color: Color(0xFF1976D2),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Widget _buildDeviceLockSettings(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -523,64 +478,413 @@ class SettingsPage extends StatelessWidget {
 
   void _showAboutDialog(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final packageInfo = '1.0.1+2'; // From pubspec.yaml
+    final buildNumber = packageInfo.split('+').last;
+    final versionNumber = packageInfo.split('+').first;
+
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
+      builder: (BuildContext dialogContext) {
+        return Dialog(
           backgroundColor: theme.cardColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: Row(
-            children: [
-              Icon(Icons.info_outline, color: Color(0xFF1976D2)),
-              SizedBox(width: 12),
-              Text(
-                'About',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-              ),
-            ],
+          child: Container(
+            constraints: BoxConstraints(maxHeight: 600, maxWidth: 400),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header
+                Container(
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.info_outline,
+                          color: colorScheme.primary,
+                          size: 24,
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'About',
+                              style: GoogleFonts.poppins(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                            Text(
+                              'Quantum Dashboard',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: colorScheme.onSurface.withOpacity(0.7),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Scrollable Content
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // App Info Section
+                        _buildAboutSection(
+                          context,
+                          'App Information',
+                          Icons.apps,
+                          [
+                            _buildInfoRow(
+                              context,
+                              'Version',
+                              'Version $versionNumber (Build $buildNumber)',
+                              Icons.tag,
+                            ),
+                            SizedBox(height: 8),
+                            _buildInfoRow(
+                              context,
+                              'Description',
+                              'Comprehensive Employee Management System for modern organizations',
+                              Icons.description,
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 20),
+                        // Features Section
+                        _buildAboutSection(
+                          context,
+                          'Key Features',
+                          Icons.star,
+                          [
+                            _buildFeatureItem(context, 'Attendance Tracking'),
+                            _buildFeatureItem(context, 'Leave Management'),
+                            _buildFeatureItem(context, 'Payslip Generation'),
+                            _buildFeatureItem(context, 'Holiday Calendar'),
+                            _buildFeatureItem(context, 'Employee Directory'),
+                            _buildFeatureItem(
+                              context,
+                              'Real-time Notifications',
+                            ),
+                            _buildFeatureItem(context, 'Secure Authentication'),
+                            _buildFeatureItem(context, 'Profile Management'),
+                          ],
+                        ),
+                        SizedBox(height: 20),
+                        // Company Information
+                        _buildAboutSection(
+                          context,
+                          'Company Information',
+                          Icons.business,
+                          [
+                            _buildInfoRow(
+                              context,
+                              'Company',
+                              'Quantum Works Private Limited',
+                              Icons.apartment,
+                            ),
+                            SizedBox(height: 8),
+                            _buildClickableInfoRow(
+                              context,
+                              'Support Email',
+                              'hr@quantumworks.in',
+                              Icons.email,
+                              () async {
+                                final Uri emailUri = Uri(
+                                  scheme: 'mailto',
+                                  path: 'hr@quantumworks.in',
+                                  query:
+                                      'subject=Support Request - Quantum Dashboard',
+                                );
+                                if (await canLaunchUrl(emailUri)) {
+                                  await launchUrl(emailUri);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 20),
+                        // Technical Details
+                        _buildAboutSection(
+                          context,
+                          'Technical Details',
+                          Icons.build,
+                          [
+                            _buildInfoRow(
+                              context,
+                              'Platform',
+                              'Flutter Multi-platform',
+                              Icons.phone_android,
+                            ),
+                            SizedBox(height: 8),
+                            _buildInfoRow(
+                              context,
+                              'Framework',
+                              'Flutter SDK',
+                              Icons.code,
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 20),
+                        // Copyright
+                        Center(
+                          child: Text(
+                            '© ${DateTime.now().year} Quantum Works Private Limited',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: colorScheme.onSurface.withOpacity(0.6),
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Center(
+                          child: Text(
+                            'All rights reserved',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              color: colorScheme.onSurface.withOpacity(0.5),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Footer Actions
+                Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        child: Text(
+                          'Close',
+                          style: GoogleFonts.poppins(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      TextButton.icon(
+                        onPressed: () async {
+                          final Uri emailUri = Uri(
+                            scheme: 'mailto',
+                            path: 'hr@quantumworks.in',
+                            query:
+                                'subject=Support Request - Quantum Dashboard',
+                          );
+                          if (await canLaunchUrl(emailUri)) {
+                            await launchUrl(emailUri);
+                          }
+                        },
+                        icon: Icon(Icons.support_agent, size: 18),
+                        label: Text(
+                          'Contact Support',
+                          style: GoogleFonts.poppins(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Quantum Dashboard',
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Version 2.0.0',
-                style: GoogleFonts.poppins(color: Colors.grey[600]),
-              ),
-              SizedBox(height: 16),
-              Text(
-                'Employee Management System',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'Close',
-                style: GoogleFonts.poppins(
-                  color: Color(0xFF1976D2),
-                  fontWeight: FontWeight.w600,
-                ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAboutSection(
+    BuildContext context,
+    String title,
+    IconData icon,
+    List<Widget> children,
+  ) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 18, color: colorScheme.primary),
+            SizedBox(width: 8),
+            Text(
+              title,
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
               ),
             ),
           ],
-        );
-      },
+        ),
+        SizedBox(height: 12),
+        Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.scaffoldBackgroundColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: colorScheme.primary.withOpacity(0.1),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: children,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(
+    BuildContext context,
+    String label,
+    String value,
+    IconData icon,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: colorScheme.primary.withOpacity(0.7)),
+        SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurface.withOpacity(0.7),
+                ),
+              ),
+              SizedBox(height: 2),
+              Text(
+                value,
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildClickableInfoRow(
+    BuildContext context,
+    String label,
+    String value,
+    IconData icon,
+    VoidCallback onTap,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 16, color: colorScheme.primary.withOpacity(0.7)),
+            SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface.withOpacity(0.7),
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      color: colorScheme.primary,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.open_in_new,
+              size: 16,
+              color: colorScheme.primary.withOpacity(0.7),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeatureItem(BuildContext context, String feature) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(Icons.check_circle, size: 16, color: Colors.green),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              feature,
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                color: colorScheme.onSurface,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

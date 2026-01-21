@@ -50,27 +50,29 @@ class ApiService {
     AppLogger.trace('API Response Body', response.body);
     AppLogger.trace('API Response Headers', response.headers);
 
-    // Check for 400 or 500 errors and throw ServerErrorException for admin mock data fallback
-    if (response.statusCode == 400 || response.statusCode == 500) {
-      // Try to extract meaningful error message from response
-      String errorMessage = 'Bad Request (400)';
-      if (response.statusCode == 500) {
-        errorMessage = 'Internal Server Error (500)';
-      } else {
-        // Try to parse error message from response
-        try {
-          final errorData = json.decode(response.body);
-          if (errorData is Map && errorData['message'] != null) {
-            errorMessage = errorData['message'];
-          } else if (errorData is String) {
-            errorMessage = errorData;
+    // Check for error status codes
+    if (response.statusCode >= 400) {
+      String errorMessage = 'An error occurred';
+      
+      // Try to parse error message from response
+      try {
+        final errorData = json.decode(response.body);
+        
+        // Check for 'error' field first (our standardized format)
+        if (errorData is Map) {
+          if (errorData['error'] != null) {
+            errorMessage = errorData['error'].toString();
+          } else if (errorData['message'] != null) {
+            errorMessage = errorData['message'].toString();
           }
-        } catch (e) {
-          // If response is not JSON, use the body as string (for backend middleware responses)
-          errorMessage = response.body.isNotEmpty
-              ? response.body
-              : 'Bad Request (400)';
+        } else if (errorData is String) {
+          errorMessage = errorData;
         }
+      } catch (e) {
+        // If response is not JSON, use the body as string
+        errorMessage = response.body.isNotEmpty
+            ? response.body
+            : getDefaultErrorMessage(response.statusCode);
       }
 
       AppLogger.error(
@@ -86,10 +88,13 @@ class ApiService {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return data;
       } else {
-        final errorMessage = data is Map
-            ? data['message'] ?? 'Error: HTTP ${response.statusCode}'
-            : 'Error: HTTP ${response.statusCode}';
-        throw Exception(errorMessage);
+        String errorMessage = 'An error occurred';
+        if (data is Map) {
+          errorMessage = data['error'] ?? data['message'] ?? 'Error: HTTP ${response.statusCode}';
+        } else {
+          errorMessage = 'Error: HTTP ${response.statusCode}';
+        }
+        throw ServerErrorException(errorMessage, statusCode: response.statusCode);
       }
     } catch (e) {
       // Don't wrap ServerErrorException
@@ -107,6 +112,26 @@ class ApiService {
         );
       }
       rethrow;
+    }
+  }
+
+  // Helper function to get default error message based on status code
+  static String getDefaultErrorMessage(int statusCode) {
+    switch (statusCode) {
+      case 400:
+        return 'Invalid request. Please check your input and try again.';
+      case 401:
+        return 'Authentication required. Please log in again.';
+      case 403:
+        return 'You do not have permission to perform this action.';
+      case 404:
+        return 'The requested resource was not found.';
+      case 409:
+        return 'A conflict occurred. The resource may already exist.';
+      case 500:
+        return 'Server error. Please try again later.';
+      default:
+        return 'An error occurred. Please try again.';
     }
   }
 }

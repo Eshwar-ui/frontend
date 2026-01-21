@@ -129,9 +129,11 @@ class _new_calender_screenState extends State<new_calender_screen> {
   }
 
   Widget _buildDayDetails(DateTime date) {
+    final user = Provider.of<AuthProvider>(context, listen: false).user;
+    final employeeId = user?.employeeId ?? '';
     final attendance = Provider.of<AttendanceProvider>(context, listen: false);
     final holidays = Provider.of<HolidayProvider>(context, listen: false);
-    final dateWiseData = attendance.dateWiseData;
+    final dateWiseData = attendance.getEmployeeDateWiseData(employeeId);
     final holidayList = holidays.holidays;
 
     final status = _getAttendanceStatus(date, dateWiseData, holidayList);
@@ -1391,11 +1393,15 @@ class _new_calender_screenState extends State<new_calender_screen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = Provider.of<AuthProvider>(context);
+    final user = auth.user;
+    final employeeId = user?.employeeId ?? '';
+
     final attendance = Provider.of<AttendanceProvider>(context);
     final holidays = Provider.of<HolidayProvider>(context);
-    final dateWiseData = attendance.getDateWiseData(
-      _focusedDay.month.toString() + '_' + _focusedDay.year.toString(),
-    );
+
+    // Using optimized employee-specific data
+    final dateWiseData = attendance.getEmployeeDateWiseData(employeeId);
     final holidayList = holidays.holidays;
 
     final weekDates = _weekFor(_selectedDay ?? DateTime.now());
@@ -1425,7 +1431,7 @@ class _new_calender_screenState extends State<new_calender_screen> {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: _buildCalendar(attendance.dateWiseData, holidayList),
+              child: _buildCalendar(dateWiseData, holidayList),
             ),
           ),
           SliverToBoxAdapter(

@@ -1,28 +1,11 @@
 import 'dart:convert';
-import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:quantum_dashboard/models/attendance_model.dart';
-import 'package:quantum_dashboard/models/head_office_location_model.dart';
 import 'package:quantum_dashboard/services/api_service.dart';
+import 'package:quantum_dashboard/services/location_service.dart';
 
 class AttendanceService extends ApiService {
-  static const double _allowedRadiusInMeters = 100;
-
-  // Hardcoded allowed locations
-  final List<HeadOfficeLocation> _allowedLocations = [
-    HeadOfficeLocation(
-      name: 'Head Office',
-      address: 'Hyderabad',
-      latitude: 17.4483265,
-      longitude: 78.3919326,
-    ),
-    HeadOfficeLocation(
-      name: 'Branch Office',
-      address: 'Bangalore',
-      latitude: 12.9716,
-      longitude: 77.5946,
-    ),
-  ];
+  final LocationService _locationService = LocationService();
 
   // Punch in
   Future<Map<String, dynamic>> punchIn(
@@ -31,7 +14,7 @@ class AttendanceService extends ApiService {
     double latitude,
     double longitude,
   ) async {
-    _validateLocation(latitude, longitude);
+    await _validateLocation(latitude, longitude, employeeId);
 
     final response = await http.post(
       Uri.parse('${ApiService.baseUrl}/api/punchin'),
@@ -55,7 +38,7 @@ class AttendanceService extends ApiService {
     double latitude,
     double longitude,
   ) async {
-    _validateLocation(latitude, longitude);
+    await _validateLocation(latitude, longitude, employeeId);
 
     final response = await http.post(
       Uri.parse('${ApiService.baseUrl}/api/punchout'),
@@ -72,26 +55,34 @@ class AttendanceService extends ApiService {
     return data;
   }
 
-  void _validateLocation(double latitude, double longitude) {
-    if (_allowedLocations.isEmpty) {
-      return;
-    }
-
-    for (final location in _allowedLocations) {
-      final distance = Geolocator.distanceBetween(
-        latitude,
-        longitude,
-        location.latitude,
-        location.longitude,
+  // Validate location using API (checks both company and employee locations)
+  Future<void> _validateLocation(
+    double latitude,
+    double longitude,
+    String employeeId,
+  ) async {
+    try {
+      final result = await _locationService.validateLocation(
+        latitude: latitude,
+        longitude: longitude,
+        employeeId: employeeId,
       );
-      if (distance <= _allowedRadiusInMeters) {
-        return; // User is within the allowed radius of a location
-      }
-    }
 
-    throw Exception(
-      'You are not at a valid office location to punch in or out.',
-    );
+      if (result['valid'] != true) {
+        final message = result['message'] ?? 
+            'You are not at a valid office location to punch in or out.';
+        throw Exception(message);
+      }
+    } catch (e) {
+      // Re-throw if it's already an Exception with a message
+      if (e is Exception) {
+        rethrow;
+      }
+      // Otherwise wrap in Exception
+      throw Exception(
+        'Location validation failed: ${e.toString()}',
+      );
+    }
   }
 
   // Get punches for specific employee

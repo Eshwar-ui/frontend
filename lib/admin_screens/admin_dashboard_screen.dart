@@ -120,33 +120,40 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return Consumer2<EmployeeProvider, LeaveProvider>(
       builder: (context, employeeProvider, leaveProvider, child) {
         final employeeCount = employeeProvider.employees.length;
-        final allLeaves = leaveProvider.leaves;
-        final pendingLeaves = allLeaves
-            .where((leave) => leave.status.toLowerCase().trim() == 'pending')
-            .length;
-        final approvedLeaves = allLeaves
-            .where(
-              (leave) =>
-                  leave.status.toLowerCase().trim() == 'approved' ||
-                  leave.status.toLowerCase().trim().contains('approv'),
-            )
-            .length;
-        final rejectedLeaves = allLeaves
-            .where(
-              (leave) =>
-                  leave.status.toLowerCase().trim() == 'rejected' ||
-                  leave.status.toLowerCase().trim() == 'declined' ||
-                  leave.status.toLowerCase().trim().contains('reject'),
-            )
-            .length;
-        final totalLeaves = allLeaves.length;
         final departmentCount = _departments.length;
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            children: [
-              Row(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isSmallScreen = constraints.maxWidth < 600;
+              
+              if (isSmallScreen) {
+                final screenWidth = MediaQuery.of(context).size.width;
+                return Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatCard(
+                        'Total Employees',
+                        employeeCount.toString(),
+                        Icons.people,
+                        Colors.blue,
+                      ),
+                    ),
+                    SizedBox(width: screenWidth * 0.02),
+                    Expanded(
+                      child: _buildStatCard(
+                      'Departments',
+                      departmentCount.toString(),
+                      Icons.business,
+                      Colors.purple,
+                    ),
+                    ),
+                  ],
+                );
+              }
+
+              return Row(
                 children: [
                   Expanded(
                     child: _buildStatCard(
@@ -156,7 +163,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       Colors.blue,
                     ),
                   ),
-                  SizedBox(width: 16),
+                  // SizedBox(width: 12),
                   Expanded(
                     child: _buildStatCard(
                       'Departments',
@@ -166,52 +173,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ),
                   ),
                 ],
-              ),
-              SizedBox(height: 16),
-              // Row(
-              //   children: [
-              //     Expanded(
-              //       child: _buildStatCard(
-              //         'Pending Leaves',
-              //         pendingLeaves.toString(),
-              //         Icons.assignment_late,
-              //         Colors.orange,
-              //       ),
-              //     ),
-              //     SizedBox(width: 16),
-              //     Expanded(
-              //       child: _buildStatCard(
-              //         'Approved Leaves',
-              //         approvedLeaves.toString(),
-              //         Icons.check_circle,
-              //         Colors.green,
-              //       ),
-              //     ),
-              //   ],
-              // ),
-              // SizedBox(height: 16),
-              // Row(
-              //   children: [
-              //     Expanded(
-              //       child: _buildStatCard(
-              //         'Rejected Leaves',
-              //         rejectedLeaves.toString(),
-              //         Icons.cancel,
-              //         Colors.red,
-              //       ),
-              //     ),
-              //     SizedBox(width: 16),
-              //     Expanded(
-              //       child: _buildStatCard(
-              //         'Total Leaves',
-              //         totalLeaves.toString(),
-              //         Icons.event_note,
-              //         Colors.teal,
-              //       ),
-              //     ),
-              //   ],
-              // ),
-            ],
+              );
+            },
           ),
         );
       },
@@ -904,55 +867,107 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
           ),
           SizedBox(height: 16),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 1.3,
-            children: [
-              _buildManagementCard(
-                'Holidays',
-                Icons.celebration,
-                Colors.purple,
-                () {
-                  navigationProvider.setCurrentPage(
-                    NavigationPage.AdminHolidays,
-                  );
-                },
-              ),
-              _buildManagementCard(
-                'Departments',
-                Icons.business,
-                Colors.blue,
-                () {
-                  navigationProvider.setCurrentPage(
-                    NavigationPage.AdminDepartments,
-                  );
-                },
-              ),
-              _buildManagementCard(
-                'Leave Types',
-                Icons.event_busy,
-                Colors.orange,
-                () {
-                  navigationProvider.setCurrentPage(
-                    NavigationPage.AdminLeaveTypes,
-                  );
-                },
-              ),
-              _buildManagementCard(
-                'Payslips',
-                Icons.receipt_long,
-                Colors.green,
-                () {
-                  navigationProvider.setCurrentPage(
-                    NavigationPage.AdminPayslips,
-                  );
-                },
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              int crossAxisCount = 2;
+              if (width > 900) {
+                crossAxisCount = 4;
+              } else if (width > 600) {
+                crossAxisCount = 3;
+              }
+
+              return GridView.count(
+                crossAxisCount: crossAxisCount,
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 1.25,
+                children: [
+                  _buildManagementCard(
+                    'Holidays',
+                    Icons.celebration,
+                    Colors.purple,
+                    () {
+                      navigationProvider.setCurrentPage(
+                        NavigationPage.AdminHolidays,
+                      );
+                    },
+                  ),
+                  _buildManagementCard(
+                    'Departments',
+                    Icons.business,
+                    Colors.blue,
+                    () {
+                      navigationProvider.setCurrentPage(
+                        NavigationPage.AdminDepartments,
+                      );
+                    },
+                  ),
+                  _buildManagementCard(
+                    'Leave Types',
+                    Icons.event_busy,
+                    Colors.orange,
+                    () {
+                      navigationProvider.setCurrentPage(
+                        NavigationPage.AdminLeaveTypes,
+                      );
+                    },
+                  ),
+                  _buildManagementCard(
+                    'Payslips',
+                    Icons.receipt_long,
+                    Colors.green,
+                    () {
+                      navigationProvider.setCurrentPage(
+                        NavigationPage.AdminPayslips,
+                      );
+                    },
+                  ),
+                  _buildManagementCard(
+                    'Mobile Access',
+                    Icons.phone_android,
+                    Colors.teal,
+                    () {
+                      navigationProvider.setCurrentPage(
+                        NavigationPage.AdminMobileAccess,
+                      );
+                    },
+                  ),
+                  _buildManagementCard(
+                    'Company Locations',
+                    Icons.business,
+                    Colors.indigo,
+                    () {
+                      navigationProvider.setCurrentPage(
+                        NavigationPage.AdminCompanyLocations,
+                      );
+                    },
+                  ),
+                  _buildManagementCard(
+                    'Employee Locations',
+                    Icons.home,
+                    Colors.pink,
+                    () {
+                      navigationProvider.setCurrentPage(
+                        NavigationPage.AdminEmployeeLocations,
+                      );
+                    },
+                  ),
+                  _buildManagementCard(
+                    'Attendance',
+                    Icons.calendar_month,
+                    Colors.redAccent,
+                    () {
+                      navigationProvider.setCurrentPage(
+                        NavigationPage.AdminAttendance,
+                      );
+                    },
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -987,6 +1002,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               padding: EdgeInsets.all(12),
@@ -996,15 +1012,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               child: Icon(icon, color: color, size: 28),
             ),
-            SizedBox(height: 12),
-            Text(
-              title,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: colorScheme.onSurface,
+            SizedBox(height: 8),
+            Flexible(
+              child: Text(
+                title,
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurface,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),

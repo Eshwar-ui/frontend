@@ -108,7 +108,10 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
       }
 
       // Also add events from dateWiseData for dates that might not have punches
-      for (var data in attendanceProvider.dateWiseData) {
+      final employeeDateWiseData = attendanceProvider.getEmployeeDateWiseData(
+        widget.employee.employeeId,
+      );
+      for (var data in employeeDateWiseData) {
         try {
           final dateKey = data['_id'] as String?;
           if (dateKey != null) {
@@ -535,7 +538,8 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
                     final attendanceProvider = context
                         .read<AttendanceProvider>();
                     final holidayProvider = context.read<HolidayProvider>();
-                    final dateWiseData = attendanceProvider.dateWiseData;
+                    final dateWiseData = attendanceProvider
+                        .getEmployeeDateWiseData(widget.employee.employeeId);
                     final holidayList = holidayProvider.holidays;
 
                     // Format date as YYYY-MM-DD for the API
@@ -779,7 +783,9 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
 
     // Get status from dateWiseData similar to new_calender_screen.dart
     final attendanceProvider = context.read<AttendanceProvider>();
-    final dateWiseData = attendanceProvider.dateWiseData;
+    final dateWiseData = attendanceProvider.getEmployeeDateWiseData(
+      widget.employee.employeeId,
+    );
     final status = _getAttendanceStatus(date, dateWiseData, holiday);
 
     Color backgroundColor = Colors.transparent;
@@ -2172,7 +2178,7 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 24),
                     child: Container(
-                      constraints: BoxConstraints(maxHeight: 400),
+                      // constraints: BoxConstraints(maxHeight: 400),
                       child: _buildPunchingStepper(punches, colorScheme),
                     ),
                   ),

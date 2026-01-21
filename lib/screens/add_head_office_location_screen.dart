@@ -3,7 +3,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/utils/text_styles.dart';
-import 'package:quantum_dashboard/models/head_office_location_model.dart';
 import 'package:quantum_dashboard/providers/location_provider.dart';
 import 'package:quantum_dashboard/widgets/custom_floating_container.dart';
 
@@ -36,10 +35,12 @@ class _AddHeadOfficeLocationScreenState
   }
 
   void _clearMessages() {
-    setState(() {
-      _errorMessage = null;
-      _successMessage = null;
-    });
+    if (mounted) {
+      setState(() {
+        _errorMessage = null;
+        _successMessage = null;
+      });
+    }
   }
 
   String? _validateRequired(String? value, String fieldName) {
@@ -60,6 +61,7 @@ class _AddHeadOfficeLocationScreenState
   }
 
   Future<void> _getCurrentLocation() async {
+    if (!mounted) return;
     setState(() {
       _isFetchingLocation = true;
       _errorMessage = null;
@@ -67,33 +69,46 @@ class _AddHeadOfficeLocationScreenState
 
     try {
       var status = await Permission.location.request();
+      if (!mounted) return;
+
       if (status.isGranted) {
         Position position = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.high);
-        setState(() {
-          _latitudeController.text = position.latitude.toString();
-          _longitudeController.text = position.longitude.toString();
-        });
+          desiredAccuracy: LocationAccuracy.high,
+        );
+        if (mounted) {
+          setState(() {
+            _latitudeController.text = position.latitude.toString();
+            _longitudeController.text = position.longitude.toString();
+          });
+        }
       } else if (status.isDenied) {
-        setState(() {
-          _errorMessage =
-              'Location permission is denied. Please grant permission to use this feature.';
-        });
+        if (mounted) {
+          setState(() {
+            _errorMessage =
+                'Location permission is denied. Please grant permission to use this feature.';
+          });
+        }
       } else if (status.isPermanentlyDenied) {
-        setState(() {
-          _errorMessage =
-              'Location permission is permanently denied. Please open app settings to grant permission.';
-        });
+        if (mounted) {
+          setState(() {
+            _errorMessage =
+                'Location permission is permanently denied. Please open app settings to grant permission.';
+          });
+        }
         await openAppSettings();
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to get current location. Please try again.';
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to get current location. Please try again.';
+        });
+      }
     } finally {
-      setState(() {
-        _isFetchingLocation = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isFetchingLocation = false;
+        });
+      }
     }
   }
 
@@ -102,36 +117,42 @@ class _AddHeadOfficeLocationScreenState
       return;
     }
 
+    if (!mounted) return;
     _clearMessages();
     setState(() {
       _isLoading = true;
     });
 
-    final locationProvider = Provider.of<LocationProvider>(context, listen: false);
-
-    final newLocation = HeadOfficeLocation(
-      name: _locationNameController.text,
-      address: _addressController.text,
-      latitude: double.parse(_latitudeController.text),
-      longitude: double.parse(_longitudeController.text),
+    final locationProvider = Provider.of<LocationProvider>(
+      context,
+      listen: false,
     );
 
     try {
-      await locationProvider.addLocation(newLocation);
+      await locationProvider.addLocation(
+        name: _locationNameController.text,
+        address: _addressController.text,
+        latitude: double.parse(_latitudeController.text),
+        longitude: double.parse(_longitudeController.text),
+      );
 
-      setState(() {
-        _successMessage = 'Head Office Location added successfully!';
-        _locationNameController.clear();
-        _addressController.clear();
-        _latitudeController.clear();
-        _longitudeController.clear();
-      });
+      if (mounted) {
+        setState(() {
+          _successMessage = 'Head Office Location added successfully!';
+          _locationNameController.clear();
+          _addressController.clear();
+          _latitudeController.clear();
+          _longitudeController.clear();
+        });
 
-      _showSuccessDialog();
+        _showSuccessDialog();
+      }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'An error occurred while saving. Please try again.';
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'An error occurred while saving. Please try again.';
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -142,6 +163,7 @@ class _AddHeadOfficeLocationScreenState
   }
 
   void _showSuccessDialog() {
+    if (!mounted) return;
     final colorScheme = Theme.of(context).colorScheme;
     showDialog(
       context: context,
@@ -256,7 +278,9 @@ class _AddHeadOfficeLocationScreenState
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: _isFetchingLocation ? null : _getCurrentLocation,
+                        onPressed: _isFetchingLocation
+                            ? null
+                            : _getCurrentLocation,
                         icon: _isFetchingLocation
                             ? SizedBox(
                                 width: 20,
@@ -269,9 +293,11 @@ class _AddHeadOfficeLocationScreenState
                                 ),
                               )
                             : Icon(Icons.my_location),
-                        label: Text(_isFetchingLocation
-                            ? 'Fetching Location...'
-                            : 'Auto-fill with Current Location'),
+                        label: Text(
+                          _isFetchingLocation
+                              ? 'Fetching Location...'
+                              : 'Auto-fill with Current Location',
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: colorScheme.secondary,
                           foregroundColor: colorScheme.onSecondary,
@@ -287,16 +313,18 @@ class _AddHeadOfficeLocationScreenState
                       controller: _latitudeController,
                       label: 'Latitude',
                       hint: 'Enter latitude (e.g., 34.0522)',
-                      keyboardType:
-                          TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       validator: (value) => _validateNumeric(value, 'Latitude'),
                     ),
                     _buildTextField(
                       controller: _longitudeController,
                       label: 'Longitude',
                       hint: 'Enter longitude (e.g., -118.2437)',
-                      keyboardType:
-                          TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       validator: (value) =>
                           _validateNumeric(value, 'Longitude'),
                     ),

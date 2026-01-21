@@ -111,10 +111,20 @@ class _NavScreenState extends State<NavScreen> {
     int _selectedIndex = _pageMap[currentPage] ?? 0;
     debugPrint("Building NavScreen with selectedIndex: $_selectedIndex");
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Stack(
+    return PopScope(
+      canPop: currentPage == NavigationPage.Dashboard,
+      onPopInvoked: (bool didPop) {
+        if (didPop) return;
+        
+        // If we are not on the dashboard, go back to dashboard
+        if (currentPage != NavigationPage.Dashboard) {
+           navigationProvider.setCurrentPage(NavigationPage.Dashboard);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: SafeArea(
+          child: Stack(
           children: [
             // Main content with bottom padding to prevent overlap with nav bar
             _widgetOptions[_selectedIndex],
@@ -211,6 +221,7 @@ class _NavScreenState extends State<NavScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 

@@ -326,7 +326,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       );
 
       print(
-        'DateWiseData returned ${attendanceProvider.dateWiseData.length} records',
+        'DateWiseData returned ${attendanceProvider.getEmployeeDateWiseData(employeeId).length} records',
       );
 
       // Also load current month punches for real-time data
@@ -369,11 +369,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       }
 
       // Process date-wise data (historical data)
-      print(
-        'Processing ${attendanceProvider.dateWiseData.length} date-wise records',
+      final employeeDateWiseData = attendanceProvider.getEmployeeDateWiseData(
+        employeeId,
       );
+      print('Processing ${employeeDateWiseData.length} date-wise records');
 
-      for (var dateData in attendanceProvider.dateWiseData) {
+      for (var dateData in employeeDateWiseData) {
         try {
           // Parse the date from dateWiseData format (likely dd-MM-yyyy)
           final dateStr = dateData['_id'] as String?;

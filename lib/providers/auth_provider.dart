@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../utils/app_logger.dart';
+import '../utils/allowed_users.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -20,35 +21,56 @@ class AuthProvider with ChangeNotifier {
     _error = null;
     notifyListeners();
 
-    // // Bypass login for admin
-    // if (email == 'admin@quantumworks.in') {
-    //   _user = Employee(
-    //     id: 'mock_admin_id',
-    //     employeeId: 'QWIT-1001',
-    //     firstName: 'Admin',
-    //     lastName: 'User',
-    //     email: email,
-    //     mobile: '0000000000',
-    //     dateOfBirth: DateTime.now(),
-    //     joiningDate: DateTime.now(),
-    //     password: 'password',
-    //     profileImage: '',
-    //     role: 'Admin',
-    //     department: 'IT',
-    //     designation: 'Administrator',
-    //   );
-    //   _isLoading = false;
-    //   print('AuthProvider: Admin login bypass successful');
-    //   notifyListeners();
-    //   return true;
-    // }
-
     try {
       AppLogger.info('AuthProvider: Attempting login', {'email': email});
       final result = await _authService.login(email, password);
 
       if (result['success']) {
-        _user = result['user'];
+        final user = result['user'] as Employee;
+
+        // Detect if user is an admin
+        bool userIsAdmin =
+            user.employeeId == 'QWIT-1001' ||
+            (user.role?.toLowerCase() == 'admin');
+
+        // 1. Check strict email allowlist or mobile access
+        // Admins and specifically allowed emails OR users with mobile access enabled are allowed
+        final emailLower = user.email.toLowerCase();
+        final isAllowedEmail = AllowedUsers.emails.any(
+          (e) => e.toLowerCase() == emailLower,
+        );
+
+        if (!userIsAdmin &&
+            !isAllowedEmail &&
+            user.mobileAccessEnabled != true) {
+          _error =
+              'Unauthorized Access: Your account is not on the authorized users list and mobile access is not enabled. Please contact your administrator.';
+          _isLoading = false;
+          AppLogger.warning(
+            'AuthProvider: Access denied (not in allowlist and no mobile access)',
+            {'email': user.email, 'employeeId': user.employeeId},
+          );
+          notifyListeners();
+          return false;
+        }
+
+        // 2. Check for mobile access if on mobile platform (redundant but kept for specific error message)
+        if (!userIsAdmin &&
+            (defaultTargetPlatform == TargetPlatform.android ||
+                defaultTargetPlatform == TargetPlatform.iOS)) {
+          if (user.mobileAccessEnabled != true) {
+            _error =
+                'Mobile Access Unauthorized: Your account does not have mobile access enabled. Please contact your administrator.';
+            _isLoading = false;
+            AppLogger.warning('AuthProvider: Mobile access denied', {
+              'employeeId': user.employeeId,
+            });
+            notifyListeners();
+            return false;
+          }
+        }
+
+        _user = user;
         _isLoading = false;
         AppLogger.info('AuthProvider: Login successful', {
           'fullName': _user?.fullName,
@@ -139,8 +161,9 @@ class AuthProvider with ChangeNotifier {
     return _user;
   }
 
-  // Check if user has admin role (QWIT-1001 is admin)
-  bool get isAdmin => _user?.employeeId == 'QWIT-1001';
+  // Check if user has admin role
+  bool get isAdmin =>
+      _user?.employeeId == 'QWIT-1001' || _user?.role?.toLowerCase() == 'admin';
 
   // Check if user has employee role
   bool get isEmployee => _user?.employeeId != 'QWIT-1001';

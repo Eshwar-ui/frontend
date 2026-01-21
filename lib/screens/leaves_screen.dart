@@ -6,6 +6,8 @@ import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/widgets/apply_leave_dialog.dart';
 import 'package:quantum_dashboard/widgets/leave_accordion.dart';
 import 'package:quantum_dashboard/models/leave_model.dart';
+import 'package:quantum_dashboard/utils/error_handler.dart';
+import 'package:quantum_dashboard/widgets/error_widget.dart';
 import 'package:intl/intl.dart';
 
 class LeavesScreen extends StatefulWidget {
@@ -38,9 +40,6 @@ class _LeavesScreenState extends State<LeavesScreen> {
           final user = _authProvider!.user;
           if (user != null) {
             _leaveProvider!.getMyLeaves(user.employeeId);
-          } else {
-            // If no user, still try to load mock data
-            _leaveProvider!.getMyLeaves('QWIT-1001');
           }
         }
       });
@@ -255,72 +254,50 @@ class _LeavesScreenState extends State<LeavesScreen> {
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       if (!mounted) return;
                       _lastErrorMessage = leaveProvider.error;
-                      final raw = leaveProvider.error!.toString();
-                      final msg = raw.startsWith('Exception: ')
-                          ? raw.substring('Exception: '.length)
-                          : raw;
-                      final lower = msg.toLowerCase();
-                      final showApi =
-                          lower.contains('already') || lower.contains('exists');
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            showApi
-                                ? msg
-                                : 'Something went wrong. Please try again.',
-                          ),
-                          backgroundColor: Colors.red,
-                          duration: Duration(seconds: 3),
-                        ),
+                      ErrorHandler.showError(
+                        context,
+                        error: leaveProvider.error,
+                        onRetry: () {
+                          if (_authProvider?.user != null) {
+                            _leaveProvider?.getMyLeaves(
+                              _authProvider!.user!.employeeId,
+                            );
+                          }
+                        },
                       );
                     });
                   }
 
-                  // Trigger data load if not already loading and no data
-                  if (!leaveProvider.isLoading &&
-                      leaveProvider.leaves.isEmpty) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted && _leaveProvider != null) {
+                  // Show error state if there's an error and no data
+                  if (leaveProvider.error != null &&
+                      leaveProvider.leaves.isEmpty &&
+                      !leaveProvider.isLoading) {
+                    return ErrorStateWidget(
+                      title: 'Unable to load leave requests',
+                      message: ErrorHandler.getErrorMessage(
+                        leaveProvider.error,
+                      ),
+                      onRetry: () {
                         if (_authProvider?.user != null) {
-                          _leaveProvider!.getMyLeaves(
+                          _leaveProvider?.getMyLeaves(
                             _authProvider!.user!.employeeId,
                           );
-                        } else {
-                          // Load mock data if no user
-                          _leaveProvider!.getMyLeaves('QWIT-1001');
                         }
-                      }
-                    });
+                      },
+                    );
                   }
 
                   // Only block the screen on initial load when there is no data yet
                   if (leaveProvider.isLoading && leaveProvider.leaves.isEmpty) {
                     return Center(child: CircularProgressIndicator());
                   } else if (leaveProvider.leaves.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.event_busy, size: 64, color: Colors.grey),
-                          SizedBox(height: 16),
-                          Text(
-                            'No leaves found',
-                            style: GoogleFonts.poppins(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: colorScheme.onSurface,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Apply for a leave to get started',
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              color: colorScheme.onSurface.withOpacity(0.6),
-                            ),
-                          ),
-                        ],
-                      ),
+                    return EmptyStateWidget(
+                      icon: Icons.event_busy,
+                      title: 'No leave requests yet',
+                      message:
+                          'Your leave requests will appear here once you apply for leave.',
+                      actionLabel: 'Apply for Leave',
+                      onAction: _applyForLeave,
                     );
                   }
 

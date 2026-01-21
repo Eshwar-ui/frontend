@@ -6,6 +6,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/services/attendance_service.dart';
+import 'package:quantum_dashboard/services/location_service.dart';
+import 'package:quantum_dashboard/models/company_location_model.dart';
+import 'package:quantum_dashboard/models/employee_location_model.dart';
 // import 'package:quantum_dashboard/services/leave_service.dart';
 import 'package:quantum_dashboard/models/attendance_model.dart';
 import 'package:timeline_tile/timeline_tile.dart';
@@ -13,20 +16,9 @@ import 'package:intl/intl.dart';
 import 'package:lottie/lottie.dart';
 import 'package:quantum_dashboard/providers/navigation_provider.dart';
 import 'package:quantum_dashboard/providers/notification_provider.dart';
+import 'package:quantum_dashboard/providers/notification_settings_provider.dart';
 import 'package:quantum_dashboard/widgets/notification_icon_widget.dart';
 import 'package:geolocator/geolocator.dart';
-
-class OfficeLocation {
-  final String name;
-  final double latitude;
-  final double longitude;
-
-  const OfficeLocation({
-    required this.name,
-    required this.latitude,
-    required this.longitude,
-  });
-}
 
 class new_dashboard extends StatefulWidget {
   const new_dashboard({super.key});
@@ -37,23 +29,14 @@ class new_dashboard extends StatefulWidget {
 
 class _new_dashboardState extends State<new_dashboard> {
   final AttendanceService _attendanceService = AttendanceService();
+  final LocationService _locationService = LocationService();
 
-  // Predefined office locations
-  final List<OfficeLocation> _officeLocations = [
-    OfficeLocation(
-      name: 'Head Office',
-      // latitude: 17.4483265, // Replace with actual latitude
-      // longitude: 78.3919326,
-      // // Replace with actual longitude
-      latitude: 17.44837,
-      longitude: 78.39188,
-    ),
-    OfficeLocation(
-      name: 'Branch Office',
-      latitude: 12.971599, // Replace with actual latitude
-      longitude: 77.594563, // Replace with actual longitude
-    ),
-  ];
+  // Company locations loaded from backend
+  List<CompanyLocation> _companyLocations = [];
+  // Employee-specific WFH locations loaded from backend
+  List<EmployeeLocation> _employeeLocations = [];
+  bool _isLoadingLocations = false;
+  String? _locationError;
 
   // Attendance data
   bool _isLoading = true;
@@ -68,16 +51,70 @@ class _new_dashboardState extends State<new_dashboard> {
     super.initState();
     // Wait for the widget to be fully built before accessing context
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAllLocations();
       _loadAttendanceData();
       _calculateTotalWorkTime(_todayPunches);
       _calculateTotalBreakTime(_todayPunches);
-      // Start notification polling
+      // Start notification polling if enabled
+      final settingsProvider = Provider.of<NotificationSettingsProvider>(
+        context,
+        listen: false,
+      );
       final notificationProvider = Provider.of<NotificationProvider>(
         context,
         listen: false,
       );
-      notificationProvider.startPolling();
+      if (settingsProvider.notificationsEnabled) {
+        notificationProvider.startPolling(
+          interval: Duration(seconds: settingsProvider.pollingInterval),
+        );
+      }
     });
+  }
+
+  Future<void> _loadAllLocations() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingLocations = true;
+      _locationError = null;
+    });
+
+    try {
+      // Load company locations
+      final companyLocations = await _locationService.getCompanyLocations();
+
+      // Load employee-specific locations
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final user = authProvider.user;
+      List<EmployeeLocation> employeeLocations = [];
+
+      if (user != null) {
+        try {
+          employeeLocations = await _locationService.getEmployeeLocations(
+            user.employeeId,
+          );
+        } catch (e) {
+          debugPrint('⚠️ Error loading employee locations: $e');
+          // Continue even if employee locations fail to load
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _companyLocations = companyLocations;
+          _employeeLocations = employeeLocations;
+          _isLoadingLocations = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading locations: $e');
+      if (mounted) {
+        setState(() {
+          _locationError = e.toString();
+          _isLoadingLocations = false;
+        });
+      }
+    }
   }
 
   @override
@@ -288,6 +325,32 @@ class _new_dashboardState extends State<new_dashboard> {
   }
 
   void _showLocationSelectionSheet() {
+    if (_isLoadingLocations) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Loading locations...'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+      return;
+    }
+
+    final totalLocations = _companyLocations.length + _employeeLocations.length;
+    if (totalLocations == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _locationError != null
+                ? 'Error loading locations: $_locationError'
+                : 'No locations available. Please contact your administrator.',
+          ),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -317,45 +380,174 @@ class _new_dashboardState extends State<new_dashboard> {
                 ),
               ),
               Flexible(
-                child: ListView.separated(
+                child: ListView(
                   shrinkWrap: true,
-                  itemCount: _officeLocations.length,
-                  separatorBuilder: (context, index) =>
-                      Divider(color: theme.dividerColor.withOpacity(0.1)),
-                  itemBuilder: (context, index) {
-                    final location = _officeLocations[index];
-                    return ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withOpacity(0.1),
-                          shape: BoxShape.circle,
+                  children: [
+                    // Company Locations Section
+                    if (_companyLocations.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 8,
                         ),
-                        child: Icon(
-                          Icons.location_on,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                      title: Text(
-                        location.name,
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.w500,
-                          color: theme.colorScheme.onSurface,
+                        child: Text(
+                          'Company Locations',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onSurface.withOpacity(0.7),
+                          ),
                         ),
                       ),
-                      subtitle: Text(
-                        '${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: theme.colorScheme.onSurface.withOpacity(0.5),
+                      ..._companyLocations.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final location = entry.value;
+                        return Column(
+                          children: [
+                            ListTile(
+                              leading: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary.withOpacity(
+                                    0.1,
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.business,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                              title: Text(
+                                location.name,
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w500,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    location.address,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      color: theme.colorScheme.onSurface
+                                          .withOpacity(0.7),
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    '${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 11,
+                                      color: theme.colorScheme.onSurface
+                                          .withOpacity(0.5),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              onTap: () {
+                                Navigator.pop(context);
+                                _verifyLocationAndPunch(
+                                  location.name,
+                                  location.latitude,
+                                  location.longitude,
+                                );
+                              },
+                            ),
+                            if (index < _companyLocations.length - 1 ||
+                                _employeeLocations.isNotEmpty)
+                              Divider(
+                                color: theme.dividerColor.withOpacity(0.1),
+                              ),
+                          ],
+                        );
+                      }),
+                    ],
+
+                    // Employee WFH Locations Section
+                    if (_employeeLocations.isNotEmpty) ...[
+                      if (_companyLocations.isNotEmpty) SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 8,
+                        ),
+                        child: Text(
+                          'Work From Home Locations',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onSurface.withOpacity(0.7),
+                          ),
                         ),
                       ),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _verifyLocationAndPunch(location);
-                      },
-                    );
-                  },
+                      ..._employeeLocations.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final location = entry.value;
+                        return Column(
+                          children: [
+                            ListTile(
+                              leading: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.secondary
+                                      .withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.home_work,
+                                  color: theme.colorScheme.secondary,
+                                ),
+                              ),
+                              title: Text(
+                                location.name,
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w500,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    location.address,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      color: theme.colorScheme.onSurface
+                                          .withOpacity(0.7),
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    '${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 11,
+                                      color: theme.colorScheme.onSurface
+                                          .withOpacity(0.5),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              onTap: () {
+                                Navigator.pop(context);
+                                _verifyLocationAndPunch(
+                                  location.name,
+                                  location.latitude,
+                                  location.longitude,
+                                );
+                              },
+                            ),
+                            if (index < _employeeLocations.length - 1)
+                              Divider(
+                                color: theme.dividerColor.withOpacity(0.1),
+                              ),
+                          ],
+                        );
+                      }),
+                    ],
+                  ],
                 ),
               ),
             ],
@@ -365,7 +557,11 @@ class _new_dashboardState extends State<new_dashboard> {
     );
   }
 
-  Future<void> _verifyLocationAndPunch(OfficeLocation targetLocation) async {
+  Future<void> _verifyLocationAndPunch(
+    String locationName,
+    double targetLatitude,
+    double targetLongitude,
+  ) async {
     // Check if widget is still mounted before accessing context
     if (!mounted) return;
 
@@ -469,27 +665,21 @@ class _new_dashboardState extends State<new_dashboard> {
       }
     }
 
-    if (position == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Could not retrieve location.')));
-      }
-      return;
-    }
+    // Position is assigned at this point
+    final currentPosition = position;
 
     // Calculate distance
     double distanceInMeters = Geolocator.distanceBetween(
-      position.latitude,
-      position.longitude,
-      targetLocation.latitude,
-      targetLocation.longitude,
+      currentPosition.latitude,
+      currentPosition.longitude,
+      targetLatitude,
+      targetLongitude,
     );
 
-    debugPrint('📍 User Location: ${position.latitude}, ${position.longitude}');
     debugPrint(
-      '🏢 Target Location: ${targetLocation.latitude}, ${targetLocation.longitude}',
+      '📍 User Location: ${currentPosition.latitude}, ${currentPosition.longitude}',
     );
+    debugPrint('🏢 Target Location: $targetLatitude, $targetLongitude');
     debugPrint('📏 Distance: ${distanceInMeters.toStringAsFixed(2)} meters');
 
     if (distanceInMeters > 500) {
@@ -497,7 +687,7 @@ class _new_dashboardState extends State<new_dashboard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'You are ${distanceInMeters.toStringAsFixed(0)}m away from ${targetLocation.name}. Must be within 500m.',
+              'You are ${distanceInMeters.toStringAsFixed(0)}m away from $locationName. Must be within 500m.',
             ),
             backgroundColor: Theme.of(context).colorScheme.error,
             duration: Duration(seconds: 4),
@@ -508,7 +698,7 @@ class _new_dashboardState extends State<new_dashboard> {
     }
 
     // Proceed to punch
-    await _performPunch(position);
+    await _performPunch(currentPosition);
   }
 
   Future<void> _performPunch(Position position) async {
@@ -780,20 +970,26 @@ class _new_dashboardState extends State<new_dashboard> {
       padding: EdgeInsets.all(20),
       child: Column(
         children: [
-          Text(
-            formattedTime,
-            style: GoogleFonts.poppins(
-              fontSize: 60,
-              fontWeight: FontWeight.w400,
-              color: colorScheme.onSurface,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              formattedTime,
+              style: GoogleFonts.poppins(
+                fontSize: 60,
+                fontWeight: FontWeight.w400,
+                color: colorScheme.onSurface,
+              ),
             ),
           ),
-          Text(
-            '${_monthToString(month)} $date $year - ${_weekdayToString(DateTime.now().weekday)}',
-            style: GoogleFonts.poppins(
-              fontSize: 24,
-              fontWeight: FontWeight.w400,
-              color: colorScheme.onSurface.withOpacity(0.7),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '${_monthToString(month)} $date $year - ${_weekdayToString(DateTime.now().weekday)}',
+              style: GoogleFonts.poppins(
+                fontSize: 24,
+                fontWeight: FontWeight.w400,
+                color: colorScheme.onSurface.withOpacity(0.7),
+              ),
             ),
           ),
         ],
@@ -1072,17 +1268,17 @@ class _new_dashboardState extends State<new_dashboard> {
         child: Image.network(
           imageUrl,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            // Show initial if image fails to load
-            return Text(
-              initial,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            );
-          },
+          // errorBuilder: (context, error, stackTrace) {
+          //   // Show initial if image fails to load
+          //   return Text(
+          //     initial,
+          //     style: TextStyle(
+          //       color: Colors.white,
+          //       fontSize: 20,
+          //       fontWeight: FontWeight.bold,
+          //     ),
+          //   );
+          // },
           loadingBuilder: (context, child, loadingProgress) {
             if (loadingProgress == null) return child;
             return Center(
@@ -1201,7 +1397,7 @@ class _new_dashboardState extends State<new_dashboard> {
                 ),
               ),
               Text(
-                '${getGreeting()}, Mark your attendance',
+                '${getGreeting()}',
                 style: GoogleFonts.poppins(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
@@ -1308,115 +1504,116 @@ class _new_dashboardState extends State<new_dashboard> {
                 ),
               ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Punch In
-          Column(
-            children: [
-              Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? colorScheme.primary.withOpacity(0.15)
-                      : colorScheme.primary.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.login, color: colorScheme.primary, size: 32),
-              ),
-              SizedBox(height: 8),
-              Text(
-                formatTime(firstPunchInTime),
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                  color: colorScheme.onSurface.withOpacity(0.7),
-                ),
-              ),
-              Text(
-                'Punch In',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                  color: colorScheme.onSurface,
-                ),
-              ),
-            ],
-          ),
-          // Work time
-          Column(
-            children: [
-              Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? colorScheme.primary.withOpacity(0.15)
-                      : colorScheme.primary.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.access_time,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 600) {
+            // Small screen: Use Wrap for better spacing
+            return Wrap(
+              alignment: WrapAlignment.spaceEvenly,
+              runSpacing: 20,
+              spacing: 20,
+              children: [
+                _buildHistoryItem(
+                  icon: Icons.login,
                   color: colorScheme.primary,
-                  size: 32,
+                  timeText: formatTime(firstPunchInTime),
+                  labelText: 'Punch In',
+                  isDark: isDark,
+                  colorScheme: colorScheme,
                 ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                formatDuration(totalWorkDuration),
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                  color: colorScheme.onSurface.withOpacity(0.7),
-                ),
-              ),
-              Text(
-                'Work time',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                  color: colorScheme.onSurface,
-                ),
-              ),
-            ],
-          ),
-          // Break time
-          Column(
-            children: [
-              Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? colorScheme.primary.withOpacity(0.15)
-                      : colorScheme.primary.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.free_breakfast,
+                _buildHistoryItem(
+                  icon: Icons.access_time,
                   color: colorScheme.primary,
-                  size: 32,
+                  timeText: formatDuration(totalWorkDuration),
+                  labelText: 'Work time',
+                  isDark: isDark,
+                  colorScheme: colorScheme,
                 ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                formatDuration(totalBreakDuration),
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                  color: colorScheme.onSurface.withOpacity(0.7),
+                _buildHistoryItem(
+                  icon: Icons.free_breakfast,
+                  color: colorScheme.primary,
+                  timeText: formatDuration(totalBreakDuration),
+                  labelText: 'Break time',
+                  isDark: isDark,
+                  colorScheme: colorScheme,
                 ),
-              ),
-              Text(
-                'Break time',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                  color: colorScheme.onSurface,
+              ],
+            );
+          } else {
+             // Large screen: Use Row with spaceBetween
+             return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildHistoryItem(
+                  icon: Icons.login,
+                  color: colorScheme.primary,
+                  timeText: formatTime(firstPunchInTime),
+                  labelText: 'Punch In',
+                  isDark: isDark,
+                  colorScheme: colorScheme,
                 ),
-              ),
-            ],
-          ),
-        ],
+                _buildHistoryItem(
+                  icon: Icons.access_time,
+                  color: colorScheme.primary,
+                  timeText: formatDuration(totalWorkDuration),
+                  labelText: 'Work time',
+                  isDark: isDark,
+                  colorScheme: colorScheme,
+                ),
+                _buildHistoryItem(
+                  icon: Icons.free_breakfast,
+                  color: colorScheme.primary,
+                  timeText: formatDuration(totalBreakDuration),
+                  labelText: 'Break time',
+                  isDark: isDark,
+                  colorScheme: colorScheme,
+                ),
+              ],
+            );
+          }
+        },
       ),
+    );
+  }
+
+  Widget _buildHistoryItem({
+    required IconData icon,
+    required Color color,
+    required String timeText,
+    required String labelText,
+    required bool isDark,
+    required ColorScheme colorScheme,
+  }) {
+    return Column(
+      children: [
+        Container(
+          padding: EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: isDark
+                ? colorScheme.primary.withOpacity(0.15)
+                : colorScheme.primary.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 32),
+        ),
+        SizedBox(height: 8),
+        Text(
+          timeText,
+          style: GoogleFonts.poppins(
+            fontSize: 16,
+            fontWeight: FontWeight.w400,
+            color: colorScheme.onSurface.withOpacity(0.7),
+          ),
+        ),
+        Text(
+          labelText,
+          style: GoogleFonts.poppins(
+            fontSize: 16,
+            fontWeight: FontWeight.w400,
+            color: colorScheme.onSurface,
+          ),
+        ),
+      ],
     );
   }
 

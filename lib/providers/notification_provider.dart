@@ -1,10 +1,14 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:quantum_dashboard/models/notification_model.dart' as models;
 import 'package:quantum_dashboard/services/notification_service.dart';
+import 'package:quantum_dashboard/services/local_notification_service.dart';
 
 class NotificationProvider with ChangeNotifier {
   final NotificationService _notificationService = NotificationService();
+  final LocalNotificationService _localNotification =
+      LocalNotificationService();
 
   List<models.Notification> _notifications = [];
   int _unreadCount = 0;
@@ -26,7 +30,13 @@ class NotificationProvider with ChangeNotifier {
     });
   }
 
-  // Load notifications
+  // Initialize local notifications
+  Future<void> initializeLocalNotifications() async {
+    await _localNotification.initialize();
+    await _localNotification.requestPermissions();
+  }
+
+  // Load notifications (updated to detect new ones and show local notifications)
   Future<void> loadNotifications({
     bool unreadOnly = false,
     String? type,
@@ -37,18 +47,54 @@ class NotificationProvider with ChangeNotifier {
     _safeNotifyListeners();
 
     try {
+      // Store previous notification IDs to detect new ones
+      final previousIds = _notifications.map((n) => n.id).toSet();
+
       _notifications = await _notificationService.getNotifications(
         unreadOnly: unreadOnly,
         type: type,
         limit: limit,
       );
+
       _updateUnreadCount();
+
+      // Detect new unread notifications and show local notifications
+      final newNotifications = _notifications
+          .where((n) => !previousIds.contains(n.id) && !n.isRead)
+          .toList();
+
+      if (newNotifications.isNotEmpty) {
+        await _showLocalNotifications(newNotifications);
+      }
     } catch (e) {
       _error = e.toString();
-      print('Error loading notifications: $e');
+      debugPrint('Error loading notifications: $e');
     } finally {
       _isLoading = false;
       _safeNotifyListeners();
+    }
+  }
+
+  // Show local notifications for new notifications
+  Future<void> _showLocalNotifications(
+    List<models.Notification> notifications,
+  ) async {
+    for (final notification in notifications) {
+      try {
+        await _localNotification.showNotification(
+          id: notification.id.hashCode,
+          title: notification.title,
+          body: notification.message,
+          payload: jsonEncode({
+            'notificationId': notification.id,
+            'type': notification.type,
+            'relatedId': notification.relatedId,
+          }),
+        );
+        debugPrint('Local notification shown: ${notification.title}');
+      } catch (e) {
+        debugPrint('Error showing local notification: $e');
+      }
     }
   }
 
@@ -71,6 +117,9 @@ class NotificationProvider with ChangeNotifier {
   void startPolling({Duration interval = const Duration(seconds: 30)}) {
     // Stop existing timer if any
     stopPolling();
+
+    // Initialize local notifications if not already done
+    initializeLocalNotifications();
 
     // Load immediately
     loadNotifications();

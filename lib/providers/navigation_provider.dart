@@ -15,6 +15,10 @@ enum NavigationPage {
   AdminDepartments,
   AdminLeaveTypes,
   AdminPayslips,
+  AdminMobileAccess,
+  AdminCompanyLocations,
+  AdminEmployeeLocations,
+  AdminAttendance,
 }
 
 class NavigationProvider with ChangeNotifier {

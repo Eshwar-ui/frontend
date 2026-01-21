@@ -148,19 +148,6 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
         Expanded(
           child: Consumer<LeaveProvider>(
             builder: (context, leaveProvider, child) {
-              // Trigger data load if not already loading and no data
-              if (!leaveProvider.isLoading && leaveProvider.leaves.isEmpty) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) {
-                    final provider = Provider.of<LeaveProvider>(
-                      context,
-                      listen: false,
-                    );
-                    provider.getAllLeaves();
-                  }
-                });
-              }
-
               if (leaveProvider.isLoading) {
                 return Center(child: CircularProgressIndicator());
               }

@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:quantum_dashboard/models/head_office_location_model.dart';
+import 'package:quantum_dashboard/models/company_location_model.dart';
 import 'package:quantum_dashboard/services/location_service.dart';
 
 class LocationProvider with ChangeNotifier {
   final LocationService _locationService = LocationService();
-  List<HeadOfficeLocation> _locations = [];
+  List<CompanyLocation> _locations = [];
   bool _isLoading = false;
   String? _errorMessage;
 
-  List<HeadOfficeLocation> get locations => _locations;
+  List<CompanyLocation> get locations => _locations;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
@@ -18,7 +18,7 @@ class LocationProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      _locations = await _locationService.getHeadOfficeLocations();
+      _locations = await _locationService.getCompanyLocations();
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -27,19 +27,30 @@ class LocationProvider with ChangeNotifier {
     }
   }
 
-  Future<void> addLocation(HeadOfficeLocation location) async {
+  Future<void> addLocation({
+    required String name,
+    required String address,
+    required double latitude,
+    required double longitude,
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final newLocation = await _locationService.addHeadOfficeLocation(location);
-      _locations.add(newLocation);
+      await _locationService.createCompanyLocation(
+        name: name,
+        address: address,
+        latitude: latitude,
+        longitude: longitude,
+      );
+      // Refresh locations after adding
+      await fetchLocations();
     } catch (e) {
       _errorMessage = e.toString();
-    } finally {
       _isLoading = false;
       notifyListeners();
+      rethrow;
     }
   }
 }

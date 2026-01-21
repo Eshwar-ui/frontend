@@ -6,6 +6,9 @@ import 'package:quantum_dashboard/screens/admin_holidays_screen.dart';
 import 'package:quantum_dashboard/admin_screens/admin_departments_screen.dart';
 import 'package:quantum_dashboard/admin_screens/admin_leave_types_screen.dart';
 import 'package:quantum_dashboard/admin_screens/admin_payslips_screen.dart';
+import 'package:quantum_dashboard/admin_screens/admin_mobile_access_screen.dart';
+import 'package:quantum_dashboard/admin_screens/admin_company_locations_screen.dart';
+import 'package:quantum_dashboard/admin_screens/admin_employee_locations_screen.dart';
 
 class AdminManagementScreen extends StatelessWidget {
   const AdminManagementScreen({super.key});
@@ -28,6 +31,15 @@ class AdminManagementScreen extends StatelessWidget {
         break;
       case NavigationPage.AdminPayslips:
         currentScreen = AdminPayslipsScreen();
+        break;
+      case NavigationPage.AdminMobileAccess:
+        currentScreen = AdminMobileAccessScreen();
+        break;
+      case NavigationPage.AdminCompanyLocations:
+        currentScreen = AdminCompanyLocationsScreen();
+        break;
+      case NavigationPage.AdminEmployeeLocations:
+        currentScreen = AdminEmployeeLocationsScreen();
         break;
       default:
         currentScreen = _buildManagementMenu(context);
@@ -126,6 +138,45 @@ class AdminManagementScreen extends StatelessWidget {
                 () {
                   navigationProvider.setCurrentPage(
                     NavigationPage.AdminPayslips,
+                  );
+                },
+              ),
+              SizedBox(height: 16),
+              _buildManagementCard(
+                context,
+                'Mobile Access',
+                'Manage mobile dashboard access for employees',
+                Icons.phone_android,
+                Colors.teal,
+                () {
+                  navigationProvider.setCurrentPage(
+                    NavigationPage.AdminMobileAccess,
+                  );
+                },
+              ),
+              SizedBox(height: 16),
+              _buildManagementCard(
+                context,
+                'Company Locations',
+                'Manage company office locations',
+                Icons.business,
+                Colors.indigo,
+                () {
+                  navigationProvider.setCurrentPage(
+                    NavigationPage.AdminCompanyLocations,
+                  );
+                },
+              ),
+              SizedBox(height: 16),
+              _buildManagementCard(
+                context,
+                'Employee Locations',
+                'Manage work-from-home employee locations',
+                Icons.home,
+                Colors.pink,
+                () {
+                  navigationProvider.setCurrentPage(
+                    NavigationPage.AdminEmployeeLocations,
                   );
                 },
               ),

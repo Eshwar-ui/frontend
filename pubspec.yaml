@@ -57,6 +57,8 @@ dependencies:
   geolocator: ^14.0.2
   logger: ^2.4.0
   fl_chart: ^0.69.0
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.9.4
 
 dev_dependencies:
   # The "flutter_lints" package below contains a set of recommended lints to
@@ -87,6 +89,7 @@ flutter:
     - assets/illustrations/
     - assets/illustrations/changepasswordimage.png
     - assets/illustrations/loading.json
+    - shorebird.yaml
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -23,6 +23,7 @@ class Employee {
   final String? UANno;
   final String? ESIno;
   final String? fathername;
+  final bool? mobileAccessEnabled;
 
   Employee({
     required this.id,
@@ -49,6 +50,7 @@ class Employee {
     this.UANno,
     this.ESIno,
     this.fathername,
+    this.mobileAccessEnabled,
   });
 
   Employee copyWith({
@@ -76,6 +78,7 @@ class Employee {
     String? UANno,
     String? ESIno,
     String? fathername,
+    bool? mobileAccessEnabled,
   }) {
     return Employee(
       id: id ?? this.id,
@@ -102,6 +105,7 @@ class Employee {
       UANno: UANno ?? this.UANno,
       ESIno: ESIno ?? this.ESIno,
       fathername: fathername ?? this.fathername,
+      mobileAccessEnabled: mobileAccessEnabled ?? this.mobileAccessEnabled,
     );
   }
 
@@ -131,6 +135,7 @@ class Employee {
     final UANno = json['UANno'] as String?;
     final ESIno = json['ESIno'] as String?;
     final fathername = json['fathername'] as String?;
+    final mobileAccessEnabled = json['mobileAccessEnabled'] as bool?;
 
     return Employee(
       id: id ?? '',
@@ -161,6 +166,7 @@ class Employee {
       UANno: UANno,
       ESIno: ESIno,
       fathername: fathername,
+      mobileAccessEnabled: mobileAccessEnabled,
     );
   }
 
@@ -190,6 +196,7 @@ class Employee {
       'UANno': UANno,
       'ESIno': ESIno,
       'fathername': fathername,
+      'mobileAccessEnabled': mobileAccessEnabled,
     };
   }
 

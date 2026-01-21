@@ -13,8 +13,19 @@ class AttendanceProvider with ChangeNotifier {
   double _totalWorkingTime = 0.0;
 
   List<Attendance> get punches => _punches;
+
+  // Return ALL cached date-wise data (Can be problematic for admins viewing multiple employees)
   List<Map<String, dynamic>> get dateWiseData =>
       _dateWiseCache.values.expand((list) => list).toList();
+
+  // Return date-wise data for a SPECIFIC employee
+  List<Map<String, dynamic>> getEmployeeDateWiseData(String employeeId) {
+    return _dateWiseCache.entries
+        .where((entry) => entry.key.startsWith('${employeeId}_'))
+        .expand((entry) => entry.value)
+        .toList();
+  }
+
   List<Map<String, dynamic>> get adminAttendance => _adminAttendance;
   bool get isLoading => _isLoading;
   String? get error => _error;
