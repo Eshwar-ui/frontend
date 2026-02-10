@@ -1,7 +1,9 @@
 // Splash Screen (iPhone 16 Pro Max - 4)
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/utils/constants.dart';
+import 'package:quantum_dashboard/utils/network_config.dart';
 import 'package:quantum_dashboard/providers/local_auth_provider.dart';
 // Using native system authentication instead of a custom lock screen
 
@@ -14,6 +16,8 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+    // Cold start the backend server (e.g. Render) by hitting /health
+    _coldStartBackend();
     // Delay navigation to avoid context issues
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(Duration(seconds: 3), () {
@@ -22,6 +26,24 @@ class _SplashScreenState extends State<SplashScreen> {
         }
       });
     });
+  }
+
+  /// Calls backend /health endpoint to wake up the server (cold start).
+  /// Fire-and-forget; does not block splash or navigation.
+  void _coldStartBackend() {
+    final healthUrl = Uri.parse('${NetworkConfig.baseUrl}/health');
+    http
+        .get(healthUrl)
+        .timeout(
+          const Duration(seconds: 15),
+          onTimeout: () => http.Response('', 408),
+        )
+        .then((_) {
+          // Server received request; cold start triggered
+        })
+        .catchError((_) {
+          // Ignore errors; we only want to trigger wake-up
+        });
   }
 
   Future<void> _checkDeviceLockAndNavigate() async {
@@ -64,10 +86,12 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final logoAsset = isDark ? AppAssets.quantumLogoDark : AppAssets.quantumLogoLight;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: Center(child: Image.asset(AppAssets.quantumLogo, height: 100)),
+      body: Center(child: Image.asset(logoAsset, height: 100)),
     );
   }
 }

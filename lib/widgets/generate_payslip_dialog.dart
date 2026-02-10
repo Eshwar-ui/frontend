@@ -71,6 +71,9 @@ class _GeneratePayslipDialogState extends State<GeneratePayslipDialog> {
     _employeesContributionPFController.addListener(_calculateTotals);
     _employersContributionPFController.addListener(_calculateTotals);
     _professionalTAXController.addListener(_calculateTotals);
+    _paidDaysController.addListener(_calculateTotals);
+    _lopDaysController.addListener(_calculateTotals);
+    _arrearController.addListener(_calculateTotals);
   }
 
   @override
@@ -91,12 +94,22 @@ class _GeneratePayslipDialogState extends State<GeneratePayslipDialog> {
 
   void _calculateTotals() {
     setState(() {
-      _totalEarnings =
+      final totalDays =
+          (int.tryParse(_paidDaysController.text) ?? 0) +
+          (int.tryParse(_lopDaysController.text) ?? 0);
+      final paidDays = int.tryParse(_paidDaysController.text) ?? 0;
+      final proration = totalDays > 0 ? (paidDays / totalDays) : 1.0;
+
+      final baseEarnings =
           _getDoubleValue(_basicSalaryController.text) +
           _getDoubleValue(_hraController.text) +
           _getDoubleValue(_taController.text) +
           _getDoubleValue(_daController.text) +
           _getDoubleValue(_conveyanceAllowanceController.text);
+
+      _totalEarnings =
+          (baseEarnings * proration) +
+          _getDoubleValue(_arrearController.text);
 
       _totalDeductions =
           _getDoubleValue(_employeesContributionPFController.text) +
@@ -144,8 +157,6 @@ class _GeneratePayslipDialogState extends State<GeneratePayslipDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
@@ -153,7 +164,7 @@ class _GeneratePayslipDialogState extends State<GeneratePayslipDialog> {
           maxHeight: MediaQuery.of(context).size.height * 0.9,
         ),
         decoration: BoxDecoration(
-          color: isDark ? colorScheme.surfaceContainerHighest : Colors.white,
+          color: colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
@@ -480,9 +491,12 @@ class _GeneratePayslipDialogState extends State<GeneratePayslipDialog> {
                     onPressed: _isCalculating
                         ? null
                         : () {
+                            setState(() => _isCalculating = true);
                             if (_formKey.currentState!.validate()) {
                               Navigator.of(context).pop(_getFormData());
+                              return;
                             }
+                            setState(() => _isCalculating = false);
                           },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: colorScheme.primary,
@@ -553,7 +567,7 @@ class _GeneratePayslipDialogState extends State<GeneratePayslipDialog> {
           ),
         ),
         Text(
-          '₹${value.toStringAsFixed(2)}',
+          '\u20B9${value.toStringAsFixed(2)}',
           style: GoogleFonts.poppins(
             fontSize: isBold ? 18 : 16,
             fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
@@ -564,3 +578,7 @@ class _GeneratePayslipDialogState extends State<GeneratePayslipDialog> {
     );
   }
 }
+
+
+
+

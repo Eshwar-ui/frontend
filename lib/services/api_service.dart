@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/network_config.dart';
@@ -8,6 +10,7 @@ import '../utils/app_logger.dart';
 class ApiService {
   // Get the base URL from NetworkConfig
   static String get baseUrl => NetworkConfig.baseUrl;
+  static const Duration _defaultTimeout = Duration(seconds: 30);
 
   // Get stored token
   Future<String?> getToken() async {
@@ -50,14 +53,27 @@ class ApiService {
     AppLogger.trace('API Response Body', response.body);
     AppLogger.trace('API Response Headers', response.headers);
 
+    // Handle empty body responses
+    if (response.body.isEmpty) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return <String, dynamic>{};
+      }
+      final errorMessage = getDefaultErrorMessage(response.statusCode);
+      AppLogger.error(
+        'API returned ${response.statusCode} error: $errorMessage',
+        null,
+      );
+      throw ServerErrorException(errorMessage, statusCode: response.statusCode);
+    }
+
     // Check for error status codes
     if (response.statusCode >= 400) {
       String errorMessage = 'An error occurred';
-      
+
       // Try to parse error message from response
       try {
         final errorData = json.decode(response.body);
-        
+
         // Check for 'error' field first (our standardized format)
         if (errorData is Map) {
           if (errorData['error'] != null) {
@@ -90,11 +106,17 @@ class ApiService {
       } else {
         String errorMessage = 'An error occurred';
         if (data is Map) {
-          errorMessage = data['error'] ?? data['message'] ?? 'Error: HTTP ${response.statusCode}';
+          errorMessage =
+              data['error'] ??
+              data['message'] ??
+              'Error: HTTP ${response.statusCode}';
         } else {
           errorMessage = 'Error: HTTP ${response.statusCode}';
         }
-        throw ServerErrorException(errorMessage, statusCode: response.statusCode);
+        throw ServerErrorException(
+          errorMessage,
+          statusCode: response.statusCode,
+        );
       }
     } catch (e) {
       // Don't wrap ServerErrorException
@@ -112,6 +134,28 @@ class ApiService {
         );
       }
       rethrow;
+    }
+  }
+
+  Future<http.Response> sendRequest(
+    Future<http.Response> request, {
+    Duration timeout = _defaultTimeout,
+  }) async {
+    try {
+      return await request.timeout(
+        timeout,
+        onTimeout: () => throw Exception(
+          'Connection timeout. Please check your internet connection and try again.',
+        ),
+      );
+    } on SocketException {
+      throw Exception(
+        'No internet connection. Please check your network and try again.',
+      );
+    } on TimeoutException {
+      throw Exception(
+        'Connection timeout. Please check your internet connection and try again.',
+      );
     }
   }
 

@@ -28,7 +28,9 @@ class NotificationService extends ApiService {
     final url = '${ApiService.baseUrl}/api/notifications$queryString';
     final headers = await getHeaders();
 
-    final response = await http.get(Uri.parse(url), headers: headers);
+    final response = await sendRequest(
+      http.get(Uri.parse(url), headers: headers),
+    );
     final data = handleResponse(response);
 
     if (data is List) {
@@ -42,7 +44,9 @@ class NotificationService extends ApiService {
     final url = '${ApiService.baseUrl}/api/notifications/unread-count';
     final headers = await getHeaders();
 
-    final response = await http.get(Uri.parse(url), headers: headers);
+    final response = await sendRequest(
+      http.get(Uri.parse(url), headers: headers),
+    );
     final data = handleResponse(response);
 
     return data['unreadCount'] ?? 0;
@@ -53,7 +57,9 @@ class NotificationService extends ApiService {
     final url = '${ApiService.baseUrl}/api/notifications/$notificationId';
     final headers = await getHeaders();
 
-    final response = await http.get(Uri.parse(url), headers: headers);
+    final response = await sendRequest(
+      http.get(Uri.parse(url), headers: headers),
+    );
     final data = handleResponse(response);
 
     return models.Notification.fromJson(data);
@@ -64,7 +70,9 @@ class NotificationService extends ApiService {
     final url = '${ApiService.baseUrl}/api/notifications/$notificationId/read';
     final headers = await getHeaders();
 
-    final response = await http.put(Uri.parse(url), headers: headers);
+    final response = await sendRequest(
+      http.put(Uri.parse(url), headers: headers),
+    );
     return handleResponse(response);
   }
 
@@ -73,7 +81,9 @@ class NotificationService extends ApiService {
     final url = '${ApiService.baseUrl}/api/notifications/read-all';
     final headers = await getHeaders();
 
-    final response = await http.put(Uri.parse(url), headers: headers);
+    final response = await sendRequest(
+      http.put(Uri.parse(url), headers: headers),
+    );
     return handleResponse(response);
   }
 
@@ -82,7 +92,9 @@ class NotificationService extends ApiService {
     final url = '${ApiService.baseUrl}/api/notifications/$notificationId';
     final headers = await getHeaders();
 
-    final response = await http.delete(Uri.parse(url), headers: headers);
+    final response = await sendRequest(
+      http.delete(Uri.parse(url), headers: headers),
+    );
     return handleResponse(response);
   }
 
@@ -109,10 +121,12 @@ class NotificationService extends ApiService {
       if (relatedId != null) 'relatedId': relatedId,
     });
 
-    final response = await http.post(
-      Uri.parse(url),
-      headers: headers,
-      body: body,
+    final response = await sendRequest(
+      http.post(
+        Uri.parse(url),
+        headers: headers,
+        body: body,
+      ),
     );
 
     return handleResponse(response);

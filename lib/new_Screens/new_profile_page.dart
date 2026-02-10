@@ -9,6 +9,7 @@ import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/providers/theme_provider.dart';
 import 'package:quantum_dashboard/widgets/photo_upload_widget.dart';
 import 'package:quantum_dashboard/new_Screens/settings_page.dart';
+import 'package:quantum_dashboard/providers/navigation_provider.dart';
 
 class NewProfilePage extends StatefulWidget {
   const NewProfilePage({super.key});
@@ -36,7 +37,12 @@ class _NewProfilePageState extends State<NewProfilePage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final user = Provider.of<AuthProvider>(context).user;
+    final authProvider = Provider.of<AuthProvider>(context);
+    final user = authProvider.user;
+    final navigationProvider = Provider.of<NavigationProvider>(
+      context,
+      listen: false,
+    );
 
     if (user == null) {
       return Scaffold(
@@ -74,15 +80,21 @@ class _NewProfilePageState extends State<NewProfilePage> {
               const SizedBox(height: 24),
               // _buildQuickStats(user),
               // const SizedBox(height: 24),
-              _buildPersonalInfoSection(user),
-              const SizedBox(height: 16),
-              _buildWorkInfoSection(user),
-              const SizedBox(height: 16),
-              _buildContactInfoSection(user),
-              const SizedBox(height: 16),
-              _buildBankingInfoSection(user),
-              const SizedBox(height: 16),
-              _buildDocumentsSection(user),
+              if (!authProvider.isAdmin) ...[
+                _buildPersonalInfoSection(user),
+                const SizedBox(height: 16),
+                _buildWorkInfoSection(user),
+                const SizedBox(height: 16),
+                _buildContactInfoSection(user),
+                const SizedBox(height: 16),
+                _buildBankingInfoSection(user),
+                const SizedBox(height: 16),
+                _buildDocumentsSection(user),
+              ],
+              if (authProvider.isAdmin) ...[
+                const SizedBox(height: 16),
+                _buildAdminSettingsSection(navigationProvider),
+              ],
               const SizedBox(height: 16),
               _buildSettingsButton(),
               const SizedBox(height: 24),
@@ -325,9 +337,11 @@ class _NewProfilePageState extends State<NewProfilePage> {
 
                   // Evict the old image from the cache before updating the state.
                   // This is crucial for data URLs that don't change their "URL" but change content.
-                  if (user.profileImage.isNotEmpty&& user.profileImage.startsWith('data:image')) {
-                    MemoryImage(base64Decode(user.profileImage.split(',').last))
-                        .evict();
+                  if (user.profileImage.isNotEmpty &&
+                      user.profileImage.startsWith('data:image')) {
+                    MemoryImage(
+                      base64Decode(user.profileImage.split(',').last),
+                    ).evict();
                   }
 
                   _authProvider?.setUser(updatedEmployee);
@@ -704,6 +718,94 @@ class _NewProfilePageState extends State<NewProfilePage> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAdminSettingsSection(NavigationProvider navigationProvider) {
+    return _buildSection(
+      title: 'Admin Settings',
+      icon: Icons.admin_panel_settings,
+      color: Colors.indigo,
+      children: [
+        _buildAdminSettingsTile(
+          Icons.business_center_rounded,
+          'Manage Departments',
+          'Configure organizational structure',
+          () => navigationProvider.setCurrentPage(
+            NavigationPage.AdminDepartments,
+          ),
+        ),
+        _buildAdminSettingsTile(
+          Icons.event_note_rounded,
+          'Manage Leave Types',
+          'Set up and edit leave policies',
+          () =>
+              navigationProvider.setCurrentPage(NavigationPage.AdminLeaveTypes),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdminSettingsTile(
+    IconData icon,
+    String title,
+    String subtitle,
+    VoidCallback onTap,
+  ) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: colorScheme.surface.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                color: colorScheme.onSurface.withOpacity(0.7),
+                size: 20,
+              ),
+            ),
+            SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      color: colorScheme.onSurface.withOpacity(0.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: colorScheme.onSurface.withOpacity(0.3),
+            ),
+          ],
+        ),
       ),
     );
   }

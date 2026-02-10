@@ -73,7 +73,7 @@ class NotificationCard extends StatelessWidget {
     return Card(
       margin: EdgeInsets.only(bottom: 12),
       color: notification.isRead
-          ? (isDark ? colorScheme.surfaceContainerHighest : Colors.white)
+          ? colorScheme.surfaceContainerHighest
           : (isDark
                 ? colorScheme.primaryContainer.withOpacity(0.3)
                 : colorScheme.primaryContainer.withOpacity(0.1)),

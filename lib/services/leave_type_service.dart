@@ -26,22 +26,26 @@ class LeaveTypeService extends ApiService {
     final url = '${ApiService.baseUrl}/api/getLeavetype';
     final headers = await getHeaders();
 
-    final response = await http.get(Uri.parse(url), headers: headers);
+    final response = await sendRequest(
+      http.get(Uri.parse(url), headers: headers),
+    );
 
     final data = handleResponse(response);
-    final leaveTypes = (data as List)
-        .map((json) => LeaveType.fromJson(json))
-        .toList();
+    final rawList = data is List ? data : const [];
+    final leaveTypes =
+        rawList.map((json) => LeaveType.fromJson(json)).toList();
 
     return leaveTypes;
   }
 
   // Add leave type
   Future<Map<String, dynamic>> addLeaveType({required String leaveType}) async {
-    final response = await http.post(
-      Uri.parse('${ApiService.baseUrl}/api/leaveType'),
-      headers: await getHeaders(),
-      body: json.encode({'leaveType': leaveType}),
+    final response = await sendRequest(
+      http.post(
+        Uri.parse('${ApiService.baseUrl}/api/leaveType'),
+        headers: await getHeaders(),
+        body: json.encode({'leaveType': leaveType}),
+      ),
     );
 
     final data = handleResponse(response);
@@ -53,10 +57,12 @@ class LeaveTypeService extends ApiService {
     required String id,
     required String leaveType,
   }) async {
-    final response = await http.put(
-      Uri.parse('${ApiService.baseUrl}/api/leaveType/$id'),
-      headers: await getHeaders(),
-      body: json.encode({'leaveType': leaveType}),
+    final response = await sendRequest(
+      http.put(
+        Uri.parse('${ApiService.baseUrl}/api/leaveType/$id'),
+        headers: await getHeaders(),
+        body: json.encode({'leaveType': leaveType}),
+      ),
     );
 
     final data = handleResponse(response);
@@ -65,9 +71,11 @@ class LeaveTypeService extends ApiService {
 
   // Delete leave type
   Future<Map<String, dynamic>> deleteLeaveType(String id) async {
-    final response = await http.delete(
-      Uri.parse('${ApiService.baseUrl}/api/leaveType/$id'),
-      headers: await getHeaders(),
+    final response = await sendRequest(
+      http.delete(
+        Uri.parse('${ApiService.baseUrl}/api/leaveType/$id'),
+        headers: await getHeaders(),
+      ),
     );
 
     final data = handleResponse(response);

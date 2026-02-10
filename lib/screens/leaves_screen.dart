@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:quantum_dashboard/providers/leave_provider.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
-import 'package:quantum_dashboard/widgets/apply_leave_dialog.dart';
+import 'package:quantum_dashboard/screens/apply_leave_screen.dart';
 import 'package:quantum_dashboard/widgets/leave_accordion.dart';
 import 'package:quantum_dashboard/models/leave_model.dart';
 import 'package:quantum_dashboard/utils/error_handler.dart';
@@ -50,7 +50,9 @@ class _LeavesScreenState extends State<LeavesScreen> {
   }
 
   void _applyForLeave() {
-    showDialog(context: context, builder: (context) => ApplyLeaveDialog());
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => ApplyLeaveScreen()),
+    );
   }
 
   void _editLeave(Leave leave) {

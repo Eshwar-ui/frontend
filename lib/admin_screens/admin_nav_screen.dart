@@ -9,6 +9,7 @@ import 'package:quantum_dashboard/admin_screens/admin_mobile_access_screen.dart'
 import 'package:quantum_dashboard/admin_screens/admin_company_locations_screen.dart';
 import 'package:quantum_dashboard/admin_screens/admin_employee_locations_screen.dart';
 import 'package:quantum_dashboard/admin_screens/admin_attendance_screen.dart';
+import 'package:quantum_dashboard/admin_screens/admin_locations_screen.dart';
 import 'package:quantum_dashboard/screens/admin_employees_screen.dart';
 import 'package:quantum_dashboard/screens/admin_holidays_screen.dart';
 import 'package:quantum_dashboard/screens/admin_leave_requests_screen.dart';
@@ -36,6 +37,7 @@ class _AdminNavScreenState extends State<AdminNavScreen> {
     NavigationPage.AdminCompanyLocations: 0, // Show in dashboard area
     NavigationPage.AdminEmployeeLocations: 0, // Show in dashboard area
     NavigationPage.AdminAttendance: 0, // Show in dashboard area
+    NavigationPage.AdminLocations: 0, // Show in dashboard area
   };
 
   late final List<Widget> _widgetOptions;
@@ -75,6 +77,8 @@ class _AdminNavScreenState extends State<AdminNavScreen> {
         return AdminEmployeeLocationsScreen();
       case NavigationPage.AdminAttendance:
         return AdminAttendanceScreen();
+      case NavigationPage.AdminLocations:
+        return AdminLocationsScreen();
       default:
         return AdminDashboardScreen();
     }
@@ -101,174 +105,205 @@ class _AdminNavScreenState extends State<AdminNavScreen> {
       canPop: currentPage == NavigationPage.Dashboard,
       onPopInvoked: (bool didPop) {
         if (didPop) return;
-        
+
         // If we are not on the dashboard, go back to dashboard
         if (currentPage != NavigationPage.Dashboard) {
-           navigationProvider.setCurrentPage(NavigationPage.Dashboard);
+          navigationProvider.setCurrentPage(NavigationPage.Dashboard);
         }
       },
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
         body: SafeArea(
           child: Stack(
-          children: [
-            // Main content with bottom padding to prevent overlap with nav bar
-            Consumer<NavigationProvider>(
-              builder: (context, navProvider, child) {
-                // Rebuild the screen based on current page
-                final currentPage = navProvider.currentPage;
-                Widget currentScreen;
+            children: [
+              // Main content with bottom padding to prevent overlap with nav bar
+              Consumer<NavigationProvider>(
+                builder: (context, navProvider, child) {
+                  // Rebuild the screen based on current page
+                  final currentPage = navProvider.currentPage;
+                  Widget currentScreen;
 
-                switch (currentPage) {
-                  case NavigationPage.AdminHolidays:
-                    currentScreen = AdminHolidaysScreen();
-                    break;
-                  case NavigationPage.AdminDepartments:
-                    currentScreen = AdminDepartmentsScreen();
-                    break;
-                  case NavigationPage.AdminLeaveTypes:
-                    currentScreen = AdminLeaveTypesScreen();
-                    break;
-                  case NavigationPage.AdminPayslips:
-                    currentScreen = AdminPayslipsScreen();
-                    break;
-                  case NavigationPage.AdminMobileAccess:
-                    currentScreen = AdminMobileAccessScreen();
-                    break;
-                  case NavigationPage.AdminCompanyLocations:
-                    currentScreen = AdminCompanyLocationsScreen();
-                    break;
-                  case NavigationPage.AdminEmployeeLocations:
-                    currentScreen = AdminEmployeeLocationsScreen();
-                    break;
-                  case NavigationPage.AdminAttendance:
-                    currentScreen = AdminAttendanceScreen();
-                    break;
-                  default:
-                    currentScreen = _widgetOptions[_selectedIndex];
-                }
+                  switch (currentPage) {
+                    case NavigationPage.AdminHolidays:
+                      currentScreen = AdminHolidaysScreen();
+                      break;
+                    case NavigationPage.AdminDepartments:
+                      currentScreen = AdminDepartmentsScreen();
+                      break;
+                    case NavigationPage.AdminLeaveTypes:
+                      currentScreen = AdminLeaveTypesScreen();
+                      break;
+                    case NavigationPage.AdminPayslips:
+                      currentScreen = AdminPayslipsScreen();
+                      break;
+                    case NavigationPage.AdminMobileAccess:
+                      currentScreen = AdminMobileAccessScreen();
+                      break;
+                    case NavigationPage.AdminCompanyLocations:
+                      currentScreen = AdminCompanyLocationsScreen();
+                      break;
+                    case NavigationPage.AdminEmployeeLocations:
+                      currentScreen = AdminEmployeeLocationsScreen();
+                      break;
+                    case NavigationPage.AdminAttendance:
+                      currentScreen = AdminAttendanceScreen();
+                      break;
+                    case NavigationPage.AdminLocations:
+                      currentScreen = AdminLocationsScreen();
+                      break;
+                    default:
+                      currentScreen = _widgetOptions[_selectedIndex];
+                  }
 
-                return currentScreen;
-              },
-            ),
+                  return currentScreen;
+                },
+              ),
 
-            // Floating Navigation Bar with absolute positioning
-            Builder(
-              builder: (context) {
-                final mediaQuery = MediaQuery.of(context);
-                final screenWidth = mediaQuery.size.width;
-                final screenHeight = mediaQuery.size.height;
+              // Floating Navigation Bar with absolute positioning
+              // Only show on specific screens: Dashboard, Employees, Leave Requests, Profile
+              Builder(
+                builder: (context) {
+                  // Check if this route is the current active route
+                  final route = ModalRoute.of(context);
+                  final isCurrentRoute = route?.isCurrent ?? false;
 
-                // Use relative sizes
-                final double navBarHeight = (screenHeight * 0.100).clamp(
-                  60,
-                  90,
-                ); // min 60, max 90
-                final double navBarHorizontalPadding = (screenWidth * 0.05)
-                    .clamp(10, 30);
-                final double navBarBottom = (screenHeight * 0.025).clamp(8, 24);
-                final double navBarLeftRight = (screenWidth * 0.04).clamp(
-                  8,
-                  32,
-                );
+                  // Only show nav bar on specific pages
+                  final allowedPages = [
+                    NavigationPage.Dashboard,
+                    NavigationPage.AdminEmployees,
+                    NavigationPage.AdminLeaveRequests,
+                    NavigationPage.Profile,
+                  ];
+                  final isAllowedPage = allowedPages.contains(currentPage);
 
-                return Positioned(
-                  left: navBarLeftRight,
-                  right: navBarLeftRight,
-                  bottom: navBarBottom,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(100),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 1, sigmaY: 1),
-                      child: Container(
-                        height: navBarHeight,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: navBarHorizontalPadding,
-                          vertical:
-                              navBarHeight * 0.08, // about 8% of navBar height
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: isDark
-                                ? [
-                                    Colors.white.withOpacity(0.15),
-                                    Colors.white.withOpacity(0.05),
-                                  ]
-                                : [
-                                    Colors.white.withOpacity(0.8),
-                                    Colors.white.withOpacity(0.6),
-                                  ],
+                  // Hide nav bar if this is not the current route or not an allowed page
+                  if (!isCurrentRoute || !isAllowedPage) {
+                    return const SizedBox.shrink();
+                  }
+
+                  final mediaQuery = MediaQuery.of(context);
+                  final screenWidth = mediaQuery.size.width;
+                  final screenHeight = mediaQuery.size.height;
+
+                  // Use relative sizes
+                  final double navBarHeight = (screenHeight * 0.100).clamp(
+                    60,
+                    90,
+                  ); // min 60, max 90
+                  final double navBarHorizontalPadding = (screenWidth * 0.05)
+                      .clamp(10, 30);
+                  final double navBarBottom = (screenHeight * 0.025).clamp(
+                    8,
+                    24,
+                  );
+                  final double navBarLeftRight = (screenWidth * 0.04).clamp(
+                    8,
+                    32,
+                  );
+
+                  return Positioned(
+                    left: navBarLeftRight,
+                    right: navBarLeftRight,
+                    bottom: navBarBottom,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(100),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 1, sigmaY: 1),
+                        child: Container(
+                          height: navBarHeight,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: navBarHorizontalPadding,
+                            vertical:
+                                navBarHeight *
+                                0.08, // about 8% of navBar height
                           ),
-                          borderRadius: BorderRadius.circular(100),
-                          border: Border.all(
-                            color: isDark
-                                ? Colors.white.withOpacity(0.25)
-                                : Colors.white.withOpacity(0.9),
-                            width: 1.5,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: isDark
+                                  ? [
+                                      Colors.white.withOpacity(0.15),
+                                      Colors.white.withOpacity(0.05),
+                                    ]
+                                  : [
+                                      Colors.white.withOpacity(0.8),
+                                      Colors.white.withOpacity(0.6),
+                                    ],
+                            ),
+                            borderRadius: BorderRadius.circular(100),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white.withOpacity(0.25)
+                                  : Colors.white.withOpacity(0.9),
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              // Outer shadow for depth
+                              BoxShadow(
+                                blurRadius: 30,
+                                spreadRadius: -5,
+                                color: isDark
+                                    ? Colors.black.withOpacity(0.5)
+                                    : Colors.black.withOpacity(0.15),
+                                offset: Offset(0, 8),
+                              ),
+                              // Inner highlight for glass effect
+                              BoxShadow(
+                                blurRadius: 10,
+                                spreadRadius: -2,
+                                color: Colors.white.withOpacity(0.3),
+                                offset: Offset(0, -2),
+                              ),
+                              // Soft glow
+                              BoxShadow(
+                                blurRadius: 20,
+                                color: isDark
+                                    ? Colors.black.withOpacity(0.2)
+                                    : Colors.black.withOpacity(0.08),
+                                offset: Offset(0, 4),
+                              ),
+                            ],
                           ),
-                          boxShadow: [
-                            // Outer shadow for depth
-                            BoxShadow(
-                              blurRadius: 30,
-                              spreadRadius: -5,
-                              color: isDark
-                                  ? Colors.black.withOpacity(0.5)
-                                  : Colors.black.withOpacity(0.15),
-                              offset: Offset(0, 8),
-                            ),
-                            // Inner highlight for glass effect
-                            BoxShadow(
-                              blurRadius: 10,
-                              spreadRadius: -2,
-                              color: Colors.white.withOpacity(0.3),
-                              offset: Offset(0, -2),
-                            ),
-                            // Soft glow
-                            BoxShadow(
-                              blurRadius: 20,
-                              color: isDark
-                                  ? Colors.black.withOpacity(0.2)
-                                  : Colors.black.withOpacity(0.08),
-                              offset: Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _buildNavItem(
-                              Icons.dashboard,
-                              'Dashboard',
-                              0,
-                              context,
-                            ),
-                            _buildNavItem(
-                              Icons.people,
-                              'Employees',
-                              1,
-                              context,
-                            ),
-                            _buildNavItem(
-                              Icons.assignment,
-                              'Requests',
-                              2,
-                              context,
-                            ),
-                            _buildNavItem(Icons.person, 'Profile', 3, context),
-                          ],
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _buildNavItem(
+                                Icons.dashboard,
+                                'Dashboard',
+                                0,
+                                context,
+                              ),
+                              _buildNavItem(
+                                Icons.people,
+                                'Employees',
+                                1,
+                                context,
+                              ),
+                              _buildNavItem(
+                                Icons.assignment,
+                                'Requests',
+                                2,
+                                context,
+                              ),
+                              _buildNavItem(
+                                Icons.person,
+                                'Profile',
+                                3,
+                                context,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                );
-              },
-            ),
-          ],
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 
@@ -307,9 +342,7 @@ class _AdminNavScreenState extends State<AdminNavScreen> {
           vertical: 12,
         ),
         decoration: BoxDecoration(
-          color: isSelected
-              ? colorScheme.primary
-              : (isDark ? colorScheme.surface : Colors.white),
+          color: isSelected ? colorScheme.primary : colorScheme.surface,
           borderRadius: BorderRadius.circular(25),
           boxShadow: [
             BoxShadow(

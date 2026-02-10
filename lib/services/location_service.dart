@@ -12,7 +12,9 @@ class LocationService extends ApiService {
     final url = '${ApiService.baseUrl}/api/company-locations';
     final headers = await getHeaders();
 
-    final response = await http.get(Uri.parse(url), headers: headers);
+    final response = await sendRequest(
+      http.get(Uri.parse(url), headers: headers),
+    );
     final data = handleResponse(response);
 
     if (data is List) {
@@ -31,15 +33,17 @@ class LocationService extends ApiService {
     final url = '${ApiService.baseUrl}/api/company-locations';
     final headers = await getHeaders();
 
-    final response = await http.post(
-      Uri.parse(url),
-      headers: headers,
-      body: json.encode({
-        'name': name,
-        'address': address,
-        'latitude': latitude,
-        'longitude': longitude,
-      }),
+    final response = await sendRequest(
+      http.post(
+        Uri.parse(url),
+        headers: headers,
+        body: json.encode({
+          'name': name,
+          'address': address,
+          'latitude': latitude,
+          'longitude': longitude,
+        }),
+      ),
     );
     return handleResponse(response);
   }
@@ -61,10 +65,12 @@ class LocationService extends ApiService {
     if (latitude != null) body['latitude'] = latitude;
     if (longitude != null) body['longitude'] = longitude;
 
-    final response = await http.put(
-      Uri.parse(url),
-      headers: headers,
-      body: json.encode(body),
+    final response = await sendRequest(
+      http.put(
+        Uri.parse(url),
+        headers: headers,
+        body: json.encode(body),
+      ),
     );
     return handleResponse(response);
   }
@@ -74,7 +80,9 @@ class LocationService extends ApiService {
     final url = '${ApiService.baseUrl}/api/company-locations/$id';
     final headers = await getHeaders();
 
-    final response = await http.delete(Uri.parse(url), headers: headers);
+    final response = await sendRequest(
+      http.delete(Uri.parse(url), headers: headers),
+    );
     return handleResponse(response);
   }
 
@@ -85,7 +93,9 @@ class LocationService extends ApiService {
     final url = '${ApiService.baseUrl}/api/employee-locations/$employeeId';
     final headers = await getHeaders();
 
-    final response = await http.get(Uri.parse(url), headers: headers);
+    final response = await sendRequest(
+      http.get(Uri.parse(url), headers: headers),
+    );
     final data = handleResponse(response);
 
     if (data is List) {
@@ -105,16 +115,18 @@ class LocationService extends ApiService {
     final url = '${ApiService.baseUrl}/api/employee-locations';
     final headers = await getHeaders();
 
-    final response = await http.post(
-      Uri.parse(url),
-      headers: headers,
-      body: json.encode({
-        'employeeId': employeeId,
-        'name': name,
-        'address': address,
-        'latitude': latitude,
-        'longitude': longitude,
-      }),
+    final response = await sendRequest(
+      http.post(
+        Uri.parse(url),
+        headers: headers,
+        body: json.encode({
+          'employeeId': employeeId,
+          'name': name,
+          'address': address,
+          'latitude': latitude,
+          'longitude': longitude,
+        }),
+      ),
     );
     return handleResponse(response);
   }
@@ -136,10 +148,12 @@ class LocationService extends ApiService {
     if (latitude != null) body['latitude'] = latitude;
     if (longitude != null) body['longitude'] = longitude;
 
-    final response = await http.put(
-      Uri.parse(url),
-      headers: headers,
-      body: json.encode(body),
+    final response = await sendRequest(
+      http.put(
+        Uri.parse(url),
+        headers: headers,
+        body: json.encode(body),
+      ),
     );
     return handleResponse(response);
   }
@@ -149,7 +163,9 @@ class LocationService extends ApiService {
     final url = '${ApiService.baseUrl}/api/employee-locations/$id';
     final headers = await getHeaders();
 
-    final response = await http.delete(Uri.parse(url), headers: headers);
+    final response = await sendRequest(
+      http.delete(Uri.parse(url), headers: headers),
+    );
     return handleResponse(response);
   }
 
@@ -164,14 +180,16 @@ class LocationService extends ApiService {
     final url = '${ApiService.baseUrl}/api/validate-location';
     final headers = await getHeaders();
 
-    final response = await http.post(
-      Uri.parse(url),
-      headers: headers,
-      body: json.encode({
-        'latitude': latitude,
-        'longitude': longitude,
-        'employeeId': employeeId,
-      }),
+    final response = await sendRequest(
+      http.post(
+        Uri.parse(url),
+        headers: headers,
+        body: json.encode({
+          'latitude': latitude,
+          'longitude': longitude,
+          'employeeId': employeeId,
+        }),
+      ),
     );
     return handleResponse(response);
   }

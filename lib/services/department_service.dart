@@ -32,12 +32,14 @@ class DepartmentService extends ApiService {
     final url = '${ApiService.baseUrl}/api/getDepartment';
     final headers = await getHeaders();
 
-    final response = await http.get(Uri.parse(url), headers: headers);
+    final response = await sendRequest(
+      http.get(Uri.parse(url), headers: headers),
+    );
 
     final data = handleResponse(response);
-    final departments = (data as List)
-        .map((json) => Department.fromJson(json))
-        .toList();
+    final rawList = data is List ? data : const [];
+    final departments =
+        rawList.map((json) => Department.fromJson(json)).toList();
 
     return departments;
   }
@@ -47,10 +49,13 @@ class DepartmentService extends ApiService {
     required String department,
     required String designation,
   }) async {
-    final response = await http.post(
-      Uri.parse('${ApiService.baseUrl}/api/department'),
-      headers: await getHeaders(),
-      body: json.encode({'department': department, 'designation': designation}),
+    final response = await sendRequest(
+      http.post(
+        Uri.parse('${ApiService.baseUrl}/api/department'),
+        headers: await getHeaders(),
+        body:
+            json.encode({'department': department, 'designation': designation}),
+      ),
     );
 
     final data = handleResponse(response);
@@ -63,10 +68,13 @@ class DepartmentService extends ApiService {
     required String department,
     required String designation,
   }) async {
-    final response = await http.put(
-      Uri.parse('${ApiService.baseUrl}/api/department/$id'),
-      headers: await getHeaders(),
-      body: json.encode({'department': department, 'designation': designation}),
+    final response = await sendRequest(
+      http.put(
+        Uri.parse('${ApiService.baseUrl}/api/department/$id'),
+        headers: await getHeaders(),
+        body:
+            json.encode({'department': department, 'designation': designation}),
+      ),
     );
 
     final data = handleResponse(response);
@@ -75,9 +83,11 @@ class DepartmentService extends ApiService {
 
   // Delete department
   Future<Map<String, dynamic>> deleteDepartment(String id) async {
-    final response = await http.delete(
-      Uri.parse('${ApiService.baseUrl}/api/department/$id'),
-      headers: await getHeaders(),
+    final response = await sendRequest(
+      http.delete(
+        Uri.parse('${ApiService.baseUrl}/api/department/$id'),
+        headers: await getHeaders(),
+      ),
     );
 
     final data = handleResponse(response);

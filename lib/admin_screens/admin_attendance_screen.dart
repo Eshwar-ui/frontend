@@ -7,6 +7,8 @@ import 'package:quantum_dashboard/providers/employee_provider.dart';
 import 'package:quantum_dashboard/providers/navigation_provider.dart';
 import 'package:quantum_dashboard/screens/employee_detail_screen.dart';
 import 'package:quantum_dashboard/services/attendance_service.dart';
+import 'package:quantum_dashboard/utils/excel_export_utils.dart';
+import 'package:quantum_dashboard/utils/snackbar_utils.dart';
 
 class AdminAttendanceScreen extends StatefulWidget {
   const AdminAttendanceScreen({super.key});
@@ -22,6 +24,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   bool _isLoading = false;
+  bool _isExporting = false;
   List<Map<String, dynamic>> _attendanceData = [];
   int _selectedMonth = DateTime.now().month;
   int _selectedYear = DateTime.now().year;
@@ -38,7 +41,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
   void initState() {
     super.initState();
     _updateDaysInMonth();
-    
+
     // Linked Scroll Controllers logic
     _headerScrollController.addListener(() {
       if (_bodyScrollController.hasClients) {
@@ -76,7 +79,10 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
   Future<void> _loadInitialData() async {
     setState(() => _isLoading = true);
     try {
-      await Provider.of<EmployeeProvider>(context, listen: false).getAllEmployees();
+      await Provider.of<EmployeeProvider>(
+        context,
+        listen: false,
+      ).getAllEmployees();
       await _fetchAttendanceData();
     } catch (e) {
       if (mounted) {
@@ -102,10 +108,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -120,8 +123,11 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
   }
 
   void _navigateToEmployeeDetail(String employeeName, String employeeId) {
-    final employeeProvider = Provider.of<EmployeeProvider>(context, listen: false);
-    
+    final employeeProvider = Provider.of<EmployeeProvider>(
+      context,
+      listen: false,
+    );
+
     Employee? employee;
     try {
       employee = employeeProvider.employees.firstWhere(
@@ -130,7 +136,8 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
     } catch (e) {
       try {
         employee = employeeProvider.employees.firstWhere(
-            (e) => e.fullName.toLowerCase() == employeeName.toLowerCase());
+          (e) => e.fullName.toLowerCase() == employeeName.toLowerCase(),
+        );
       } catch (_) {}
     }
 
@@ -167,8 +174,8 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _filteredData.isEmpty
-                    ? _buildEmptyState(colorScheme)
-                    : _buildTableStructure(isDark, colorScheme),
+                ? _buildEmptyState(colorScheme)
+                : _buildTableStructure(isDark, colorScheme),
           ),
         ],
       ),
@@ -203,13 +210,14 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
   Widget _buildHeader() {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final navigationProvider = Provider.of<NavigationProvider>(context, listen: false);
+    final navigationProvider = Provider.of<NavigationProvider>(
+      context,
+      listen: false,
+    );
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-      ),
+      decoration: BoxDecoration(color: theme.scaffoldBackgroundColor),
       child: Row(
         children: [
           IconButton(
@@ -219,7 +227,9 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
             icon: Icon(Icons.arrow_back, color: colorScheme.onSurface),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
-            style: IconButton.styleFrom(tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+            style: IconButton.styleFrom(
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
           ),
           const SizedBox(width: 16),
           Column(
@@ -252,80 +262,231 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
       child: Column(
         children: [
-          Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: Container(
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: isDark ? colorScheme.surfaceContainerHighest : Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: colorScheme.outline.withOpacity(0.2),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isSmallScreen = constraints.maxWidth < 600;
+
+              if (isSmallScreen) {
+                // Stack vertically on small screens
+                return Column(
+                  children: [
+                    // Download Excel Button - Full width on small screens
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: _buildExportButton(colorScheme),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
+                    const SizedBox(height: 12),
+                    // Search bar - Full width
+                    Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? colorScheme.surfaceContainerHighest
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: colorScheme.outline.withOpacity(0.2),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: colorScheme.outline.withValues(
+                              alpha: isDark ? 0.15 : 0.08,
+                            ),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (value) => setState(() => _searchQuery = value),
-                    decoration: InputDecoration(
-                      hintText: 'Search employee...',
-                      hintStyle: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: colorScheme.onSurface.withOpacity(0.5),
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: (value) =>
+                            setState(() => _searchQuery = value),
+                        decoration: InputDecoration(
+                          hintText: 'Search employee...',
+                          hintStyle: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: colorScheme.onSurface.withOpacity(0.5),
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: colorScheme.onSurface.withOpacity(0.5),
+                            size: 20,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                          ),
+                        ),
+                        style: GoogleFonts.poppins(
+                          color: colorScheme.onSurface,
+                        ),
                       ),
-                      prefixIcon: Icon(
-                        Icons.search,
-                        color: colorScheme.onSurface.withOpacity(0.5),
-                        size: 20,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    style: GoogleFonts.poppins(color: colorScheme.onSurface),
+                    const SizedBox(height: 12),
+                    // Month and Year dropdowns - Side by side
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildDropdown(
+                            value: _selectedMonth,
+                            items: List.generate(
+                              12,
+                              (index) => DropdownMenuItem(
+                                value: index + 1,
+                                child: Text(
+                                  DateFormat(
+                                    'MMM',
+                                  ).format(DateTime(2024, index + 1)),
+                                ),
+                              ),
+                            ),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setState(() {
+                                  _selectedMonth = val;
+                                  _updateDaysInMonth();
+                                });
+                                _fetchAttendanceData();
+                              }
+                            },
+                            isDark: isDark,
+                            colorScheme: colorScheme,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildDropdown(
+                            value: _selectedYear,
+                            items: List.generate(5, (index) {
+                              final year = DateTime.now().year - index;
+                              return DropdownMenuItem(
+                                value: year,
+                                child: Text(year.toString()),
+                              );
+                            }),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setState(() {
+                                  _selectedYear = val;
+                                  _updateDaysInMonth();
+                                });
+                                _fetchAttendanceData();
+                              }
+                            },
+                            isDark: isDark,
+                            colorScheme: colorScheme,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              }
+
+              // Horizontal layout for larger screens
+              return Row(
+                children: [
+                  // Download Excel Button
+                  _buildExportButton(colorScheme),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? colorScheme.surfaceContainerHighest
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: colorScheme.outline.withOpacity(0.2),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: colorScheme.outline.withValues(
+                              alpha: isDark ? 0.15 : 0.08,
+                            ),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: (value) =>
+                            setState(() => _searchQuery = value),
+                        decoration: InputDecoration(
+                          hintText: 'Search employee...',
+                          hintStyle: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: colorScheme.onSurface.withOpacity(0.5),
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: colorScheme.onSurface.withOpacity(0.5),
+                            size: 20,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                          ),
+                        ),
+                        style: GoogleFonts.poppins(
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              _buildDropdown(
-                value: _selectedMonth,
-                items: List.generate(12, (index) => DropdownMenuItem(
-                  value: index + 1,
-                  child: Text(DateFormat('MMM').format(DateTime(2024, index + 1))),
-                )),
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() { _selectedMonth = val; _updateDaysInMonth(); });
-                    _fetchAttendanceData();
-                  }
-                },
-                isDark: isDark,
-                colorScheme: colorScheme,
-              ),
-              const SizedBox(width: 12),
-              _buildDropdown(
-                value: _selectedYear,
-                items: List.generate(5, (index) {
-                  final year = DateTime.now().year - index;
-                  return DropdownMenuItem(value: year, child: Text(year.toString()));
-                }),
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() { _selectedYear = val; _updateDaysInMonth(); });
-                    _fetchAttendanceData();
-                  }
-                },
-                isDark: isDark,
-                colorScheme: colorScheme,
-              ),
-            ],
+                  const SizedBox(width: 12),
+                  _buildDropdown(
+                    value: _selectedMonth,
+                    items: List.generate(
+                      12,
+                      (index) => DropdownMenuItem(
+                        value: index + 1,
+                        child: Text(
+                          DateFormat('MMM').format(DateTime(2024, index + 1)),
+                        ),
+                      ),
+                    ),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() {
+                          _selectedMonth = val;
+                          _updateDaysInMonth();
+                        });
+                        _fetchAttendanceData();
+                      }
+                    },
+                    isDark: isDark,
+                    colorScheme: colorScheme,
+                  ),
+                  const SizedBox(width: 12),
+                  _buildDropdown(
+                    value: _selectedYear,
+                    items: List.generate(5, (index) {
+                      final year = DateTime.now().year - index;
+                      return DropdownMenuItem(
+                        value: year,
+                        child: Text(year.toString()),
+                      );
+                    }),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() {
+                          _selectedYear = val;
+                          _updateDaysInMonth();
+                        });
+                        _fetchAttendanceData();
+                      }
+                    },
+                    isDark: isDark,
+                    colorScheme: colorScheme,
+                  ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 12),
           // Legend
@@ -333,7 +494,11 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
             children: [
               _buildLegendItem(Icons.check_circle, Colors.green, "Present"),
               const SizedBox(width: 16),
-              _buildLegendItem(Icons.access_time_filled, Colors.orange, "Half Day"),
+              _buildLegendItem(
+                Icons.access_time_filled,
+                Colors.orange,
+                "Half Day",
+              ),
               const SizedBox(width: 16),
               _buildLegendItem(Icons.cancel, Colors.red, "Absent"),
             ],
@@ -354,12 +519,14 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: isDark ? colorScheme.surfaceContainerHighest : Colors.white,
+        color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: colorScheme.outline.withValues(
+              alpha: isDark ? 0.15 : 0.08,
+            ),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -371,8 +538,11 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
           items: items,
           onChanged: onChanged,
           icon: Icon(Icons.arrow_drop_down, color: colorScheme.onSurface),
-          dropdownColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
-          style: GoogleFonts.poppins(fontSize: 14, color: colorScheme.onSurface),
+          dropdownColor: colorScheme.surfaceContainerHighest,
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: colorScheme.onSurface,
+          ),
         ),
       ),
     );
@@ -398,12 +568,14 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
     return Container(
       margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
       decoration: BoxDecoration(
-        color: isDark ? colorScheme.surfaceContainerHighest : Colors.white,
+        color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: colorScheme.outline.withOpacity(0.1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: colorScheme.outline.withValues(
+              alpha: isDark ? 0.15 : 0.08,
+            ),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -415,11 +587,9 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
           children: [
             // STICKY HEADER
             _buildStickyHeader(colorScheme),
-            
+
             // SCROLLABLE BODY
-            Expanded(
-              child: _buildTableBody(colorScheme, isDark),
-            ),
+            Expanded(child: _buildTableBody(colorScheme, isDark)),
           ],
         ),
       ),
@@ -456,7 +626,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
               ),
             ),
           ),
-          
+
           // Scrollable Date Headers
           Expanded(
             child: Stack(
@@ -464,19 +634,30 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                 SingleChildScrollView(
                   controller: _headerScrollController,
                   scrollDirection: Axis.horizontal,
-                  physics: const ClampingScrollPhysics(), // Prevent bounce desync
+                  physics:
+                      const ClampingScrollPhysics(), // Prevent bounce desync
                   child: Row(
                     children: List.generate(_daysInMonth, (index) {
-                      final date = DateTime(_selectedYear, _selectedMonth, index + 1);
-                      final isWeekend = date.weekday == DateTime.saturday || date.weekday == DateTime.sunday;
-                      
+                      final date = DateTime(
+                        _selectedYear,
+                        _selectedMonth,
+                        index + 1,
+                      );
+                      final isWeekend =
+                          date.weekday == DateTime.saturday ||
+                          date.weekday == DateTime.sunday;
+
                       return Container(
                         width: _dateColumnWidth,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: isWeekend ? colorScheme.error.withOpacity(0.05) : null,
+                          color: isWeekend
+                              ? colorScheme.error.withOpacity(0.05)
+                              : null,
                           border: Border(
-                            right: BorderSide(color: colorScheme.outline.withOpacity(0.05)),
+                            right: BorderSide(
+                              color: colorScheme.outline.withOpacity(0.05),
+                            ),
                           ),
                         ),
                         child: Column(
@@ -486,7 +667,9 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                               (index + 1).toString(),
                               style: GoogleFonts.poppins(
                                 fontWeight: FontWeight.bold,
-                                color: isWeekend ? colorScheme.error : colorScheme.onSurface,
+                                color: isWeekend
+                                    ? colorScheme.error
+                                    : colorScheme.onSurface,
                                 fontSize: 13,
                               ),
                             ),
@@ -494,7 +677,9 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                               DateFormat('E').format(date).substring(0, 1),
                               style: GoogleFonts.poppins(
                                 fontWeight: FontWeight.w400,
-                                color: isWeekend ? colorScheme.error.withOpacity(0.7) : colorScheme.onSurface.withOpacity(0.5),
+                                color: isWeekend
+                                    ? colorScheme.error.withOpacity(0.7)
+                                    : colorScheme.onSurface.withOpacity(0.5),
                                 fontSize: 10,
                               ),
                             ),
@@ -545,7 +730,10 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
               children: List.generate(_filteredData.length, (index) {
                 final employeeData = _filteredData[index];
                 final empName = employeeData['employeeName'] ?? 'Unknown';
-                final empId = employeeData['employeeId'] ?? employeeData['_id']?.toString() ?? '';
+                final empId =
+                    employeeData['employeeId'] ??
+                    employeeData['_id']?.toString() ??
+                    '';
                 final isEven = index % 2 == 0;
 
                 return InkWell(
@@ -555,10 +743,16 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     alignment: Alignment.centerLeft,
                     decoration: BoxDecoration(
-                      color: isEven ? Colors.transparent : colorScheme.surface.withOpacity(0.5),
+                      color: isEven
+                          ? Colors.transparent
+                          : colorScheme.surface.withOpacity(0.5),
                       border: Border(
-                        bottom: BorderSide(color: colorScheme.outline.withOpacity(0.05)),
-                        right: BorderSide(color: colorScheme.outline.withOpacity(0.1)),
+                        bottom: BorderSide(
+                          color: colorScheme.outline.withOpacity(0.05),
+                        ),
+                        right: BorderSide(
+                          color: colorScheme.outline.withOpacity(0.1),
+                        ),
                       ),
                     ),
                     child: Row(
@@ -576,9 +770,9 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                           ),
                         ),
                         Icon(
-                          Icons.chevron_right, 
-                          size: 16, 
-                          color: colorScheme.onSurface.withOpacity(0.3)
+                          Icons.chevron_right,
+                          size: 16,
+                          color: colorScheme.onSurface.withOpacity(0.3),
                         ),
                       ],
                     ),
@@ -587,7 +781,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
               }),
             ),
           ),
-          
+
           // SCROLLABLE RIGHT BLOCK (DATA)
           Expanded(
             child: Stack(
@@ -595,18 +789,23 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                 SingleChildScrollView(
                   controller: _bodyScrollController,
                   scrollDirection: Axis.horizontal,
-                  physics: const ClampingScrollPhysics(), // Prevent bounce desync
+                  physics:
+                      const ClampingScrollPhysics(), // Prevent bounce desync
                   child: Column(
                     children: List.generate(_filteredData.length, (index) {
                       final employeeData = _filteredData[index];
                       final isEven = index % 2 == 0;
-                      
+
                       return Container(
                         height: _rowHeight,
                         decoration: BoxDecoration(
-                          color: isEven ? Colors.transparent : colorScheme.surface.withOpacity(0.5),
+                          color: isEven
+                              ? Colors.transparent
+                              : colorScheme.surface.withOpacity(0.5),
                           border: Border(
-                            bottom: BorderSide(color: colorScheme.outline.withOpacity(0.05)),
+                            bottom: BorderSide(
+                              color: colorScheme.outline.withOpacity(0.05),
+                            ),
                           ),
                         ),
                         child: Row(
@@ -614,23 +813,36 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                             final day = dayIndex + 1;
                             final dateStr =
                                 '$_selectedYear-${_selectedMonth.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
-                            
-                            final List<dynamic> attendanceRecords = employeeData['attendance'] ?? [];
+
+                            final List<dynamic> attendanceRecords =
+                                employeeData['attendance'] ?? [];
                             final record = attendanceRecords.firstWhere(
                               (r) => r['date'] == dateStr,
                               orElse: () => null,
                             );
 
-                            final date = DateTime(_selectedYear, _selectedMonth, day);
-                            final isWeekend = date.weekday == DateTime.saturday || date.weekday == DateTime.sunday;
+                            final date = DateTime(
+                              _selectedYear,
+                              _selectedMonth,
+                              day,
+                            );
+                            final isWeekend =
+                                date.weekday == DateTime.saturday ||
+                                date.weekday == DateTime.sunday;
 
                             return Container(
                               width: _dateColumnWidth,
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
-                                color: isWeekend ? colorScheme.error.withOpacity(0.02) : null,
+                                color: isWeekend
+                                    ? colorScheme.error.withOpacity(0.02)
+                                    : null,
                                 border: Border(
-                                  right: BorderSide(color: colorScheme.outline.withOpacity(0.05)),
+                                  right: BorderSide(
+                                    color: colorScheme.outline.withOpacity(
+                                      0.05,
+                                    ),
+                                  ),
                                 ),
                               ),
                               child: _buildStatusIcon(record),
@@ -654,8 +866,12 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                           begin: Alignment.centerRight,
                           end: Alignment.centerLeft,
                           colors: [
-                            isDark ? Colors.black.withOpacity(0.4) : Colors.white.withOpacity(0.8),
-                            isDark ? Colors.black.withOpacity(0.0) : Colors.white.withOpacity(0.0),
+                            isDark
+                                ? Colors.black.withOpacity(0.4)
+                                : Colors.white.withOpacity(0.8),
+                            isDark
+                                ? Colors.black.withOpacity(0.0)
+                                : Colors.white.withOpacity(0.0),
                           ],
                         ),
                       ),
@@ -708,5 +924,101 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
     }
 
     return SizedBox();
+  }
+
+  Widget _buildExportButton(ColorScheme colorScheme) {
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: colorScheme.primary,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.primary.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _isExporting || _attendanceData.isEmpty
+              ? null
+              : _exportToExcel,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (_isExporting)
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        colorScheme.onPrimary,
+                      ),
+                    ),
+                  )
+                else
+                  Icon(Icons.download, color: colorScheme.onPrimary, size: 20),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    _isExporting ? 'Exporting...' : 'Export Excel',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onPrimary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _exportToExcel() async {
+    if (_attendanceData.isEmpty) {
+      SnackbarUtils.showWarning(context, 'No attendance data to export');
+      return;
+    }
+
+    setState(() => _isExporting = true);
+
+    try {
+      final filePath = await ExcelExportUtils.exportAttendanceToExcel(
+        attendanceData: _attendanceData,
+        month: _selectedMonth,
+        year: _selectedYear,
+        context: context,
+      );
+
+      if (mounted) {
+        setState(() => _isExporting = false);
+        if (filePath != null) {
+          SnackbarUtils.showSuccess(
+            context,
+            'Attendance sheet exported successfully!',
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isExporting = false);
+        SnackbarUtils.showError(
+          context,
+          'Failed to export attendance: ${e.toString()}',
+        );
+      }
+    }
   }
 }

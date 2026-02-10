@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,6 +7,7 @@ import 'package:quantum_dashboard/models/leave_model.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/providers/leave_provider.dart';
 import 'package:quantum_dashboard/providers/notification_provider.dart';
+import 'package:quantum_dashboard/providers/employee_provider.dart';
 import 'package:quantum_dashboard/utils/text_styles.dart';
 
 class AdminLeaveRequestsScreen extends StatefulWidget {
@@ -22,6 +24,7 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<LeaveProvider>(context, listen: false).getAllLeaves();
+      Provider.of<EmployeeProvider>(context, listen: false).getAllEmployees();
     });
   }
 
@@ -34,6 +37,41 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
     return leaves
         .where((leave) => leave.status.toLowerCase() == _selectedStatus)
         .toList();
+  }
+
+  String _getEmployeeName(Leave leave) {
+    // Try to find in EmployeeProvider for the most up-to-date name
+    final employeeProvider = Provider.of<EmployeeProvider>(
+      context,
+      listen: false,
+    );
+    final employee = employeeProvider.employees.firstWhere(
+      (e) => e.employeeId == leave.employeeId || e.id == leave.employeeId,
+      orElse: () => Employee(
+        id: '',
+        employeeId: '',
+        firstName: '',
+        lastName: '',
+        email: '',
+        mobile: '',
+        dateOfBirth: DateTime.now(),
+        joiningDate: DateTime.now(),
+        password: '',
+        profileImage: '',
+      ),
+    );
+
+    if (employee.firstName.isNotEmpty || employee.lastName.isNotEmpty) {
+      return '${employee.fullName} (${leave.employeeId})';
+    }
+
+    // Fallback 1: If leave already has employee object with name
+    if (leave.employee != null && leave.employee!.fullName.trim().isNotEmpty) {
+      return '${leave.employee!.fullName} (${leave.employeeId})';
+    }
+
+    // Fallback 2: use what's in leave.employeeName (likely "Employee ID: xyz")
+    return leave.employeeName;
   }
 
   @override
@@ -248,11 +286,13 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
     return Container(
       margin: EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: isDark ? colorScheme.surfaceContainerHighest : Colors.white,
+        color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: colorScheme.outline.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.15 : 0.08,
+            ),
             blurRadius: 10,
             offset: Offset(0, 4),
           ),
@@ -269,8 +309,8 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
                   radius: 20,
                   backgroundColor: colorScheme.primary.withOpacity(0.1),
                   child: Text(
-                    leave.employeeName.isNotEmpty
-                        ? leave.employeeName.substring(0, 1).toUpperCase()
+                    _getEmployeeName(leave).isNotEmpty
+                        ? _getEmployeeName(leave).substring(0, 1).toUpperCase()
                         : 'U',
                     style: TextStyle(
                       color: colorScheme.primary,
@@ -285,7 +325,7 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        leave.employeeName,
+                        _getEmployeeName(leave),
                         style: GoogleFonts.poppins(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -541,6 +581,7 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
       builder: (context) => StatusUpdateDialog(
         leave: leave,
         onStatusUpdated: _refreshLeaveRequests,
+        employeeName: _getEmployeeName(leave),
       ),
     );
   }
@@ -548,7 +589,8 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
   Future<void> _quickApprove(Leave leave) async {
     try {
       final leaveProvider = Provider.of<LeaveProvider>(context, listen: false);
-      await leaveProvider.updateLeaveStatus(leave.id, 'approved');
+      // Backend expects 'Approved' (capitalized)
+      await leaveProvider.updateLeaveStatus(leave.id, 'Approved');
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -584,8 +626,13 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
 class StatusUpdateDialog extends StatefulWidget {
   final Leave leave;
   final VoidCallback onStatusUpdated;
+  final String employeeName;
 
-  StatusUpdateDialog({required this.leave, required this.onStatusUpdated});
+  StatusUpdateDialog({
+    required this.leave,
+    required this.onStatusUpdated,
+    required this.employeeName,
+  });
 
   @override
   _StatusUpdateDialogState createState() => _StatusUpdateDialogState();
@@ -641,7 +688,7 @@ class _StatusUpdateDialogState extends State<StatusUpdateDialog> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.leave.employeeName,
+                    widget.employeeName,
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   SizedBox(height: 4),
@@ -697,17 +744,41 @@ class _StatusUpdateDialogState extends State<StatusUpdateDialog> {
   }
 
   Future<void> _updateStatus() async {
-    // Same logic
     try {
       final leaveProvider = Provider.of<LeaveProvider>(context, listen: false);
-      await leaveProvider.updateLeaveStatus(widget.leave.id, _selectedStatus);
+
+      // Map frontend status to backend expected format
+      String backendStatus;
+      switch (_selectedStatus.toLowerCase()) {
+        case 'approved':
+          backendStatus = 'Approved';
+          break;
+        case 'rejected':
+          backendStatus = 'Rejected';
+          break;
+        case 'pending':
+          backendStatus = 'New';
+          break;
+        default:
+          backendStatus = 'New';
+      }
+
+      await leaveProvider.updateLeaveStatus(widget.leave.id, backendStatus);
       Navigator.pop(context);
       widget.onStatusUpdated();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Success'), backgroundColor: Colors.green),
+        SnackBar(
+          content: Text('Leave status updated successfully'),
+          backgroundColor: Colors.green,
+        ),
       );
     } catch (e) {
-      // Error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating leave status: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 

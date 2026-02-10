@@ -18,9 +18,15 @@ class AppTheme {
   static const Color darkBackground = Color(0xFF121212);
   static const Color darkCardColor = Color(0xFF1E1E1E);
   static const Color darkSurface = Color(0xFF1E1E1E);
+  static const Color darkSurfaceContainer = Color(0xFF2C2C2C);
+  static const Color darkSurfaceContainerHighest = Color(0xFF383838);
   static const Color darkTextPrimary = Color(0xFFE0E0E0);
   static const Color darkTextSecondary = Color(0xFFB0B0B0);
   static const Color darkDivider = Color(0xFF424242);
+
+  // Light theme surface variants (so colorScheme.surfaceContainer* works everywhere)
+  static const Color lightSurfaceContainer = Color(0xFFEEEEEE);
+  static const Color lightSurfaceContainerHighest = Color(0xFFFFFFFF);
 
   static final ThemeData lightTheme = ThemeData(
     brightness: Brightness.light,
@@ -30,13 +36,14 @@ class AppTheme {
       primary: lightPrimary,
       secondary: lightSecondary,
       surface: lightSurface,
-      background: lightBackground,
       error: Colors.red,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onSurface: lightTextPrimary,
-      onBackground: lightTextPrimary,
       onError: Colors.white,
+      outline: lightDivider,
+      surfaceContainer: lightSurfaceContainer,
+      surfaceContainerHighest: lightSurfaceContainerHighest,
     ),
     scaffoldBackgroundColor: lightBackground,
     cardColor: lightCardColor,
@@ -134,13 +141,14 @@ class AppTheme {
       primary: darkPrimary,
       secondary: darkSecondary,
       surface: darkSurface,
-      background: darkBackground,
       error: Colors.red[300]!,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onSurface: darkTextPrimary,
-      onBackground: darkTextPrimary,
       onError: Colors.white,
+      outline: darkDivider,
+      surfaceContainer: darkSurfaceContainer,
+      surfaceContainerHighest: darkSurfaceContainerHighest,
     ),
     scaffoldBackgroundColor: darkBackground,
     cardColor: darkCardColor,

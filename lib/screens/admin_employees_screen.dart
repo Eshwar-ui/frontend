@@ -293,11 +293,11 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
     return Container(
       margin: EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: isDark ? colorScheme.surfaceContainerHighest : Colors.white,
+        color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: colorScheme.outline.withValues(alpha: theme.brightness == Brightness.dark ? 0.15 : 0.08),
             blurRadius: 10,
             offset: Offset(0, 4),
           ),

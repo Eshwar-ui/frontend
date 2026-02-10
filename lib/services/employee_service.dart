@@ -7,9 +7,11 @@ import 'package:quantum_dashboard/services/api_service.dart';
 class EmployeeService extends ApiService {
   // Get individual employee
   Future<Employee> getEmployee(String employeeId) async {
-    final response = await http.get(
-      Uri.parse('${ApiService.baseUrl}/api/individualemployee/$employeeId'),
-      headers: await getHeaders(),
+    final response = await sendRequest(
+      http.get(
+        Uri.parse('${ApiService.baseUrl}/api/individualemployee/$employeeId'),
+        headers: await getHeaders(),
+      ),
     );
 
     final data = handleResponse(response);
@@ -33,12 +35,14 @@ class EmployeeService extends ApiService {
       '${ApiService.baseUrl}/api/all-employees',
     ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
-    final response = await http.get(uri, headers: await getHeaders());
+    final response = await sendRequest(
+      http.get(uri, headers: await getHeaders()),
+    );
 
     final data = handleResponse(response);
-    final employees = (data as List)
-        .map((json) => Employee.fromJson(json))
-        .toList();
+    final rawList = data is List ? data : const [];
+    final employees =
+        rawList.map((json) => Employee.fromJson(json)).toList();
 
     // Print all employee details to console
     print('\n========== ALL EMPLOYEE DETAILS ==========');
@@ -82,10 +86,12 @@ class EmployeeService extends ApiService {
   Future<Map<String, dynamic>> addEmployee(
     Map<String, dynamic> employeeData,
   ) async {
-    final response = await http.post(
-      Uri.parse('${ApiService.baseUrl}/api/add-employee'),
-      headers: await getHeaders(),
-      body: json.encode(employeeData),
+    final response = await sendRequest(
+      http.post(
+        Uri.parse('${ApiService.baseUrl}/api/add-employee'),
+        headers: await getHeaders(),
+        body: json.encode(employeeData),
+      ),
     );
 
     final data = handleResponse(response);
@@ -97,10 +103,12 @@ class EmployeeService extends ApiService {
     String id,
     Map<String, dynamic> updates,
   ) async {
-    final response = await http.put(
-      Uri.parse('${ApiService.baseUrl}/api/update-employee/$id'),
-      headers: await getHeaders(),
-      body: json.encode(updates),
+    final response = await sendRequest(
+      http.put(
+        Uri.parse('${ApiService.baseUrl}/api/update-employee/$id'),
+        headers: await getHeaders(),
+        body: json.encode(updates),
+      ),
     );
 
     final data = handleResponse(response);
@@ -109,9 +117,11 @@ class EmployeeService extends ApiService {
 
   // Delete employee (Admin only)
   Future<Map<String, dynamic>> deleteEmployee(String employeeId) async {
-    final response = await http.delete(
-      Uri.parse('${ApiService.baseUrl}/api/delete-employee/$employeeId'),
-      headers: await getHeaders(),
+    final response = await sendRequest(
+      http.delete(
+        Uri.parse('${ApiService.baseUrl}/api/delete-employee/$employeeId'),
+        headers: await getHeaders(),
+      ),
     );
 
     final data = handleResponse(response);

@@ -23,12 +23,14 @@ class PayslipService extends ApiService {
     ).replace(queryParameters: queryParams);
 
     final headers = await getHeaders();
-    final response = await http.get(uri, headers: headers);
+    final response = await sendRequest(
+      http.get(uri, headers: headers),
+    );
 
     final data = handleResponse(response);
-    final payslips = (data as List)
-        .map((json) => Payslip.fromJson(json))
-        .toList();
+    final rawList = data is List ? data : const [];
+    final payslips =
+        rawList.map((json) => Payslip.fromJson(json)).toList();
 
     return payslips;
   }
@@ -38,12 +40,14 @@ class PayslipService extends ApiService {
     final url = '${ApiService.baseUrl}/api/employee-payslip/$employeeId';
     final headers = await getHeaders();
 
-    final response = await http.get(Uri.parse(url), headers: headers);
+    final response = await sendRequest(
+      http.get(Uri.parse(url), headers: headers),
+    );
 
     final data = handleResponse(response);
-    final employeePayslips = (data as List)
-        .map((json) => EmployeePayslip.fromJson(json))
-        .toList();
+    final rawList = data is List ? data : const [];
+    final employeePayslips =
+        rawList.map((json) => EmployeePayslip.fromJson(json)).toList();
 
     return employeePayslips;
   }
@@ -68,28 +72,30 @@ class PayslipService extends ApiService {
     required int lopDays,
     required double arrear,
   }) async {
-    final response = await http.post(
-      Uri.parse('${ApiService.baseUrl}/api/generate-payslip'),
-      headers: await getHeaders(),
-      body: json.encode({
-        'empId': empId,
-        'month': month,
-        'year': year,
-        'basicSalary': basicSalary,
-        'HRA': hra,
-        'TA': ta,
-        'DA': da,
-        'conveyanceAllowance': conveyanceAllowance,
-        'total': total,
-        'employeesContributionPF': employeesContributionPF,
-        'employersContributionPF': employersContributionPF,
-        'professionalTAX': professionalTAX,
-        'totalDeductions': totalDeductions,
-        'NetSalary': netSalary,
-        'paidDays': paidDays,
-        'LOPDays': lopDays,
-        'arrear': arrear,
-      }),
+    final response = await sendRequest(
+      http.post(
+        Uri.parse('${ApiService.baseUrl}/api/generate-payslip'),
+        headers: await getHeaders(),
+        body: json.encode({
+          'empId': empId,
+          'month': month,
+          'year': year,
+          'basicSalary': basicSalary,
+          'HRA': hra,
+          'TA': ta,
+          'DA': da,
+          'conveyanceAllowance': conveyanceAllowance,
+          'total': total,
+          'employeesContributionPF': employeesContributionPF,
+          'employersContributionPF': employersContributionPF,
+          'professionalTAX': professionalTAX,
+          'totalDeductions': totalDeductions,
+          'NetSalary': netSalary,
+          'paidDays': paidDays,
+          'LOPDays': lopDays,
+          'arrear': arrear,
+        }),
+      ),
     );
 
     final data = handleResponse(response);
@@ -103,15 +109,17 @@ class PayslipService extends ApiService {
     required String year,
     required String url,
   }) async {
-    final response = await http.post(
-      Uri.parse('${ApiService.baseUrl}/api/upload-payslip/'),
-      headers: await getHeaders(),
-      body: json.encode({
-        'employeeId': employeeId,
-        'month': month,
-        'year': year,
-        'url': url,
-      }),
+    final response = await sendRequest(
+      http.post(
+        Uri.parse('${ApiService.baseUrl}/api/upload-payslip/'),
+        headers: await getHeaders(),
+        body: json.encode({
+          'employeeId': employeeId,
+          'month': month,
+          'year': year,
+          'url': url,
+        }),
+      ),
     );
 
     final data = handleResponse(response);
@@ -120,9 +128,11 @@ class PayslipService extends ApiService {
 
   // Delete employee payslip
   Future<Map<String, dynamic>> deleteEmployeePayslip(String payslipId) async {
-    final response = await http.delete(
-      Uri.parse('${ApiService.baseUrl}/api/delete-employeepayslip/$payslipId'),
-      headers: await getHeaders(),
+    final response = await sendRequest(
+      http.delete(
+        Uri.parse('${ApiService.baseUrl}/api/delete-employeepayslip/$payslipId'),
+        headers: await getHeaders(),
+      ),
     );
 
     final data = handleResponse(response);
@@ -131,9 +141,11 @@ class PayslipService extends ApiService {
 
   // Delete generated payslip
   Future<Map<String, dynamic>> deletePayslip(String payslipId) async {
-    final response = await http.delete(
-      Uri.parse('${ApiService.baseUrl}/api/delete-payslip/$payslipId'),
-      headers: await getHeaders(),
+    final response = await sendRequest(
+      http.delete(
+        Uri.parse('${ApiService.baseUrl}/api/delete-payslip/$payslipId'),
+        headers: await getHeaders(),
+      ),
     );
 
     final data = handleResponse(response);

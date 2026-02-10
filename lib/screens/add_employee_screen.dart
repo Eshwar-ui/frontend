@@ -141,9 +141,18 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: colorScheme.onSurface),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
         title: Text(
           'Add New Employee',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+            color: colorScheme.onSurface,
+          ),
         ),
         elevation: 0,
         backgroundColor: colorScheme.surface,
@@ -178,11 +187,25 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                           controller: _firstNameController,
                           label: 'First Name',
                           hint: 'John',
+                          mandatory: true,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Required';
+                            }
+                            return null;
+                          },
                         ),
                         _buildTextField(
                           controller: _lastNameController,
                           label: 'Last Name',
                           hint: 'Doe',
+                          mandatory: true,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Required';
+                            }
+                            return null;
+                          },
                         ),
                       ]),
                       _buildTextField(
@@ -225,6 +248,13 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                         label: 'Phone Number',
                         hint: '+91 9876543210',
                         keyboardType: TextInputType.phone,
+                        mandatory: true,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Required';
+                          }
+                          return null;
+                        },
                       ),
                       _buildTextField(
                         controller: _fathernameController,
@@ -281,6 +311,13 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                           controller: _employeeIdController,
                           label: 'Employee ID',
                           hint: 'QWIT-1001',
+                          mandatory: true,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Required';
+                            }
+                            return null;
+                          },
                         ),
                         _buildDropdown<String>(
                           label: 'Role',
@@ -466,14 +503,19 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
   }
 
   Widget _buildCard(List<Widget> children) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: colorScheme.outline.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.2 : 0.08,
+            ),
             blurRadius: 10,
             offset: Offset(0, 4),
           ),
@@ -498,6 +540,9 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
     Widget? suffixIcon,
     String? Function(String?)? validator,
   }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -509,14 +554,14 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
               style: GoogleFonts.poppins(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: Colors.grey[700],
+                color: colorScheme.onSurface.withOpacity(0.7),
               ),
             ),
             if (mandatory)
               Text(
                 ' *',
                 style: TextStyle(
-                  color: Colors.red,
+                  color: colorScheme.error,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -528,31 +573,44 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
           keyboardType: keyboardType,
           obscureText: obscureText,
           maxLines: maxLines,
-          style: GoogleFonts.poppins(fontSize: 14),
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: colorScheme.onSurface,
+          ),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
+            hintStyle: TextStyle(
+              color: colorScheme.onSurface.withOpacity(0.5),
+              fontSize: 13,
+            ),
             suffixIcon: suffixIcon,
             filled: true,
-            fillColor: Colors.grey[50],
+            fillColor: colorScheme.surfaceContainerHighest,
             contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderSide: BorderSide(
+                color: colorScheme.outline.withOpacity(0.3),
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey[200]!),
+              borderSide: BorderSide(
+                color: colorScheme.outline.withOpacity(0.2),
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
-                color: Theme.of(context).colorScheme.primary,
+                color: colorScheme.primary,
+                width: 2,
               ),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.red[300]!),
+              borderSide: BorderSide(
+                color: colorScheme.error,
+              ),
             ),
           ),
           validator: validator,
@@ -567,6 +625,9 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
     required List<DropdownMenuItem<T>> items,
     required void Function(T?) onChanged,
   }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -575,7 +636,7 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
           style: GoogleFonts.poppins(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: Colors.grey[700],
+            color: colorScheme.onSurface.withOpacity(0.7),
           ),
         ),
         SizedBox(height: 6),
@@ -583,18 +644,33 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
           value: value,
           items: items,
           onChanged: onChanged,
-          style: GoogleFonts.poppins(fontSize: 14, color: Colors.black),
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: colorScheme.onSurface,
+          ),
+          dropdownColor: colorScheme.surfaceContainerHighest,
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.grey[50],
+            fillColor: colorScheme.surfaceContainerHighest,
             contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderSide: BorderSide(
+                color: colorScheme.outline.withOpacity(0.3),
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: Colors.grey[200]!),
+              borderSide: BorderSide(
+                color: colorScheme.outline.withOpacity(0.2),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: colorScheme.primary,
+                width: 2,
+              ),
             ),
           ),
         ),
@@ -607,6 +683,9 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
     required DateTime value,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -615,7 +694,7 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
           style: GoogleFonts.poppins(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: Colors.grey[700],
+            color: colorScheme.onSurface.withOpacity(0.7),
           ),
         ),
         SizedBox(height: 6),
@@ -624,19 +703,28 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
           child: Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.grey[50],
+              color: colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.grey[200]!),
+              border: Border.all(
+                color: colorScheme.outline.withOpacity(0.2),
+              ),
             ),
             child: Row(
               children: [
                 Expanded(
                   child: Text(
                     DateFormat('dd-MM-yyyy').format(value),
-                    style: GoogleFonts.poppins(fontSize: 14),
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: colorScheme.onSurface,
+                    ),
                   ),
                 ),
-                Icon(Icons.calendar_today, size: 18, color: Colors.grey[600]),
+                Icon(
+                  Icons.calendar_today,
+                  size: 18,
+                  color: colorScheme.onSurface.withOpacity(0.6),
+                ),
               ],
             ),
           ),

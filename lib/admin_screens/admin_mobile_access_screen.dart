@@ -146,7 +146,7 @@ class _AdminMobileAccessScreenState extends State<AdminMobileAccessScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           filled: true,
-                          fillColor: isDark ? colorScheme.surfaceContainer : Colors.white,
+                          fillColor: colorScheme.surfaceContainer,
                           contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                         ),
                       ),
@@ -155,7 +155,7 @@ class _AdminMobileAccessScreenState extends State<AdminMobileAccessScreen> {
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
-                        color: isDark ? colorScheme.surfaceContainer : Colors.white,
+                        color: colorScheme.surfaceContainer,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.grey.withOpacity(0.5)),
                       ),

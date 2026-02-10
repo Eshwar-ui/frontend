@@ -7,7 +7,7 @@ import 'package:quantum_dashboard/providers/employee_provider.dart';
 import 'package:quantum_dashboard/providers/payslip_provider.dart';
 import 'package:quantum_dashboard/providers/notification_provider.dart';
 import 'package:quantum_dashboard/models/payslip_model.dart';
-import 'package:quantum_dashboard/widgets/generate_payslip_dialog.dart';
+import 'package:quantum_dashboard/screens/generate_payslip_screen.dart';
 import 'package:quantum_dashboard/utils/snackbar_utils.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -58,13 +58,14 @@ class _AdminPayslipsScreenState extends State<AdminPayslipsScreen> {
       return;
     }
 
-    final result = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (context) => GeneratePayslipDialog(
-        employees: employeeProvider.employees,
-        employeeId: _selectedEmployeeId,
-        initialMonth: _selectedMonth,
-        initialYear: _selectedYear,
+    final result = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(
+        builder: (context) => GeneratePayslipScreen(
+          employees: employeeProvider.employees,
+          employeeId: _selectedEmployeeId,
+          initialMonth: _selectedMonth,
+          initialYear: _selectedYear,
+        ),
       ),
     );
 
@@ -74,7 +75,7 @@ class _AdminPayslipsScreenState extends State<AdminPayslipsScreen> {
         listen: false,
       );
       try {
-        await payslipProvider.generatePayslip(
+        final generateResult = await payslipProvider.generatePayslip(
           empId: result['empId'] as String,
           month: result['month'] as int,
           year: result['year'] as int,
@@ -95,8 +96,20 @@ class _AdminPayslipsScreenState extends State<AdminPayslipsScreen> {
         );
 
         if (mounted) {
-          SnackbarUtils.showSuccess(context, 'Payslip generated successfully!');
-          _loadPayslips();
+          if (generateResult['success'] == false ||
+              generateResult['error'] != null) {
+            final errorMessage =
+                generateResult['error'] ??
+                generateResult['message'] ??
+                'Failed to generate payslip';
+            SnackbarUtils.showError(context, errorMessage);
+          } else {
+            SnackbarUtils.showSuccess(
+              context,
+              'Payslip generated successfully!',
+            );
+            _loadPayslips();
+          }
 
           // Notification is created automatically by backend
           // Refresh notification count if provider is available

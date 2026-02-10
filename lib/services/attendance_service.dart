@@ -16,15 +16,17 @@ class AttendanceService extends ApiService {
   ) async {
     await _validateLocation(latitude, longitude, employeeId);
 
-    final response = await http.post(
-      Uri.parse('${ApiService.baseUrl}/api/punchin'),
-      headers: await getHeaders(),
-      body: json.encode({
-        'employeeId': employeeId,
-        'employeeName': employeeName,
-        'latitude': latitude,
-        'longitude': longitude,
-      }),
+    final response = await sendRequest(
+      http.post(
+        Uri.parse('${ApiService.baseUrl}/api/punchin'),
+        headers: await getHeaders(),
+        body: json.encode({
+          'employeeId': employeeId,
+          'employeeName': employeeName,
+          'latitude': latitude,
+          'longitude': longitude,
+        }),
+      ),
     );
 
     final data = handleResponse(response);
@@ -40,15 +42,17 @@ class AttendanceService extends ApiService {
   ) async {
     await _validateLocation(latitude, longitude, employeeId);
 
-    final response = await http.post(
-      Uri.parse('${ApiService.baseUrl}/api/punchout'),
-      headers: await getHeaders(),
-      body: json.encode({
-        'employeeId': employeeId,
-        'employeeName': employeeName,
-        'latitude': latitude,
-        'longitude': longitude,
-      }),
+    final response = await sendRequest(
+      http.post(
+        Uri.parse('${ApiService.baseUrl}/api/punchout'),
+        headers: await getHeaders(),
+        body: json.encode({
+          'employeeId': employeeId,
+          'employeeName': employeeName,
+          'latitude': latitude,
+          'longitude': longitude,
+        }),
+      ),
     );
 
     final data = handleResponse(response);
@@ -104,19 +108,20 @@ class AttendanceService extends ApiService {
     print('AttendanceService: Fetching punches for employee: $employeeId');
     print('AttendanceService: API URL: $uri');
 
-    final response = await http.get(uri, headers: await getHeaders());
+    final response = await sendRequest(
+      http.get(uri, headers: await getHeaders()),
+    );
 
     print('AttendanceService: Response status: ${response.statusCode}');
     print('AttendanceService: Response body: ${response.body}');
 
     final data = handleResponse(response);
     print('AttendanceService: Parsed data: $data');
-    print(
-      'AttendanceService: Number of punches: ${(data['punches'] as List).length}',
-    );
+    final punches = (data['punches'] as List?) ?? const [];
+    print('AttendanceService: Number of punches: ${punches.length}');
 
     return {
-      'punches': (data['punches'] as List)
+      'punches': punches
           .map((json) => Attendance.fromJson(json))
           .toList(),
       'totalWorkingTime': data['totalWorkingTime'] ?? 0.0,
@@ -139,7 +144,9 @@ class AttendanceService extends ApiService {
       '${ApiService.baseUrl}/api/date-wise-data/$employeeId',
     ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
-    final response = await http.get(uri, headers: await getHeaders());
+    final response = await sendRequest(
+      http.get(uri, headers: await getHeaders()),
+    );
 
     final data = handleResponse(response);
     return List<Map<String, dynamic>>.from(data);
@@ -160,7 +167,9 @@ class AttendanceService extends ApiService {
       '${ApiService.baseUrl}/api/admin/attendance',
     ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
-    final response = await http.get(uri, headers: await getHeaders());
+    final response = await sendRequest(
+      http.get(uri, headers: await getHeaders()),
+    );
 
     final data = handleResponse(response);
     return List<Map<String, dynamic>>.from(data);
@@ -171,16 +180,18 @@ class AttendanceService extends ApiService {
     String employeeId,
     String date,
   ) async {
-    final response = await http.get(
-      Uri.parse(
-        '${ApiService.baseUrl}/api/admin/employee/date-punches/$employeeId/$date',
+    final response = await sendRequest(
+      http.get(
+        Uri.parse(
+          '${ApiService.baseUrl}/api/admin/employee/date-punches/$employeeId/$date',
+        ),
+        headers: await getHeaders(),
       ),
-      headers: await getHeaders(),
     );
 
     final data = handleResponse(response);
     return {
-      'punches': (data['punches'] as List)
+      'punches': ((data['punches'] as List?) ?? const [])
           .map((json) => Attendance.fromJson(json))
           .toList(),
       'totalWorkingTime': data['totalWorkingTime'] ?? 0.0,

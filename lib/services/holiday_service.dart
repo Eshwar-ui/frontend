@@ -11,7 +11,9 @@ class HolidayService extends ApiService {
     final uri = Uri.parse('${ApiService.baseUrl}/api/get-holidays');
     print('HolidayService: Fetching holidays from: $uri');
     
-    final response = await http.get(uri, headers: await getHeaders());
+    final response = await sendRequest(
+      http.get(uri, headers: await getHeaders()),
+    );
     print('HolidayService: Response status: ${response.statusCode}');
     print('HolidayService: Response body: ${response.body}');
 
@@ -29,7 +31,7 @@ class HolidayService extends ApiService {
       print('HolidayService: Successfully parsed ${holidays.length} holidays');
       return holidays;
     } else {
-      throw Exception('Expected List but got ${data.runtimeType}');
+      return [];
     }
   }
 
@@ -45,14 +47,16 @@ class HolidayService extends ApiService {
     required String date,
     required String action,
   }) async {
-    final response = await http.post(
-      Uri.parse('${ApiService.baseUrl}/api/add-holiday'),
-      headers: await getHeaders(),
-      body: json.encode({
-        'title': title,
-        'date': date,
-        'action': action,
-      }),
+    final response = await sendRequest(
+      http.post(
+        Uri.parse('${ApiService.baseUrl}/api/add-holiday'),
+        headers: await getHeaders(),
+        body: json.encode({
+          'title': title,
+          'date': date,
+          'action': action,
+        }),
+      ),
     );
 
     final data = handleResponse(response);
@@ -65,14 +69,16 @@ class HolidayService extends ApiService {
     required String date,
     required String day,
   }) async {
-    final response = await http.put(
-      Uri.parse('${ApiService.baseUrl}/api/update-holiday/$holidayId'),
-      headers: await getHeaders(),
-      body: json.encode({
-        'title': title,
-        'date': date,
-        'day': day,
-      }),
+    final response = await sendRequest(
+      http.put(
+        Uri.parse('${ApiService.baseUrl}/api/update-holiday/$holidayId'),
+        headers: await getHeaders(),
+        body: json.encode({
+          'title': title,
+          'date': date,
+          'day': day,
+        }),
+      ),
     );
 
     final data = handleResponse(response);
@@ -81,9 +87,11 @@ class HolidayService extends ApiService {
 
   // Delete holiday (Admin only)
   Future<Map<String, dynamic>> deleteHoliday(String holidayId) async {
-    final response = await http.delete(
-      Uri.parse('${ApiService.baseUrl}/api/delete-holiday/$holidayId'),
-      headers: await getHeaders(),
+    final response = await sendRequest(
+      http.delete(
+        Uri.parse('${ApiService.baseUrl}/api/delete-holiday/$holidayId'),
+        headers: await getHeaders(),
+      ),
     );
 
     final data = handleResponse(response);

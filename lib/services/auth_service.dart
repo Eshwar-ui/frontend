@@ -13,20 +13,13 @@ class AuthService extends ApiService {
       final headers = await getHeaders();
       final requestBody = json.encode({'email': email, 'password': password});
 
-      final response = await http
-          .post(
-            Uri.parse('${ApiService.baseUrl}/auth/login'),
-            headers: headers,
-            body: requestBody,
-          )
-          .timeout(
-            const Duration(seconds: 30),
-            onTimeout: () {
-              throw Exception(
-                'Connection timeout. Please check your internet connection and try again.',
-              );
-            },
-          );
+      final response = await sendRequest(
+        http.post(
+          Uri.parse('${ApiService.baseUrl}/auth/login'),
+          headers: headers,
+          body: requestBody,
+        ),
+      );
 
       final data = handleResponse(response);
 
@@ -45,7 +38,14 @@ class AuthService extends ApiService {
         });
         try {
           // Fetch complete employee data using the individual employee API
-          final employeeId = data['payload']['employeeId'];
+          final payload = data['payload'];
+          final employeeId =
+              payload is Map ? payload['employeeId']?.toString() : null;
+          if (employeeId == null || employeeId.isEmpty) {
+            throw Exception(
+              'Login succeeded but user payload is missing employee ID.',
+            );
+          }
           final employeeService = EmployeeService();
           final user = await employeeService.getEmployee(employeeId);
           AppLogger.info('AuthService: Successfully fetched Employee object', {
@@ -81,13 +81,15 @@ class AuthService extends ApiService {
     String confirmPassword,
   ) async {
     try {
-      final response = await http.put(
-        Uri.parse('${ApiService.baseUrl}/api/changepassword/$employeeId'),
-        headers: await getHeaders(),
-        body: json.encode({
-          'newPassword': newPassword,
-          'confirmPassword': confirmPassword,
-        }),
+      final response = await sendRequest(
+        http.put(
+          Uri.parse('${ApiService.baseUrl}/api/changepassword/$employeeId'),
+          headers: await getHeaders(),
+          body: json.encode({
+            'newPassword': newPassword,
+            'confirmPassword': confirmPassword,
+          }),
+        ),
       );
 
       final data = handleResponse(response);

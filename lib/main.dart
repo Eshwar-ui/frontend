@@ -14,6 +14,7 @@ import 'package:quantum_dashboard/providers/theme_provider.dart';
 import 'package:quantum_dashboard/providers/notification_provider.dart';
 import 'package:quantum_dashboard/providers/notification_settings_provider.dart';
 import 'package:quantum_dashboard/services/local_notification_service.dart';
+import 'package:quantum_dashboard/theme/app_design_system.dart';
 import 'package:quantum_dashboard/utils/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'screens/login_screen.dart';

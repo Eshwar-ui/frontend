@@ -361,7 +361,7 @@ class _AdminEmployeeLocationsScreenState
                   borderRadius: BorderRadius.circular(12),
                 ),
                 filled: true,
-                fillColor: isDark ? colorScheme.surfaceContainer : Colors.white,
+                fillColor: colorScheme.surfaceContainer,
               ),
               items: employeeProvider.employees.map((employee) {
                 return DropdownMenuItem<String>(

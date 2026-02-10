@@ -95,15 +95,32 @@ class PayslipProvider with ChangeNotifier {
         lopDays: lopDays,
         arrear: arrear,
       );
+      // Check if result indicates success or error
+      if (result['error'] != null) {
+        _error = result['error'];
+        _isLoading = false;
+        notifyListeners();
+        return {'success': false, 'error': result['error']};
+      }
+
       await getPayslips(empId); // Refresh the list
       _isLoading = false;
       notifyListeners();
-      return result;
+      return {'success': true, ...result};
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
       notifyListeners();
-      return {'success': false, 'message': e.toString()};
+      // Extract error message from exception
+      String errorMessage = e.toString();
+      if (errorMessage.contains('ServerErrorException')) {
+        // Try to extract the actual error message
+        final match = errorMessage.matchAsPrefix('ServerErrorException: ');
+        if (match != null) {
+          errorMessage = errorMessage.substring(match.end);
+        }
+      }
+      return {'success': false, 'error': errorMessage};
     }
   }
 

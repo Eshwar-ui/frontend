@@ -33,8 +33,9 @@ class _NavScreenState extends State<NavScreen> {
     NewProfilePage(),
   ];
 
-  static const MethodChannel _platformChannel =
-      MethodChannel('com.quantum.dashboard/windows');
+  static const MethodChannel _platformChannel = MethodChannel(
+    'com.quantum.dashboard/windows',
+  );
 
   @override
   void initState() {
@@ -53,8 +54,10 @@ class _NavScreenState extends State<NavScreen> {
     if (!mounted) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final attendanceProvider =
-        Provider.of<AttendanceProvider>(context, listen: false);
+    final attendanceProvider = Provider.of<AttendanceProvider>(
+      context,
+      listen: false,
+    );
     final user = authProvider.user;
 
     if (user == null) {
@@ -72,10 +75,10 @@ class _NavScreenState extends State<NavScreen> {
           return;
         }
       }
-      
+
       if (permission == LocationPermission.deniedForever) {
-          debugPrint('Auto Punch Out: Location permission denied forever.');
-          return;
+        debugPrint('Auto Punch Out: Location permission denied forever.');
+        return;
       }
 
       // Get current location
@@ -95,7 +98,6 @@ class _NavScreenState extends State<NavScreen> {
       );
 
       debugPrint('Auto Punch Out Result: $result');
-
     } catch (e) {
       debugPrint('Auto Punch Out Error: $e');
     }
@@ -115,117 +117,160 @@ class _NavScreenState extends State<NavScreen> {
       canPop: currentPage == NavigationPage.Dashboard,
       onPopInvoked: (bool didPop) {
         if (didPop) return;
-        
+
         // If we are not on the dashboard, go back to dashboard
         if (currentPage != NavigationPage.Dashboard) {
-           navigationProvider.setCurrentPage(NavigationPage.Dashboard);
+          navigationProvider.setCurrentPage(NavigationPage.Dashboard);
         }
       },
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
         body: SafeArea(
           child: Stack(
-          children: [
-            // Main content with bottom padding to prevent overlap with nav bar
-            _widgetOptions[_selectedIndex],
-            // Floating Navigation Bar with absolute positioning
-            Builder(
-              builder: (context) {
-                final mediaQuery = MediaQuery.of(context);
-                final screenWidth = mediaQuery.size.width;
-                final screenHeight = mediaQuery.size.height;
+            children: [
+              // Main content with bottom padding to prevent overlap with nav bar
+              _widgetOptions[_selectedIndex],
+              // Floating Navigation Bar with absolute positioning
+              // Only show when this screen is the current route (no routes pushed on top)
+              Builder(
+                builder: (context) {
+                  // Check if this route is the current active route
+                  // If Navigator.canPop returns true, it means there's a route on top
+                  final route = ModalRoute.of(context);
+                  final isCurrentRoute = route?.isCurrent ?? false;
 
-                // Use relative sizes
-                final double navBarHeight = (screenHeight * 0.100).clamp(60, 90); // min 60, max 90
-                final double navBarHorizontalPadding = (screenWidth * 0.05).clamp(10, 30);
-                final double navBarBottom = (screenHeight * 0.025).clamp(8, 24);
-                final double navBarLeftRight = (screenWidth * 0.04).clamp(8, 32);
+                  // Hide nav bar if this is not the current route (meaning a route was pushed on top)
+                  if (!isCurrentRoute) {
+                    return const SizedBox.shrink();
+                  }
 
-                return Positioned(
-                  left: navBarLeftRight,
-                  right: navBarLeftRight,
-                  bottom: navBarBottom,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(100),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 1, sigmaY: 1),
-                      child: Container(
-                        height: navBarHeight,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: navBarHorizontalPadding,
-                          vertical: navBarHeight * 0.08, // about 8% of navBar height
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: isDark
-                                ? [
-                                    Colors.white.withOpacity(0.15),
-                                    Colors.white.withOpacity(0.05),
-                                  ]
-                                : [
-                                    Colors.white.withOpacity(0.8),
-                                    Colors.white.withOpacity(0.6),
-                                  ],
+                  final mediaQuery = MediaQuery.of(context);
+                  final screenWidth = mediaQuery.size.width;
+                  final screenHeight = mediaQuery.size.height;
+
+                  // Use relative sizes
+                  final double navBarHeight = (screenHeight * 0.100).clamp(
+                    60,
+                    90,
+                  ); // min 60, max 90
+                  final double navBarHorizontalPadding = (screenWidth * 0.05)
+                      .clamp(10, 30);
+                  final double navBarBottom = (screenHeight * 0.025).clamp(
+                    8,
+                    24,
+                  );
+                  final double navBarLeftRight = (screenWidth * 0.04).clamp(
+                    8,
+                    32,
+                  );
+
+                  return Positioned(
+                    left: navBarLeftRight,
+                    right: navBarLeftRight,
+                    bottom: navBarBottom,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(100),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 1, sigmaY: 1),
+                        child: Container(
+                          height: navBarHeight,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: navBarHorizontalPadding,
+                            vertical:
+                                navBarHeight *
+                                0.08, // about 8% of navBar height
                           ),
-                          borderRadius: BorderRadius.circular(100),
-                          border: Border.all(
-                            color: isDark
-                                ? Colors.white.withOpacity(0.25)
-                                : Colors.white.withOpacity(0.9),
-                            width: 1.5,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: isDark
+                                  ? [
+                                      Colors.white.withOpacity(0.15),
+                                      Colors.white.withOpacity(0.05),
+                                    ]
+                                  : [
+                                      Colors.white.withOpacity(0.8),
+                                      Colors.white.withOpacity(0.6),
+                                    ],
+                            ),
+                            borderRadius: BorderRadius.circular(100),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white.withOpacity(0.25)
+                                  : Colors.white.withOpacity(0.9),
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              // Outer shadow for depth
+                              BoxShadow(
+                                blurRadius: 30,
+                                spreadRadius: -5,
+                                color: isDark
+                                    ? Colors.black.withOpacity(0.5)
+                                    : Colors.black.withOpacity(0.15),
+                                offset: Offset(0, 8),
+                              ),
+                              // Inner highlight for glass effect
+                              BoxShadow(
+                                blurRadius: 10,
+                                spreadRadius: -2,
+                                color: Colors.white.withOpacity(0.3),
+                                offset: Offset(0, -2),
+                              ),
+                              // Soft glow
+                              BoxShadow(
+                                blurRadius: 20,
+                                color: isDark
+                                    ? Colors.black.withOpacity(0.2)
+                                    : Colors.black.withOpacity(0.08),
+                                offset: Offset(0, 4),
+                              ),
+                            ],
                           ),
-                          boxShadow: [
-                            // Outer shadow for depth
-                            BoxShadow(
-                              blurRadius: 30,
-                              spreadRadius: -5,
-                              color: isDark
-                                  ? Colors.black.withOpacity(0.5)
-                                  : Colors.black.withOpacity(0.15),
-                              offset: Offset(0, 8),
-                            ),
-                            // Inner highlight for glass effect
-                            BoxShadow(
-                              blurRadius: 10,
-                              spreadRadius: -2,
-                              color: Colors.white.withOpacity(0.3),
-                              offset: Offset(0, -2),
-                            ),
-                            // Soft glow
-                            BoxShadow(
-                              blurRadius: 20,
-                              color: isDark
-                                  ? Colors.black.withOpacity(0.2)
-                                  : Colors.black.withOpacity(0.08),
-                              offset: Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _buildNavItem(Icons.dashboard, 'Dashboard', 0, context),
-                            _buildNavItem(Icons.calendar_month, 'Calendar', 1, context),
-                            _buildNavItem(Icons.search, 'Search', 2, context),
-                            _buildNavItem(Icons.person, 'Profile', 3, context),
-                          ],
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _buildNavItem(
+                                Icons.dashboard,
+                                'Dashboard',
+                                0,
+                                context,
+                              ),
+                              _buildNavItem(
+                                Icons.calendar_month,
+                                'Calendar',
+                                1,
+                                context,
+                              ),
+                              _buildNavItem(Icons.search, 'Search', 2, context),
+                              _buildNavItem(
+                                Icons.person,
+                                'Profile',
+                                3,
+                                context,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                );
-              },
-            ),
-          ],
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, int index, BuildContext context) {
+  Widget _buildNavItem(
+    IconData icon,
+    String label,
+    int index,
+    BuildContext context,
+  ) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
@@ -235,7 +280,9 @@ class _NavScreenState extends State<NavScreen> {
 
     return GestureDetector(
       onTap: () {
-        final newPage = _pageMap.entries.firstWhere((element) => element.value == index).key;
+        final newPage = _pageMap.entries
+            .firstWhere((element) => element.value == index)
+            .key;
         navigationProvider.setCurrentPage(newPage);
       },
       child: AnimatedContainer(
@@ -248,7 +295,7 @@ class _NavScreenState extends State<NavScreen> {
         decoration: BoxDecoration(
           color: isSelected
               ? colorScheme.primary
-              : (isDark ? colorScheme.surface : Colors.white),
+              : colorScheme.surface,
           borderRadius: BorderRadius.circular(25),
           boxShadow: [
             BoxShadow(
@@ -293,4 +340,3 @@ class _NavScreenState extends State<NavScreen> {
     );
   }
 }
-

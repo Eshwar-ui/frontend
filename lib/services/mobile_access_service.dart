@@ -8,7 +8,9 @@ class MobileAccessService extends ApiService {
     final url = '${ApiService.baseUrl}/api/mobile-access/$employeeId';
     final headers = await getHeaders();
 
-    final response = await http.get(Uri.parse(url), headers: headers);
+    final response = await sendRequest(
+      http.get(Uri.parse(url), headers: headers),
+    );
     return handleResponse(response);
   }
 
@@ -20,10 +22,12 @@ class MobileAccessService extends ApiService {
     final url = '${ApiService.baseUrl}/api/mobile-access/$employeeId';
     final headers = await getHeaders();
 
-    final response = await http.put(
-      Uri.parse(url),
-      headers: headers,
-      body: json.encode({'enabled': enabled, 'mobileAccessEnabled': enabled}),
+    final response = await sendRequest(
+      http.put(
+        Uri.parse(url),
+        headers: headers,
+        body: json.encode({'enabled': enabled, 'mobileAccessEnabled': enabled}),
+      ),
     );
     return handleResponse(response);
   }
@@ -33,7 +37,9 @@ class MobileAccessService extends ApiService {
     final url = '${ApiService.baseUrl}/api/mobile-access';
     final headers = await getHeaders();
 
-    final response = await http.get(Uri.parse(url), headers: headers);
+    final response = await sendRequest(
+      http.get(Uri.parse(url), headers: headers),
+    );
     final data = handleResponse(response);
 
     if (data is List) {

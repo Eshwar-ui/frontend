@@ -7,7 +7,7 @@ import 'package:quantum_dashboard/providers/holiday_provider.dart';
 import 'package:quantum_dashboard/providers/navigation_provider.dart';
 import 'package:quantum_dashboard/utils/text_styles.dart';
 import 'package:quantum_dashboard/widgets/custom_loading_widget.dart';
-import 'package:quantum_dashboard/widgets/add_holiday_dialog.dart';
+import 'package:quantum_dashboard/screens/add_holiday_screen.dart';
 import 'package:quantum_dashboard/utils/snackbar_utils.dart';
 
 class AdminHolidaysScreen extends StatefulWidget {
@@ -31,27 +31,19 @@ class _AdminHolidaysScreenState extends State<AdminHolidaysScreen> {
   }
 
   Future<void> _addHoliday() async {
-    final result = await showDialog<Holiday>(
-      context: context,
-      builder: (context) => AddHolidayDialog(),
+    await Navigator.of(context).push<Holiday?>(
+      MaterialPageRoute(builder: (context) => AddHolidayScreen()),
     );
-
-    if (result != null) {
-      _refreshHolidays();
-      SnackbarUtils.showSuccess(context, 'Holiday added successfully!');
-    }
+    _refreshHolidays();
   }
 
   Future<void> _editHoliday(Holiday holiday) async {
-    final result = await showDialog<Holiday>(
-      context: context,
-      builder: (context) => AddHolidayDialog(holiday: holiday),
+    await Navigator.of(context).push<Holiday?>(
+      MaterialPageRoute(
+        builder: (context) => AddHolidayScreen(holiday: holiday),
+      ),
     );
-
-    if (result != null) {
-      _refreshHolidays();
-      SnackbarUtils.showSuccess(context, 'Holiday updated successfully!');
-    }
+    _refreshHolidays();
   }
 
   Future<void> _deleteHoliday(Holiday holiday) async {

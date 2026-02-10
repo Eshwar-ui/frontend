@@ -7,6 +7,7 @@ import 'package:quantum_dashboard/admin_screens/admin_departments_screen.dart';
 import 'package:quantum_dashboard/admin_screens/admin_leave_types_screen.dart';
 import 'package:quantum_dashboard/admin_screens/admin_payslips_screen.dart';
 import 'package:quantum_dashboard/admin_screens/admin_mobile_access_screen.dart';
+import 'package:quantum_dashboard/admin_screens/admin_locations_screen.dart';
 import 'package:quantum_dashboard/admin_screens/admin_company_locations_screen.dart';
 import 'package:quantum_dashboard/admin_screens/admin_employee_locations_screen.dart';
 
@@ -34,6 +35,9 @@ class AdminManagementScreen extends StatelessWidget {
         break;
       case NavigationPage.AdminMobileAccess:
         currentScreen = AdminMobileAccessScreen();
+        break;
+      case NavigationPage.AdminLocations:
+        currentScreen = AdminLocationsScreen();
         break;
       case NavigationPage.AdminCompanyLocations:
         currentScreen = AdminCompanyLocationsScreen();
@@ -157,26 +161,13 @@ class AdminManagementScreen extends StatelessWidget {
               SizedBox(height: 16),
               _buildManagementCard(
                 context,
-                'Company Locations',
-                'Manage company office locations',
-                Icons.business,
+                'Location Management',
+                'Manage office and employee home locations',
+                Icons.map_rounded,
                 Colors.indigo,
                 () {
                   navigationProvider.setCurrentPage(
-                    NavigationPage.AdminCompanyLocations,
-                  );
-                },
-              ),
-              SizedBox(height: 16),
-              _buildManagementCard(
-                context,
-                'Employee Locations',
-                'Manage work-from-home employee locations',
-                Icons.home,
-                Colors.pink,
-                () {
-                  navigationProvider.setCurrentPage(
-                    NavigationPage.AdminEmployeeLocations,
+                    NavigationPage.AdminLocations,
                   );
                 },
               ),
@@ -205,12 +196,14 @@ class AdminManagementScreen extends StatelessWidget {
       child: Container(
         padding: EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: isDark ? colorScheme.surfaceContainerHighest : Colors.white,
+          color: colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: color.withOpacity(0.2), width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: colorScheme.outline.withValues(
+                alpha: theme.brightness == Brightness.dark ? 0.15 : 0.08,
+              ),
               blurRadius: 10,
               offset: Offset(0, 4),
             ),

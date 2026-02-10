@@ -19,17 +19,19 @@ class LeaveService extends ApiService {
     final dateFormatter = DateFormat("yyyy-MM-dd");
     final days = to.difference(from).inDays + 1; // inclusive
 
-    final response = await http.post(
-      Uri.parse('${ApiService.baseUrl}/api/apply-leave'),
-      headers: await getHeaders(),
-      body: json.encode({
-        'employeeId': employeeId,
-        'leaveType': leaveType,
-        'from': dateFormatter.format(from),
-        'to': dateFormatter.format(to),
-        'reason': reason,
-        'days': days,
-      }),
+    final response = await sendRequest(
+      http.post(
+        Uri.parse('${ApiService.baseUrl}/api/apply-leave'),
+        headers: await getHeaders(),
+        body: json.encode({
+          'employeeId': employeeId,
+          'leaveType': leaveType,
+          'from': dateFormatter.format(from),
+          'to': dateFormatter.format(to),
+          'reason': reason,
+          'days': days,
+        }),
+      ),
     );
 
     final data = handleResponse(response);
@@ -43,9 +45,11 @@ class LeaveService extends ApiService {
       'url': '${ApiService.baseUrl}/api/get-leaves/$employeeId',
     });
 
-    final response = await http.get(
-      Uri.parse('${ApiService.baseUrl}/api/get-leaves/$employeeId'),
-      headers: await getHeaders(),
+    final response = await sendRequest(
+      http.get(
+        Uri.parse('${ApiService.baseUrl}/api/get-leaves/$employeeId'),
+        headers: await getHeaders(),
+      ),
     );
 
     AppLogger.debug('LeaveService: Response received', {
@@ -54,7 +58,8 @@ class LeaveService extends ApiService {
     });
 
     final data = handleResponse(response);
-    final leaves = (data as List).map((json) => Leave.fromJson(json)).toList();
+    final rawList = data is List ? data : const [];
+    final leaves = rawList.map((json) => Leave.fromJson(json)).toList();
     AppLogger.info('LeaveService: Successfully fetched leaves', {
       'employeeId': employeeId,
       'count': leaves.length,
@@ -75,9 +80,11 @@ class LeaveService extends ApiService {
       throw Exception('Authentication required. Please login again.');
     }
 
-    final response = await http.get(
-      Uri.parse('${ApiService.baseUrl}/api/all-leaves'),
-      headers: await getHeaders(),
+    final response = await sendRequest(
+      http.get(
+        Uri.parse('${ApiService.baseUrl}/api/all-leaves'),
+        headers: await getHeaders(),
+      ),
     );
 
     AppLogger.debug('LeaveService: Response received', {
@@ -85,7 +92,8 @@ class LeaveService extends ApiService {
     });
 
     final data = handleResponse(response);
-    final leaves = (data as List).map((json) => Leave.fromJson(json)).toList();
+    final rawList = data is List ? data : const [];
+    final leaves = rawList.map((json) => Leave.fromJson(json)).toList();
     AppLogger.info('LeaveService: Successfully fetched all leaves', {
       'count': leaves.length,
     });
@@ -102,10 +110,12 @@ class LeaveService extends ApiService {
     String leaveId,
     String status,
   ) async {
-    final response = await http.put(
-      Uri.parse('${ApiService.baseUrl}/api/leave/update-status'),
-      headers: await getHeaders(),
-      body: json.encode({'leaveId': leaveId, 'status': status}),
+    final response = await sendRequest(
+      http.put(
+        Uri.parse('${ApiService.baseUrl}/api/leave/update-status'),
+        headers: await getHeaders(),
+        body: json.encode({'leaveId': leaveId, 'status': status}),
+      ),
     );
 
     final data = handleResponse(response);
@@ -118,10 +128,12 @@ class LeaveService extends ApiService {
     String leaveId,
     Map<String, dynamic> leaveData,
   ) async {
-    final response = await http.put(
-      Uri.parse('${ApiService.baseUrl}/api/update-leave/$employeeId/$leaveId'),
-      headers: await getHeaders(),
-      body: json.encode({'data': leaveData}),
+    final response = await sendRequest(
+      http.put(
+        Uri.parse('${ApiService.baseUrl}/api/update-leave/$employeeId/$leaveId'),
+        headers: await getHeaders(),
+        body: json.encode({'data': leaveData}),
+      ),
     );
 
     final data = handleResponse(response);
@@ -130,9 +142,11 @@ class LeaveService extends ApiService {
 
   // Get specific leave (Employee)
   Future<Leave> getLeave(String employeeId, String leaveId) async {
-    final response = await http.get(
-      Uri.parse('${ApiService.baseUrl}/api/get-leave/$employeeId/$leaveId'),
-      headers: await getHeaders(),
+    final response = await sendRequest(
+      http.get(
+        Uri.parse('${ApiService.baseUrl}/api/get-leave/$employeeId/$leaveId'),
+        headers: await getHeaders(),
+      ),
     );
 
     final data = handleResponse(response);
@@ -144,9 +158,11 @@ class LeaveService extends ApiService {
     String employeeId,
     String leaveId,
   ) async {
-    final response = await http.delete(
-      Uri.parse('${ApiService.baseUrl}/api/delete-leave/$employeeId/$leaveId'),
-      headers: await getHeaders(),
+    final response = await sendRequest(
+      http.delete(
+        Uri.parse('${ApiService.baseUrl}/api/delete-leave/$employeeId/$leaveId'),
+        headers: await getHeaders(),
+      ),
     );
 
     final data = handleResponse(response);
@@ -155,9 +171,11 @@ class LeaveService extends ApiService {
 
   // Fetch available leave types from backend
   Future<List<String>> getLeaveTypes() async {
-    final response = await http.get(
-      Uri.parse('${ApiService.baseUrl}${ApiEndpoints.getLeaveTypes}'),
-      headers: await getHeaders(),
+    final response = await sendRequest(
+      http.get(
+        Uri.parse('${ApiService.baseUrl}${ApiEndpoints.getLeaveTypes}'),
+        headers: await getHeaders(),
+      ),
     );
 
     final data = handleResponse(response);

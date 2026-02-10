@@ -89,15 +89,37 @@ class HolidayProvider with ChangeNotifier {
         date: date,
         action: action,
       );
-      await getHolidays(); // Refresh the list
+
+      // Normalize response: backend returns { message: "..." } on success
+      // or throws ServerErrorException on error
+      final normalizedResult = {
+        'success': result['message'] != null && result['error'] == null,
+        'message':
+            result['message'] ??
+            result['error'] ??
+            'Holiday added successfully',
+        'error': result['error'],
+      };
+
+      if (normalizedResult['success'] == true) {
+        await getHolidays(); // Refresh the list
+      }
+
       _isLoading = false;
       _safeNotifyListeners();
-      return result;
+      return normalizedResult;
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
       _safeNotifyListeners();
-      return {'success': false, 'message': e.toString()};
+
+      // Extract error message from exception
+      String errorMessage = e.toString();
+      if (errorMessage.contains('Exception: ')) {
+        errorMessage = errorMessage.replaceAll('Exception: ', '');
+      }
+
+      return {'success': false, 'message': errorMessage, 'error': errorMessage};
     }
   }
 
@@ -119,15 +141,36 @@ class HolidayProvider with ChangeNotifier {
         date: date,
         day: day,
       );
-      await getHolidays(); // Refresh the list
+
+      // Normalize response: backend returns { message: "..." } on success
+      final normalizedResult = {
+        'success': result['message'] != null && result['error'] == null,
+        'message':
+            result['message'] ??
+            result['error'] ??
+            'Holiday updated successfully',
+        'error': result['error'],
+      };
+
+      if (normalizedResult['success'] == true) {
+        await getHolidays(); // Refresh the list
+      }
+
       _isLoading = false;
       _safeNotifyListeners();
-      return result;
+      return normalizedResult;
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
       _safeNotifyListeners();
-      return {'success': false, 'message': e.toString()};
+
+      // Extract error message from exception
+      String errorMessage = e.toString();
+      if (errorMessage.contains('Exception: ')) {
+        errorMessage = errorMessage.replaceAll('Exception: ', '');
+      }
+
+      return {'success': false, 'message': errorMessage, 'error': errorMessage};
     }
   }
 
@@ -139,15 +182,36 @@ class HolidayProvider with ChangeNotifier {
 
     try {
       final result = await _holidayService.deleteHoliday(holidayId);
-      await getHolidays(); // Refresh the list
+
+      // Normalize response: backend returns { message: "..." } on success
+      final normalizedResult = {
+        'success': result['message'] != null && result['error'] == null,
+        'message':
+            result['message'] ??
+            result['error'] ??
+            'Holiday deleted successfully',
+        'error': result['error'],
+      };
+
+      if (normalizedResult['success'] == true) {
+        await getHolidays(); // Refresh the list
+      }
+
       _isLoading = false;
       _safeNotifyListeners();
-      return result;
+      return normalizedResult;
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
       _safeNotifyListeners();
-      return {'success': false, 'message': e.toString()};
+
+      // Extract error message from exception
+      String errorMessage = e.toString();
+      if (errorMessage.contains('Exception: ')) {
+        errorMessage = errorMessage.replaceAll('Exception: ', '');
+      }
+
+      return {'success': false, 'message': errorMessage, 'error': errorMessage};
     }
   }
 

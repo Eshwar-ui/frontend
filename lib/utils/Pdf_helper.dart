@@ -29,26 +29,29 @@ Future<void> downloadAndOpenPdf(
     },
   );
 
-  // Request storage permission for Android
+  // Request storage permission for Android (only for older versions)
   if (Platform.isAndroid) {
-    bool hasPermission = await _requestStoragePermission();
-    if (!hasPermission) {
-      Navigator.of(context).pop(); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Storage permission is required to download files. Please grant permission in settings.',
+    if (!await _isAndroid11OrAbove()) {
+      final status = await Permission.storage.request();
+      if (!status.isGranted) {
+        Navigator.of(context).pop(); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Storage permission is required to download files. Please grant permission in settings.',
+            ),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Settings',
+              onPressed: () => openAppSettings(),
+            ),
           ),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 4),
-          action: SnackBarAction(
-            label: 'Settings',
-            onPressed: () => openAppSettings(),
-          ),
-        ),
-      );
-      return;
+        );
+        return;
+      }
     }
+    // Android 11+ uses scoped storage - app-specific directory needs no special permission
   }
 
   try {
@@ -90,25 +93,11 @@ Future<void> downloadAndOpenPdf(
     // Get storage directory
     Directory? dir;
     if (Platform.isAndroid) {
-      // Check if we have MANAGE_EXTERNAL_STORAGE permission for Downloads folder
-      final manageExternalStorageStatus =
-          await Permission.manageExternalStorage.status;
-      print(
-        'MANAGE_EXTERNAL_STORAGE status for directory: $manageExternalStorageStatus',
-      );
-
-      if (manageExternalStorageStatus.isGranted) {
-        dir = Directory('/storage/emulated/0/Download');
-        print('Trying Downloads directory: ${dir.path}');
-        if (!await dir.exists()) {
-          print('Downloads directory does not exist, using external storage');
-          dir = await getExternalStorageDirectory();
-        }
-      } else {
-        // Use app-specific external storage directory
-        print('Using app-specific external storage');
-        dir = await getExternalStorageDirectory();
-      }
+      // Use app-specific external storage directory
+      // This works without MANAGE_EXTERNAL_STORAGE on Android 11+
+      // And with standard storage permission on older versions
+      print('Using app-specific external storage');
+      dir = await getExternalStorageDirectory();
     } else if (Platform.isIOS) {
       print('Using iOS documents directory');
       dir = await getApplicationDocumentsDirectory();
@@ -191,29 +180,16 @@ Future<void> downloadAndOpenPdf(
   }
 }
 
-Future<bool> _requestStoragePermission() async {
-  print('Requesting storage permissions...');
 
-  // Try to request MANAGE_EXTERNAL_STORAGE first for Android 11+
-  final manageExternalStorageStatus = await Permission.manageExternalStorage
-      .request();
-  print('MANAGE_EXTERNAL_STORAGE status: $manageExternalStorageStatus');
-
-  if (manageExternalStorageStatus.isGranted) {
-    print('MANAGE_EXTERNAL_STORAGE granted');
+Future<bool> _isAndroid11OrAbove() async {
+  if (!Platform.isAndroid) return false;
+  try {
+    // Try to check manageExternalStorage status
+    // If this permission exists, it means Android 11+ (API 30+)
+    await Permission.manageExternalStorage.status;
     return true;
+  } catch (e) {
+    // If permission doesn't exist or throws error, it's likely Android 10 or below
+    return false;
   }
-
-  // If MANAGE_EXTERNAL_STORAGE is not available or denied, try traditional storage permission
-  final storageStatus = await Permission.storage.request();
-  print('Storage permission status: $storageStatus');
-
-  if (storageStatus.isGranted) {
-    print('Storage permission granted');
-    return true;
-  }
-
-  // If both are denied, we can still use app-specific storage
-  print('Using app-specific storage (permissions denied)');
-  return true; // Allow downloads to app-specific directory
 }

@@ -9,10 +9,6 @@
        <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
         <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29" />
-
-    <!-- For Android 11+ (Scoped Storage) -->
-        <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
-            tools:ignore="ScopedStorage" />
         
     <!-- Biometric authentication permissions -->
         <uses-permission android:name="android.permission.USE_BIOMETRIC" />

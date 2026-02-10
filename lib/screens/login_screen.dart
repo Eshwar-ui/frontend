@@ -3,7 +3,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/widgets/custom_button.dart';
-import 'package:quantum_dashboard/widgets/custom_floating_container.dart';
 import 'package:quantum_dashboard/widgets/loading_dots_animation.dart';
 import '../providers/auth_provider.dart';
 import '../utils/connectivity_checker.dart';
@@ -30,7 +29,6 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _connectivityMessage;
   String? _validationError;
   AuthProvider? _authProvider;
-  NavigatorState? _navigator;
 
   @override
   void didChangeDependencies() {
@@ -40,12 +38,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       _authProvider = Provider.of<AuthProvider>(context, listen: false);
-      _navigator = Navigator.of(context);
     } catch (e) {
       // Handle case where context is no longer valid
-      print('Error accessing providers/navigator in didChangeDependencies: $e');
+      print('Error accessing provider in didChangeDependencies: $e');
       _authProvider = null;
-      _navigator = null;
     }
   }
 
@@ -274,85 +270,121 @@ class _LoginScreenState extends State<LoginScreen> {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    // Select the logo based on the current theme
     final logoAsset = isDark
-        ? 'assets/logos/quantumlogo-h(dark).png' // Your dark theme logo
-        : 'assets/logos/quantumlogo-h(light).png'; // Your light theme logo
+        ? 'assets/logos/quantumlogo-h(dark).png'
+        : 'assets/logos/quantumlogo-h(light).png';
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isSmallScreen = constraints.maxHeight < 700;
-          final topSpacing = isSmallScreen ? 40.0 : 100.0;
-          // Calculate max height for container. On small screens, let it fit content (null) or max out.
-          // Using MediaQuery inside LayoutBuilder can be tricky if keyboard opens,
-          // but SingleChildScrollView helps.
-          // Better to use constraints.maxHeight to decide.
-          final containerHeight = isSmallScreen
-              ? null
-              : constraints.maxHeight * 0.8;
+      body: Row(
+        children: [
+          // Left Side - Branding (Visible on large screens)
+          if (MediaQuery.of(context).size.width >= 900)
+            Expanded(
+              child: Container(
+                color: isDark
+                    ? colorScheme.surfaceContainer
+                    : colorScheme.primary.withOpacity(0.05),
+                child: Padding(
+                  padding: const EdgeInsets.all(48.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Image.asset(logoAsset, height: 60),
+                      const SizedBox(height: 40),
+                      Text(
+                        'Unlock Your Data\'s Potential',
+                        style: theme.textTheme.displaySmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Experience the next generation of enterprise analytics and dashboarding. Secure, scalable, and stunningly simple.',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: colorScheme.onSurface.withOpacity(0.6),
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 60),
+                      // Add some feature indicators or subtle design elements
+                      Row(
+                        children: [
+                          _buildMiniBadge(
+                            Icons.security,
+                            'Enterprise Security',
+                          ),
+                          const SizedBox(width: 20),
+                          _buildMiniBadge(
+                            Icons.analytics_outlined,
+                            'Real-time Insights',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
 
-          return SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  SizedBox(height: topSpacing),
-                  CustomFloatingContainer(
-                    width: double.infinity,
-                    height:
-                        containerHeight, // Null allows it to wrap content on small screens
+          // Right Side - Login Form
+          Expanded(
+            flex: 1,
+            child: SingleChildScrollView(
+              child: Container(
+                constraints: BoxConstraints(
+                  minHeight: MediaQuery.of(context).size.height,
+                ),
+                padding: EdgeInsets.symmetric(
+                  horizontal: MediaQuery.of(context).size.width > 900 ? 80 : 24,
+                  vertical: 40,
+                ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 400),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
                       mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Add Spacer only if height is fixed (large screens)
-                        if (!isSmallScreen) Spacer(),
-                        Image.asset(logoAsset, height: 50),
-                        SizedBox(height: 20),
+                        if (MediaQuery.of(context).size.width < 900) ...[
+                          Center(child: Image.asset(logoAsset, height: 50)),
+                          const SizedBox(height: 48),
+                        ],
                         Text(
-                          textAlign: TextAlign.center,
-                          'Log in to your account and access your personalized dashboard',
-                          style: TextStyle(
-                            color: colorScheme.onSurface.withOpacity(0.7),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
+                          'Welcome back',
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface,
                           ),
                         ),
-                        SizedBox(height: 20),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Enter your credentials to access your account',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurface.withOpacity(0.6),
+                          ),
+                        ),
+                        const SizedBox(height: 32),
                         Form(
                           key: _formKey,
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Text(
-                                'Email',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: colorScheme.onSurface,
-                                ),
-                              ),
                               TextFormField(
                                 controller: _emailController,
                                 keyboardType: TextInputType.emailAddress,
                                 textInputAction: TextInputAction.next,
                                 onChanged: (_) => _clearErrors(),
-                                style: TextStyle(color: colorScheme.onSurface),
                                 decoration: InputDecoration(
-                                  hintText: 'Enter Email',
-                                  hintStyle: TextStyle(
-                                    color: colorScheme.onSurface.withOpacity(
-                                      0.5,
-                                    ),
+                                  labelText: 'Email Address',
+                                  prefixIcon: const Icon(
+                                    Icons.email_outlined,
+                                    size: 20,
                                   ),
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 12,
-                                  ),
-                                ).applyDefaults(theme.inputDecorationTheme),
+                                  hintText: 'name@company.com',
+                                ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Please enter your email';
@@ -365,104 +397,84 @@ class _LoginScreenState extends State<LoginScreen> {
                                   return null;
                                 },
                               ),
-                              SizedBox(height: 20),
-                              Text(
-                                'Password',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: colorScheme.onSurface,
-                                ),
-                              ),
+                              const SizedBox(height: 20),
                               TextFormField(
                                 controller: _passwordController,
                                 obscureText: _obscurePassword,
                                 textInputAction: TextInputAction.done,
                                 onChanged: (_) => _clearErrors(),
                                 onFieldSubmitted: (_) => _handleLogin(),
-                                style: TextStyle(color: colorScheme.onSurface),
                                 decoration: InputDecoration(
-                                  hintText: 'Enter Password',
-                                  hintStyle: TextStyle(
-                                    color: colorScheme.onSurface.withOpacity(
-                                      0.5,
-                                    ),
-                                  ),
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 12,
+                                  labelText: 'Password',
+                                  prefixIcon: const Icon(
+                                    Icons.lock_outline,
+                                    size: 20,
                                   ),
                                   suffixIcon: IconButton(
                                     icon: Icon(
                                       _obscurePassword
-                                          ? Icons.visibility_off
-                                          : Icons.visibility,
-                                      color: colorScheme.onSurface.withOpacity(
-                                        0.6,
-                                      ),
+                                          ? Icons.visibility_off_outlined
+                                          : Icons.visibility_outlined,
+                                      size: 20,
                                     ),
                                     onPressed: _togglePasswordVisibility,
                                   ),
-                                ).applyDefaults(theme.inputDecorationTheme),
+                                ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Please enter your password';
                                   }
-                                  if (value.length < 6) {
-                                    return 'Password must be at least 6 characters';
-                                  }
                                   return null;
                                 },
                               ),
-                              SizedBox(height: 16),
-
-                              // Remember Me Checkbox
+                              const SizedBox(height: 12),
                               Row(
                                 children: [
-                                  Checkbox(
-                                    value: _rememberMe,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _rememberMe = value ?? false;
-                                      });
-                                    },
-                                    activeColor: colorScheme.primary,
+                                  SizedBox(
+                                    height: 24,
+                                    width: 24,
+                                    child: Checkbox(
+                                      value: _rememberMe,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _rememberMe = value ?? false;
+                                        });
+                                      },
+                                    ),
                                   ),
+                                  const SizedBox(width: 8),
                                   Text(
                                     'Remember me',
-                                    style: TextStyle(
-                                      fontSize: 14,
+                                    style: theme.textTheme.bodySmall?.copyWith(
                                       color: colorScheme.onSurface.withOpacity(
-                                        0.8,
+                                        0.7,
                                       ),
                                     ),
                                   ),
-                                  Spacer(),
-                                  // Load Saved Credentials Button
+                                  const Spacer(),
                                   FutureBuilder<bool>(
                                     future:
                                         CredentialStorageService.hasSavedCredentials(),
                                     builder: (context, snapshot) {
-                                      if (snapshot.hasData &&
-                                          snapshot.data == true) {
+                                      if (snapshot.data == true) {
                                         return TextButton(
                                           onPressed:
                                               _loadSavedCredentialsDialog,
-                                          child: Text(
-                                            'Load Saved',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: colorScheme.primary,
-                                            ),
+                                          style: TextButton.styleFrom(
+                                            padding: EdgeInsets.zero,
+                                            minimumSize: Size.zero,
+                                            tapTargetSize: MaterialTapTargetSize
+                                                .shrinkWrap,
                                           ),
+                                          child: const Text('Autofill'),
                                         );
                                       }
-                                      return SizedBox.shrink();
+                                      return const SizedBox.shrink();
                                     },
                                   ),
                                 ],
                               ),
-                              SizedBox(height: 20),
+                              const SizedBox(height: 32),
                               Consumer<AuthProvider>(
                                 builder: (context, authProvider, child) {
                                   if (authProvider.isLoading ||
@@ -475,244 +487,192 @@ class _LoginScreenState extends State<LoginScreen> {
                                     );
                                   }
 
-                                  return Column(
-                                    children: [
-                                      CustomButton(
-                                        text: 'Login',
-                                        onPressed: _handleLogin,
-                                      ),
-                                      if (_connectivityMessage != null)
-                                        Padding(
-                                          padding: EdgeInsets.only(top: 10),
-                                          child: Container(
-                                            padding: EdgeInsets.all(12),
-                                            decoration: BoxDecoration(
-                                              color: Colors.orange.shade50
-                                                  .withOpacity(
-                                                    isDark ? 0.2 : 1,
-                                                  ),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              border: Border.all(
-                                                color: Colors.orange.shade300,
-                                                width: 1,
-                                              ),
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                Icon(
-                                                  Icons.warning_amber_rounded,
-                                                  color: Colors.orange.shade700,
-                                                  size: 20,
-                                                ),
-                                                SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Text(
-                                                    _connectivityMessage!,
-                                                    style: TextStyle(
-                                                      color: Colors
-                                                          .orange
-                                                          .shade900,
-                                                      fontSize: 14,
-                                                    ),
-                                                    textAlign: TextAlign.left,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      if (NetworkConfig.showDebugUI)
-                                        Padding(
-                                          padding: EdgeInsets.only(top: 10),
-                                          child: Container(
-                                            padding: EdgeInsets.all(8),
-                                            decoration: BoxDecoration(
-                                              color: Colors.amber.shade100
-                                                  .withOpacity(
-                                                    isDark ? 0.2 : 1,
-                                                  ),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              border: Border.all(
-                                                color: Colors.amber.shade700,
-                                                width: 1,
-                                              ),
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                Icon(
-                                                  Icons.warning_amber_rounded,
-                                                  color: Colors.amber.shade800,
-                                                  size: 16,
-                                                ),
-                                                SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Text(
-                                                    'Using default IP address. Update in network_config.dart for mobile devices.',
-                                                    style: TextStyle(
-                                                      color:
-                                                          Colors.amber.shade900,
-                                                      fontSize: 12,
-                                                    ),
-                                                    textAlign: TextAlign.center,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      if (NetworkConfig.showDebugUI) ...[
-                                        SizedBox(height: 10),
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            TextButton(
-                                              onPressed: () {
-                                                if (mounted) {
-                                                  _checkConnectivity();
-                                                }
-                                              },
-                                              child: Text('Check Connection'),
-                                            ),
-                                            TextButton(
-                                              onPressed: () {
-                                                if (!mounted ||
-                                                    _navigator == null) {
-                                                  return;
-                                                }
-                                                try {
-                                                  _navigator!.push(
-                                                    MaterialPageRoute(
-                                                      builder: (context) =>
-                                                          NetworkTroubleshootScreen(),
-                                                    ),
-                                                  );
-                                                } catch (e) {
-                                                  print(
-                                                    'Error navigating to network troubleshoot: $e',
-                                                  );
-                                                }
-                                              },
-                                              child: Text('Network Help'),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ],
+                                  return CustomButton(
+                                    text: 'Login',
+                                    onPressed: _handleLogin,
                                   );
                                 },
                               ),
-                              Consumer<AuthProvider>(
-                                builder: (context, authProvider, child) {
-                                  final errorText =
-                                      _validationError ??
-                                      (authProvider.error != null
-                                          ? ErrorHandler.getErrorMessage(
-                                              authProvider.error,
-                                            )
-                                          : null);
-                                  if (errorText != null) {
-                                    return Padding(
-                                      padding: EdgeInsets.only(top: 10),
-                                      child: Container(
-                                        padding: EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red.shade50.withOpacity(
-                                            isDark ? 0.2 : 1,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                          border: Border.all(
-                                            color: Colors.red.shade200,
-                                            width: 1,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Icon(
-                                              Icons.error_outline,
-                                              color: Colors.red.shade600,
-                                              size: 20,
+                              _buildErrorDisplay(),
+                              _buildConnectivityDisplay(),
+                              const SizedBox(height: 48),
+                              Center(
+                                child: Text.rich(
+                                  textAlign: TextAlign.center,
+                                  TextSpan(
+                                    children: [
+                                      TextSpan(
+                                        text: 'Forgot password? Contact ',
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: colorScheme.onSurface
+                                                  .withOpacity(0.6),
                                             ),
-                                            SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                errorText,
-                                                maxLines: 3,
-                                                style: TextStyle(
-                                                  color: Colors.red.shade700,
-                                                  fontSize: 14,
-                                                ),
-                                              ),
+                                      ),
+                                      TextSpan(
+                                        text: 'IT Support',
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: colorScheme.primary,
+                                              fontWeight: FontWeight.bold,
                                             ),
-                                            IconButton(
-                                              icon: Icon(
-                                                Icons.close,
-                                                color: Colors.red.shade600,
-                                                size: 18,
-                                              ),
-                                              onPressed: _clearErrors,
-                                              padding: EdgeInsets.zero,
-                                              constraints: BoxConstraints(),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                  return SizedBox.shrink();
-                                },
-                              ),
-                              SizedBox(height: 20),
-                              Text.rich(
-                                textAlign: TextAlign.center,
-                                TextSpan(
-                                  children: [
-                                    TextSpan(
-                                      text:
-                                          'If you forgot your password, our HR team is here to help! Contact us at ',
-                                      style: TextStyle(
-                                        color: colorScheme.onSurface
-                                            .withOpacity(0.7),
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    TextSpan(
-                                      text: 'contact@quantumworks.in',
-                                      style: TextStyle(
-                                        color: colorScheme.primary,
-                                        fontSize: 12,
-                                        decoration: TextDecoration.underline,
-                                      ),
-                                      recognizer: TapGestureRecognizer()
-                                        ..onTap = () {
-                                          launchUrl(
+                                        recognizer: TapGestureRecognizer()
+                                          ..onTap = () => launchUrl(
                                             Uri(
                                               scheme: 'mailto',
                                               path: 'contact@quantumworks.in',
                                             ),
-                                          );
-                                        },
-                                    ),
-                                  ],
+                                          ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        if (!isSmallScreen) Spacer(),
                       ],
                     ),
                   ),
-                  // Spacer(),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniBadge(IconData icon, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildErrorDisplay() {
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        final errorText =
+            _validationError ??
+            (authProvider.error != null
+                ? ErrorHandler.getErrorMessage(authProvider.error)
+                : null);
+        if (errorText != null) {
+          return Padding(
+            padding: const EdgeInsets.only(top: 20),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.errorContainer.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.error.withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    color: Theme.of(context).colorScheme.error,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      errorText,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 16),
+                    onPressed: _clearErrors,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
                 ],
               ),
             ),
           );
-        },
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+
+  Widget _buildConnectivityDisplay() {
+    if (_connectivityMessage == null && !NetworkConfig.showDebugUI)
+      return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 20),
+      child: Column(
+        children: [
+          if (_connectivityMessage != null)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.wifi_off_rounded,
+                    color: Colors.orange,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _connectivityMessage!,
+                      style: const TextStyle(
+                        color: Colors.orange,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (NetworkConfig.showDebugUI) ...[
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextButton(
+                  onPressed: _checkConnectivity,
+                  child: const Text('Retry Connection'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const NetworkTroubleshootScreen(),
+                    ),
+                  ),
+                  child: const Text('Network Help'),
+                ),
+              ],
+            ),
+          ],
+        ],
       ),
     );
   }
