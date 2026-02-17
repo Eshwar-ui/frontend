@@ -146,7 +146,8 @@ class _DashboardContentState extends State<DashboardContent> {
 
       // Get current location
       Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
+        desiredAccuracy: LocationAccuracy.high,
+      );
 
       Map<String, dynamic> result;
       if (_isCheckedIn) {
@@ -442,56 +443,60 @@ class _DashboardContentState extends State<DashboardContent> {
                         SizedBox(height: 16),
 
                         // Working Time Display
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            RichText(
-                              text: TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: 'Working Time ',
-                                    style: AppTextStyles.caption.copyWith(
-                                      color: theme.textTheme.bodyLarge?.color,
-                                      fontWeight: FontWeight.bold,
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              RichText(
+                                text: TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: 'Working Time ',
+                                      style: AppTextStyles.caption.copyWith(
+                                        color: theme.textTheme.bodyLarge?.color,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
-                                  ),
-                                  TextSpan(
-                                    text:
-                                        _todayAttendance
-                                            ?.formattedWorkingTime ??
-                                        '00:00:00',
-                                    style: AppTextStyles.caption.copyWith(
-                                      color: theme.colorScheme.primary,
-                                      fontWeight: FontWeight.bold,
+                                    TextSpan(
+                                      text:
+                                          _todayAttendance
+                                              ?.formattedWorkingTime ??
+                                          '00:00:00',
+                                      style: AppTextStyles.caption.copyWith(
+                                        color: theme.colorScheme.primary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                            SizedBox(width: 12),
-                            RichText(
-                              text: TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: 'Break Time ',
-                                    style: AppTextStyles.caption.copyWith(
-                                      color: theme.textTheme.bodyLarge?.color,
-                                      fontWeight: FontWeight.bold,
+                              SizedBox(width: 12),
+                              RichText(
+                                text: TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: 'Break Time ',
+                                      style: AppTextStyles.caption.copyWith(
+                                        color: theme.textTheme.bodyLarge?.color,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
-                                  ),
-                                  TextSpan(
-                                    text:
-                                        _todayAttendance?.formattedBreakTime ??
-                                        '00:00:00',
-                                    style: AppTextStyles.caption.copyWith(
-                                      color: theme.colorScheme.primary,
-                                      fontWeight: FontWeight.bold,
+                                    TextSpan(
+                                      text:
+                                          _todayAttendance
+                                              ?.formattedBreakTime ??
+                                          '00:00:00',
+                                      style: AppTextStyles.caption.copyWith(
+                                        color: theme.colorScheme.primary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                         SizedBox(height: 24),
 
@@ -519,24 +524,43 @@ class _DashboardContentState extends State<DashboardContent> {
       return Center(child: Text('No activities yet.'));
     }
 
-    return SingleChildScrollView(
-      child: Column(
-        children: _todayPunches.asMap().entries.map((entry) {
-          final index = entry.key;
-          final punch = entry.value;
-          final isLast = index == _todayPunches.length - 1;
+    return Column(
+      children: _todayPunches.asMap().entries.map((entry) {
+        final index = entry.key;
+        final punch = entry.value;
+        final isLast = index == _todayPunches.length - 1;
 
-          return Column(
-            children: [
-              // Punch In
+        return Column(
+          children: [
+            // Punch In
+            Padding(
+              padding: const EdgeInsets.only(left: 2.0, bottom: 12),
+              child: TimelineTile(
+                alignment: TimelineAlign.start,
+                indicatorStyle: IndicatorStyle(
+                  width: 12,
+                  color: Colors.lightBlue.shade400,
+                ),
+                beforeLineStyle: LineStyle(
+                  color: Colors.grey,
+                  thickness: isLast ? 0 : 2,
+                ),
+                endChild: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
+                  child: Text(
+                    'Punch In at ${DateFormat.jm().format(punch.punchIn.toLocal())}',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
+              ),
+            ),
+            // Punch Out (if exists)
+            if (punch.punchOut != null)
               Padding(
-                padding: const EdgeInsets.only(left: 2.0, bottom: 12),
+                padding: const EdgeInsets.only(bottom: 12.0),
                 child: TimelineTile(
                   alignment: TimelineAlign.start,
-                  indicatorStyle: IndicatorStyle(
-                    width: 12,
-                    color: Colors.lightBlue.shade400,
-                  ),
+                  indicatorStyle: IndicatorStyle(width: 16, color: Colors.blue),
                   beforeLineStyle: LineStyle(
                     color: Colors.grey,
                     thickness: isLast ? 0 : 2,
@@ -547,42 +571,15 @@ class _DashboardContentState extends State<DashboardContent> {
                       horizontal: 16,
                     ),
                     child: Text(
-                      'Punch In at ${DateFormat.jm().format(punch.punchIn.toLocal())}',
-                      style: TextStyle(fontSize: 16),
+                      'Punch Out at ${DateFormat.jm().format(punch.punchOut!.toLocal())}',
+                      style: TextStyle(fontSize: 14),
                     ),
                   ),
                 ),
               ),
-              // Punch Out (if exists)
-              if (punch.punchOut != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: TimelineTile(
-                    alignment: TimelineAlign.start,
-                    indicatorStyle: IndicatorStyle(
-                      width: 16,
-                      color: Colors.blue,
-                    ),
-                    beforeLineStyle: LineStyle(
-                      color: Colors.grey,
-                      thickness: isLast ? 0 : 2,
-                    ),
-                    endChild: Padding(
-                      padding: EdgeInsets.symmetric(
-                        vertical: 8.0,
-                        horizontal: 16,
-                      ),
-                      child: Text(
-                        'Punch Out at ${DateFormat.jm().format(punch.punchOut!.toLocal())}',
-                        style: TextStyle(fontSize: 14),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          );
-        }).toList(),
-      ),
+          ],
+        );
+      }).toList(),
     );
   }
 }

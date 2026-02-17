@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/services/attendance_service.dart';
+import 'package:quantum_dashboard/services/attendance_settings_service.dart';
 import 'package:quantum_dashboard/services/location_service.dart';
 import 'package:quantum_dashboard/models/company_location_model.dart';
 import 'package:quantum_dashboard/models/employee_location_model.dart';
@@ -18,6 +19,8 @@ import 'package:quantum_dashboard/providers/navigation_provider.dart';
 import 'package:quantum_dashboard/providers/notification_provider.dart';
 import 'package:quantum_dashboard/providers/notification_settings_provider.dart';
 import 'package:quantum_dashboard/widgets/notification_icon_widget.dart';
+import 'package:quantum_dashboard/screens/compoff_wallet_screen.dart';
+import 'package:quantum_dashboard/utils/responsive_utils.dart';
 import 'package:geolocator/geolocator.dart';
 
 class new_dashboard extends StatefulWidget {
@@ -30,6 +33,8 @@ class new_dashboard extends StatefulWidget {
 class _new_dashboardState extends State<new_dashboard> {
   final AttendanceService _attendanceService = AttendanceService();
   final LocationService _locationService = LocationService();
+  final AttendanceSettingsService _attendanceSettingsService =
+      AttendanceSettingsService();
 
   // Company locations loaded from backend
   List<CompanyLocation> _companyLocations = [];
@@ -37,6 +42,8 @@ class _new_dashboardState extends State<new_dashboard> {
   List<EmployeeLocation> _employeeLocations = [];
   bool _isLoadingLocations = false;
   String? _locationError;
+  bool _locationPunchInEnabled = true;
+  bool _isSettingsLoading = false;
 
   // Attendance data
   bool _isLoading = true;
@@ -45,12 +52,18 @@ class _new_dashboardState extends State<new_dashboard> {
   double _totalWorkTime = 0.0;
   double _totalBreakTime = 0.0;
   Timer? _workTimeTimer;
+  Timer? _clockTimer;
 
   @override
   void initState() {
     super.initState();
+    // Update clock every second so the displayed time stays current
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
     // Wait for the widget to be fully built before accessing context
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAttendanceSettings();
       _loadAllLocations();
       _loadAttendanceData();
       _calculateTotalWorkTime(_todayPunches);
@@ -70,6 +83,25 @@ class _new_dashboardState extends State<new_dashboard> {
         );
       }
     });
+  }
+
+  Future<void> _loadAttendanceSettings() async {
+    if (!mounted) return;
+    setState(() => _isSettingsLoading = true);
+    try {
+      final enabled = await _attendanceSettingsService
+          .getLocationPunchInEnabled();
+      if (mounted) {
+        setState(() {
+          _locationPunchInEnabled = enabled;
+          _isSettingsLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSettingsLoading = false);
+      }
+    }
   }
 
   Future<void> _loadAllLocations() async {
@@ -120,6 +152,7 @@ class _new_dashboardState extends State<new_dashboard> {
   @override
   void dispose() {
     _workTimeTimer?.cancel();
+    _clockTimer?.cancel();
     super.dispose();
   }
 
@@ -358,8 +391,9 @@ class _new_dashboardState extends State<new_dashboard> {
       ),
       builder: (context) {
         final theme = Theme.of(context);
+        final padding = ResponsiveUtils.padding(context);
         return Container(
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          padding: padding,
           decoration: BoxDecoration(
             color: theme.scaffoldBackgroundColor,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -424,6 +458,8 @@ class _new_dashboardState extends State<new_dashboard> {
                                   fontWeight: FontWeight.w500,
                                   color: theme.colorScheme.onSurface,
                                 ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
                               ),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -435,6 +471,8 @@ class _new_dashboardState extends State<new_dashboard> {
                                       color: theme.colorScheme.onSurface
                                           .withOpacity(0.7),
                                     ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 2,
                                   ),
                                   SizedBox(height: 4),
                                   Text(
@@ -444,6 +482,8 @@ class _new_dashboardState extends State<new_dashboard> {
                                       color: theme.colorScheme.onSurface
                                           .withOpacity(0.5),
                                     ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
                                   ),
                                 ],
                               ),
@@ -507,6 +547,8 @@ class _new_dashboardState extends State<new_dashboard> {
                                   fontWeight: FontWeight.w500,
                                   color: theme.colorScheme.onSurface,
                                 ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
                               ),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -518,6 +560,8 @@ class _new_dashboardState extends State<new_dashboard> {
                                       color: theme.colorScheme.onSurface
                                           .withOpacity(0.7),
                                     ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 2,
                                   ),
                                   SizedBox(height: 4),
                                   Text(
@@ -527,6 +571,8 @@ class _new_dashboardState extends State<new_dashboard> {
                                       color: theme.colorScheme.onSurface
                                           .withOpacity(0.5),
                                     ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
                                   ),
                                 ],
                               ),
@@ -698,10 +744,10 @@ class _new_dashboardState extends State<new_dashboard> {
     }
 
     // Proceed to punch
-    await _performPunch(currentPosition);
+    await _performPunch(currentPosition.latitude, currentPosition.longitude);
   }
 
-  Future<void> _performPunch(Position position) async {
+  Future<void> _performPunch(double? latitude, double? longitude) async {
     if (!mounted) return;
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = authProvider.user;
@@ -741,8 +787,8 @@ class _new_dashboardState extends State<new_dashboard> {
         await _attendanceService.punchOut(
           user.employeeId,
           user.fullName,
-          position.latitude,
-          position.longitude,
+          latitude ?? 0.0,
+          longitude ?? 0.0,
         );
         debugPrint('✅ Punched out successfully!');
       } else {
@@ -751,8 +797,8 @@ class _new_dashboardState extends State<new_dashboard> {
         await _attendanceService.punchIn(
           user.employeeId,
           user.fullName,
-          position.latitude,
-          position.longitude,
+          latitude ?? 0.0,
+          longitude ?? 0.0,
         );
         debugPrint('✅ Punched in successfully!');
       }
@@ -795,7 +841,19 @@ class _new_dashboardState extends State<new_dashboard> {
   }
 
   Future<void> _handlePunchInOut() async {
-    _showLocationSelectionSheet();
+    if (_isSettingsLoading) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Loading attendance settings...')),
+      );
+      return;
+    }
+
+    if (_locationPunchInEnabled) {
+      _showLocationSelectionSheet();
+      return;
+    }
+
+    await _performPunch(null, null);
   }
 
   @override
@@ -811,13 +869,15 @@ class _new_dashboardState extends State<new_dashboard> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Lottie.asset('assets/illustrations/loading.json'),
-                  SizedBox(height: 16),
+                  SizedBox(height: ResponsiveUtils.spacing(context, base: 16)),
                   Text(
                     'Loading attendance data...',
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       color: colorScheme.onSurface.withOpacity(0.7),
                     ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
                 ],
               ),
@@ -831,7 +891,7 @@ class _new_dashboardState extends State<new_dashboard> {
                   _buildPunchHistory(),
 
                   // Timeline Section
-                  SizedBox(height: 24),
+                  SizedBox(height: ResponsiveUtils.spacing(context, base: 24)),
                   _buildTimeline(),
 
                   // User Analytics Section: Attendance, Leaves, and Their Status
@@ -913,7 +973,10 @@ class _new_dashboardState extends State<new_dashboard> {
                   //     ],
                   //   ),
                   // ),
-                  SizedBox(height: 120), // Extra padding for nav bar
+                  SizedBox(
+                    height: (ResponsiveUtils.spacing(context, base: 80) + 40)
+                        .clamp(100, 140),
+                  ), // Extra padding for nav bar
                 ],
               ),
             ),
@@ -1388,12 +1451,18 @@ class _new_dashboardState extends State<new_dashboard> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Hey $firstName',
-                style: GoogleFonts.poppins(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+              SizedBox(
+                width: 220,
+                // Adjust as needed or use LayoutBuilder for more dynamic width
+                child: Text(
+                  'Hey $firstName',
+                  style: GoogleFonts.poppins(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
               Text(
@@ -1407,6 +1476,17 @@ class _new_dashboardState extends State<new_dashboard> {
             ],
           ),
           Spacer(),
+          // IconButton(
+          //   icon: const Icon(Icons.account_balance_wallet_outlined),
+          //   tooltip: 'Compoff Wallet',
+          //   onPressed: () {
+          //     Navigator.of(context).push(
+          //       MaterialPageRoute(
+          //         builder: (context) => const CompoffWalletScreen(),
+          //       ),
+          //     );
+          //   },
+          // ),
           NotificationIconWidget(),
           SizedBox(width: 12),
           GestureDetector(
@@ -1473,10 +1553,11 @@ class _new_dashboardState extends State<new_dashboard> {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 24),
       padding: EdgeInsets.all(24),
+      width: double.infinity,
       decoration: BoxDecoration(
         color: isDark
             ? colorScheme
-                  .surfaceContainerHighest // very dark, elegant background
+                  .surface // very dark, elegant background
             : colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
@@ -1504,74 +1585,39 @@ class _new_dashboardState extends State<new_dashboard> {
                 ),
               ],
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth < 600) {
-            // Small screen: Use Wrap for better spacing
-            return Wrap(
-              alignment: WrapAlignment.spaceEvenly,
-              runSpacing: 20,
-              spacing: 20,
-              children: [
-                _buildHistoryItem(
-                  icon: Icons.login,
-                  color: colorScheme.primary,
-                  timeText: formatTime(firstPunchInTime),
-                  labelText: 'Punch In',
-                  isDark: isDark,
-                  colorScheme: colorScheme,
-                ),
-                _buildHistoryItem(
-                  icon: Icons.access_time,
-                  color: colorScheme.primary,
-                  timeText: formatDuration(totalWorkDuration),
-                  labelText: 'Work time',
-                  isDark: isDark,
-                  colorScheme: colorScheme,
-                ),
-                _buildHistoryItem(
-                  icon: Icons.free_breakfast,
-                  color: colorScheme.primary,
-                  timeText: formatDuration(totalBreakDuration),
-                  labelText: 'Break time',
-                  isDark: isDark,
-                  colorScheme: colorScheme,
-                ),
-              ],
-            );
-          } else {
-             // Large screen: Use Row with spaceBetween
-             return Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildHistoryItem(
-                  icon: Icons.login,
-                  color: colorScheme.primary,
-                  timeText: formatTime(firstPunchInTime),
-                  labelText: 'Punch In',
-                  isDark: isDark,
-                  colorScheme: colorScheme,
-                ),
-                _buildHistoryItem(
-                  icon: Icons.access_time,
-                  color: colorScheme.primary,
-                  timeText: formatDuration(totalWorkDuration),
-                  labelText: 'Work time',
-                  isDark: isDark,
-                  colorScheme: colorScheme,
-                ),
-                _buildHistoryItem(
-                  icon: Icons.free_breakfast,
-                  color: colorScheme.primary,
-                  timeText: formatDuration(totalBreakDuration),
-                  labelText: 'Break time',
-                  isDark: isDark,
-                  colorScheme: colorScheme,
-                ),
-              ],
-            );
-          }
-        },
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildHistoryItem(
+              icon: Icons.login,
+              color: colorScheme.primary,
+              timeText: formatTime(firstPunchInTime),
+              labelText: 'Punch In',
+              isDark: isDark,
+              colorScheme: colorScheme,
+            ),
+            SizedBox(width: 24),
+            _buildHistoryItem(
+              icon: Icons.access_time,
+              color: colorScheme.primary,
+              timeText: formatDuration(totalWorkDuration),
+              labelText: 'Work time',
+              isDark: isDark,
+              colorScheme: colorScheme,
+            ),
+            SizedBox(width: 24),
+            _buildHistoryItem(
+              icon: Icons.free_breakfast,
+              color: colorScheme.primary,
+              timeText: formatDuration(totalBreakDuration),
+              labelText: 'Break time',
+              isDark: isDark,
+              colorScheme: colorScheme,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1678,9 +1724,7 @@ class _new_dashboardState extends State<new_dashboard> {
       margin: EdgeInsets.symmetric(horizontal: 24),
       padding: EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: isDark
-            ? colorScheme.surfaceContainerHighest
-            : colorScheme.surface,
+        color: isDark ? colorScheme.surface : colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: colorScheme.outline.withOpacity(isDark ? 0.2 : 0.08),

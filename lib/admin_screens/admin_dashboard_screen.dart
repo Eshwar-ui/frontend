@@ -10,6 +10,8 @@ import 'package:quantum_dashboard/screens/send_notification_screen.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:quantum_dashboard/services/department_service.dart';
+import 'package:quantum_dashboard/utils/responsive_utils.dart';
+import 'package:quantum_dashboard/admin_screens/admin_compoff_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -54,7 +56,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             _buildStatsGrid(),
             _buildManagementSection(),
             _buildChartsSection(),
-            SizedBox(height: 120), // Extra padding for nav bar
+            SizedBox(
+              height: (ResponsiveUtils.spacing(context, base: 80) + 40)
+                  .clamp(100, 140),
+            ), // Extra padding for nav bar
           ],
         ),
       ),
@@ -73,29 +78,35 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         : 'A';
 
     return Container(
-      padding: EdgeInsets.all(24),
+      padding: ResponsiveUtils.padding(context),
       child: Row(
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Hello $firstName',
-                style: GoogleFonts.poppins(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Hello $firstName',
+                  style: GoogleFonts.poppins(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
-              ),
-              Text(
-                'Admin Dashboard Overview',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                  color: colorScheme.onSurface.withOpacity(0.7),
+                Text(
+                  'Admin Dashboard Overview',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           Spacer(),
           SizedBox(width: 12),
@@ -159,12 +170,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         Icons.account_tree_rounded,
                         const Color(0xFFEC4899),
                       ),
-                      _buildStatCard(
-                        'Pending Leaves',
-                        pendingLeaves.toString(),
-                        Icons.pending_actions_rounded,
-                        const Color(0xFFF59E0B),
-                      ),
+                      // _buildStatCard(
+                      //   'Pending Leaves',
+                      //   pendingLeaves.toString(),
+                      //   Icons.pending_actions_rounded,
+                      //   const Color(0xFFF59E0B),
+                      // ),
                     ],
                   );
                 },
@@ -969,6 +980,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         color: colorScheme.surface,
@@ -1065,6 +1077,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         'color': Colors.teal,
         'page': NavigationPage.AdminMobileAccess,
       },
+      {
+        'title': 'Compoff',
+        'subtitle': 'Grant compoff credits',
+        'icon': Icons.event_available,
+        'color': Colors.deepOrange,
+        'page': NavigationPage.AdminCompoff,
+      },
     ];
 
     return Padding(
@@ -1104,12 +1123,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             itemCount: managementItems.length,
             itemBuilder: (context, index) {
               final item = managementItems[index];
+              final page = item['page'] as NavigationPage?;
+              final VoidCallback onTap = page == NavigationPage.AdminCompoff
+                  ? () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AdminCompoffScreen(),
+                        ),
+                      )
+                  : () => navigationProvider.setCurrentPage(page!);
               return _buildManagementCard(
                 item['title'],
                 item['subtitle'],
                 item['icon'],
                 item['color'],
-                () => navigationProvider.setCurrentPage(item['page']),
+                onTap,
               );
             },
           ),

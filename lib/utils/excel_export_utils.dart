@@ -60,7 +60,13 @@ class ExcelExportUtils {
           '${day.toString().padLeft(2, '0')} ${DateFormat('E').format(date).substring(0, 1)}',
         );
       }
-      headers.addAll(['Total Present', 'Total Absent', 'Total Half Day']);
+      headers.addAll([
+        'Total Present',
+        'Total Absent',
+        'Total Half Day',
+        'Total Leave',
+        'Total Compoff',
+      ]);
       csvData.add(headers);
 
       // Data rows
@@ -84,6 +90,8 @@ class ExcelExportUtils {
         int presentCount = 0;
         int absentCount = 0;
         int halfDayCount = 0;
+        int leaveCount = 0;
+        int compoffCount = 0;
 
         // Daily attendance
         final List<dynamic> attendanceRecords =
@@ -109,6 +117,12 @@ class ExcelExportUtils {
             } else if (status.toLowerCase().contains('absent')) {
               statusCode = 'A';
               absentCount++;
+            } else if (status.toLowerCase().contains('compoff')) {
+              statusCode = 'C';
+              compoffCount++;
+            } else if (status.toLowerCase().contains('leave')) {
+              statusCode = 'L';
+              leaveCount++;
             } else {
               statusCode = status; // Keep original if unknown
             }
@@ -125,6 +139,8 @@ class ExcelExportUtils {
           presentCount.toString(),
           absentCount.toString(),
           halfDayCount.toString(),
+          leaveCount.toString(),
+          compoffCount.toString(),
         ]);
         csvData.add(row);
       }

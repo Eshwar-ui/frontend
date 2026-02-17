@@ -3,8 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/models/company_location_model.dart';
 import 'package:quantum_dashboard/models/employee_location_model.dart';
+import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/providers/employee_provider.dart';
 import 'package:quantum_dashboard/providers/navigation_provider.dart';
+import 'package:quantum_dashboard/services/attendance_settings_service.dart';
 import 'package:quantum_dashboard/services/location_service.dart';
 import 'package:quantum_dashboard/utils/snackbar_utils.dart';
 
@@ -19,6 +21,8 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final LocationService _locationService = LocationService();
+  final AttendanceSettingsService _attendanceSettingsService =
+      AttendanceSettingsService();
 
   // Company Locations State
   List<CompanyLocation> _companyLocations = [];
@@ -30,12 +34,21 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen>
   String? _selectedEmployeeId;
   bool _isEmployeeLoading = false;
   String? _employeeError;
+  final TextEditingController _employeeSearchController =
+      TextEditingController();
+  final FocusNode _employeeSearchFocusNode = FocusNode();
+
+  bool _locationPunchInEnabled = true;
+  bool _isSettingsLoading = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _employeeSearchFocusNode.addListener(_onEmployeeSearchFocusChange);
+    _employeeSearchController.addListener(_onEmployeeSearchFocusChange);
     _loadCompanyLocations();
+    _loadAttendanceSettings();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadEmployees();
     });
@@ -43,8 +56,80 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen>
 
   @override
   void dispose() {
+    _employeeSearchController.removeListener(_onEmployeeSearchFocusChange);
+    _employeeSearchController.dispose();
+    _employeeSearchFocusNode.removeListener(_onEmployeeSearchFocusChange);
+    _employeeSearchFocusNode.dispose();
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _onEmployeeSearchFocusChange() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _loadAttendanceSettings() async {
+    if (!mounted) return;
+    setState(() => _isSettingsLoading = true);
+    try {
+      final enabled =
+          await _attendanceSettingsService.getLocationPunchInEnabled();
+      if (mounted) {
+        setState(() {
+          _locationPunchInEnabled = enabled;
+          _isSettingsLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSettingsLoading = false);
+        SnackbarUtils.showError(
+          context,
+          'Failed to load attendance settings: ${e.toString()}',
+        );
+      }
+    }
+  }
+
+  Future<void> _toggleLocationPunchIn(bool value) async {
+    if (!mounted) return;
+    setState(() => _isSettingsLoading = true);
+    try {
+      final enabled =
+          await _attendanceSettingsService.updateLocationPunchInEnabled(value);
+      if (mounted) {
+        setState(() {
+          _locationPunchInEnabled = enabled;
+          _isSettingsLoading = false;
+        });
+        SnackbarUtils.showSuccess(
+          context,
+          enabled
+              ? 'Location-based punch enabled'
+              : 'Location-based punch disabled',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSettingsLoading = false);
+        SnackbarUtils.showError(
+          context,
+          'Failed to update setting: ${e.toString()}',
+        );
+      }
+    }
+  }
+
+  List<Employee> _getFilteredEmployees(
+    EmployeeProvider employeeProvider,
+    String query,
+  ) {
+    if (query.isEmpty) return employeeProvider.employees;
+    final q = query.trim().toLowerCase();
+    return employeeProvider.employees.where((e) {
+      return e.fullName.toLowerCase().contains(q) ||
+          e.employeeId.toLowerCase().contains(q);
+    }).toList();
   }
 
   // --- Company Locations Logic ---
@@ -528,11 +613,74 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen>
                 : [colorScheme.primary.withOpacity(0.03), Colors.transparent],
           ),
         ),
-        child: TabBarView(
-          controller: _tabController,
+        child: Column(
           children: [
-            _buildCompanyLocationsTab(colorScheme),
-            _buildEmployeeLocationsTab(colorScheme),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: colorScheme.outline.withOpacity(0.1),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Location-Based Punch',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _locationPunchInEnabled
+                                ? 'Users must punch in from office or approved locations'
+                                : 'Users can punch in from anywhere',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: colorScheme.onSurface.withOpacity(0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (_isSettingsLoading)
+                      const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    else
+                      Switch(
+                        value: _locationPunchInEnabled,
+                        onChanged: _toggleLocationPunchIn,
+                        activeColor: colorScheme.primary,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildCompanyLocationsTab(colorScheme),
+                  _buildEmployeeLocationsTab(colorScheme),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -566,38 +714,147 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen>
     );
   }
 
+  Widget _buildEmployeeSearch(
+    ColorScheme colorScheme,
+    EmployeeProvider employeeProvider,
+    bool isDark,
+  ) {
+    final query = _employeeSearchController.text.trim();
+    final showList = _employeeSearchFocusNode.hasFocus;
+    final filtered = _getFilteredEmployees(employeeProvider, query);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: _employeeSearchController,
+          focusNode: _employeeSearchFocusNode,
+          onChanged: (_) => setState(() {}),
+          decoration: InputDecoration(
+            labelText: 'Select Employee',
+            hintText: 'Search by name or ID...',
+            hintStyle: GoogleFonts.poppins(
+              fontSize: 14,
+              color: colorScheme.onSurface.withOpacity(0.5),
+            ),
+            prefixIcon: Icon(
+              Icons.search,
+              color: colorScheme.onSurface.withOpacity(0.6),
+              size: 22,
+            ),
+            suffixIcon: _selectedEmployeeId != null
+                ? IconButton(
+                    icon: Icon(
+                      Icons.clear,
+                      size: 20,
+                      color: colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _selectedEmployeeId = null;
+                        _employeeSearchController.clear();
+                      });
+                      _loadEmployeeLocations();
+                    },
+                    tooltip: 'Clear selection',
+                  )
+                : null,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            filled: true,
+            fillColor: colorScheme.surface,
+          ),
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: colorScheme.onSurface,
+          ),
+          onTap: () {
+            if (_selectedEmployeeId != null) {
+              _employeeSearchController.clear();
+              setState(() => _selectedEmployeeId = null);
+            }
+          },
+        ),
+        if (showList) ...[
+          SizedBox(height: 4),
+          Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(12),
+            color: isDark
+                ? colorScheme.surfaceContainerHighest
+                : colorScheme.surface,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: 280),
+              child: ListView(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                children: [
+                  ...filtered.map((emp) {
+                    final isSelected = _selectedEmployeeId == emp.employeeId;
+                    return ListTile(
+                      leading: Icon(
+                        Icons.person_outline,
+                        size: 22,
+                        color: isSelected
+                            ? colorScheme.primary
+                            : colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                      title: Text(
+                        '${emp.employeeId} - ${emp.fullName}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.w400,
+                          color: colorScheme.onSurface,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () {
+                        setState(() {
+                          _selectedEmployeeId = emp.employeeId;
+                          _employeeSearchController.text =
+                              '${emp.employeeId} - ${emp.fullName}';
+                        });
+                        _employeeSearchFocusNode.unfocus();
+                        _loadEmployeeLocations();
+                      },
+                    );
+                  }),
+                  if (filtered.isEmpty)
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(
+                        child: Text(
+                          'No employees match "$query"',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            color: colorScheme.onSurface.withOpacity(0.6),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildEmployeeLocationsTab(ColorScheme colorScheme) {
     final employeeProvider = Provider.of<EmployeeProvider>(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.all(16),
           color: colorScheme.surfaceVariant.withOpacity(0.5),
-          child: DropdownButtonFormField<String>(
-            value: _selectedEmployeeId,
-            decoration: InputDecoration(
-              labelText: 'Select Employee',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              filled: true,
-              fillColor: colorScheme.surface,
-            ),
-            items: employeeProvider.employees
-                .map(
-                  (e) => DropdownMenuItem(
-                    value: e.employeeId,
-                    child: Text('${e.fullName} (${e.employeeId})'),
-                  ),
-                )
-                .toList(),
-            onChanged: (val) {
-              setState(() => _selectedEmployeeId = val);
-              _loadEmployeeLocations();
-            },
-            isExpanded: true,
-          ),
+          child: _buildEmployeeSearch(colorScheme, employeeProvider, isDark),
         ),
         Expanded(
           child: _selectedEmployeeId == null

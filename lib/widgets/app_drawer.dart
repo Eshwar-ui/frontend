@@ -3,6 +3,8 @@ import 'package:flutter_svg/svg.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/providers/navigation_provider.dart';
+import 'package:quantum_dashboard/admin_screens/admin_compoff_screen.dart';
+import 'package:quantum_dashboard/screens/compoff_wallet_screen.dart';
 import 'package:quantum_dashboard/screens/profile_screen.dart';
 import 'package:quantum_dashboard/services/credential_storage_service.dart';
 import 'package:quantum_dashboard/utils/constants.dart';
@@ -66,6 +68,35 @@ class AppDrawer extends StatelessWidget {
                         icon: Icons.calendar_today,
                         title: 'Manage Holidays',
                       ),
+                      _buildDrawerItemPush(
+                        context: context,
+                        icon: Icons.event_available,
+                        title: 'Compoff Management',
+                        screen: const AdminCompoffScreen(),
+                      ),
+                      Divider(color: Colors.grey[300], thickness: 1),
+                    ],
+                    if (!authProvider.isAdmin && authProvider.isHr) ...[
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        child: Text(
+                          'HR TOOLS',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ),
+                      _buildDrawerItemPush(
+                        context: context,
+                        icon: Icons.event_available,
+                        title: 'Compoff Management',
+                        screen: const AdminCompoffScreen(),
+                      ),
                       Divider(color: Colors.grey[300], thickness: 1),
                     ],
                     _buildDrawerItem(
@@ -81,6 +112,12 @@ class AppDrawer extends StatelessWidget {
                       page: NavigationPage.Leaves,
                       icon: AppAssets.leavesIcon,
                       title: 'Leaves',
+                    ),
+                    _buildDrawerItemPush(
+                      context: context,
+                      icon: Icons.account_balance_wallet,
+                      title: 'Compoff Wallet',
+                      screen: const CompoffWalletScreen(),
                     ),
                     _buildDrawerItem(
                       context: context,
@@ -165,6 +202,27 @@ class AppDrawer extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildDrawerItemPush({
+    required BuildContext context,
+    required dynamic icon,
+    required String title,
+    required Widget screen,
+  }) {
+    return ListTile(
+      leading: icon is String
+          ? SvgPicture.asset(icon, width: 24, height: 24, color: Colors.black)
+          : Icon(icon as IconData, size: 24, color: Colors.black),
+      title: Text(title, style: AppTextStyles.button.copyWith(color: Colors.black)),
+      onTap: () {
+        Navigator.pop(context);
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => screen),
+        );
+      },
     );
   }
 

@@ -299,6 +299,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           fontWeight: FontWeight.bold,
                           color: colorScheme.onSurface,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 16),
                       Text(
@@ -307,6 +309,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           color: colorScheme.onSurface.withOpacity(0.6),
                           height: 1.5,
                         ),
+                        maxLines: 4,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 60),
                       // Add some feature indicators or subtle design elements
@@ -358,6 +362,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             fontWeight: FontWeight.bold,
                             color: colorScheme.onSurface,
                           ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -365,6 +371,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: colorScheme.onSurface.withOpacity(0.6),
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 32),
                         Form(

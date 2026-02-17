@@ -175,27 +175,23 @@ class _LeavesScreenState extends State<LeavesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('My Leaves'),
+        title: Text(
+          'My Leaves',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w600,
+            color: colorScheme.onSurface,
+          ),
+        ),
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
-        actions: [
-          ElevatedButton.icon(
-            onPressed: _applyForLeave,
-            icon: Icon(Icons.add, size: 20),
-            label: Text('Apply'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colorScheme.primary,
-              foregroundColor: colorScheme.onPrimary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              minimumSize: Size(100, 40),
-            ),
-          ),
-        ],
+        iconTheme: IconThemeData(color: colorScheme.onSurface),
       ),
       backgroundColor: theme.scaffoldBackgroundColor,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _applyForLeave,
+        icon: const Icon(Icons.add),
+        label: const Text('Apply'),
+      ),
       body: SafeArea(
         child: Column(
           children: [

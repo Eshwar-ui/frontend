@@ -10,6 +10,7 @@ import 'package:quantum_dashboard/admin_screens/admin_mobile_access_screen.dart'
 import 'package:quantum_dashboard/admin_screens/admin_locations_screen.dart';
 import 'package:quantum_dashboard/admin_screens/admin_company_locations_screen.dart';
 import 'package:quantum_dashboard/admin_screens/admin_employee_locations_screen.dart';
+import 'package:quantum_dashboard/admin_screens/admin_compoff_screen.dart';
 
 class AdminManagementScreen extends StatelessWidget {
   const AdminManagementScreen({super.key});
@@ -129,6 +130,22 @@ class AdminManagementScreen extends StatelessWidget {
                 () {
                   navigationProvider.setCurrentPage(
                     NavigationPage.AdminLeaveTypes,
+                  );
+                },
+              ),
+              SizedBox(height: 16),
+              _buildManagementCard(
+                context,
+                'Compoff',
+                'Grant compoff credits for holidays or weekly offs',
+                Icons.event_available,
+                Colors.deepOrange,
+                () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AdminCompoffScreen(),
+                    ),
                   );
                 },
               ),

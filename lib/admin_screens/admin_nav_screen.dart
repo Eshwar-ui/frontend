@@ -38,6 +38,7 @@ class _AdminNavScreenState extends State<AdminNavScreen> {
     NavigationPage.AdminEmployeeLocations: 0, // Show in dashboard area
     NavigationPage.AdminAttendance: 0, // Show in dashboard area
     NavigationPage.AdminLocations: 0, // Show in dashboard area
+    NavigationPage.AdminCompoff: 0, // Show in dashboard area
   };
 
   late final List<Widget> _widgetOptions;
@@ -213,9 +214,7 @@ class _AdminNavScreenState extends State<AdminNavScreen> {
                           height: navBarHeight,
                           padding: EdgeInsets.symmetric(
                             horizontal: navBarHorizontalPadding,
-                            vertical:
-                                navBarHeight *
-                                0.08, // about 8% of navBar height
+                            vertical: navBarHeight * 0.08,
                           ),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
@@ -239,7 +238,6 @@ class _AdminNavScreenState extends State<AdminNavScreen> {
                               width: 1.5,
                             ),
                             boxShadow: [
-                              // Outer shadow for depth
                               BoxShadow(
                                 blurRadius: 30,
                                 spreadRadius: -5,
@@ -248,14 +246,12 @@ class _AdminNavScreenState extends State<AdminNavScreen> {
                                     : Colors.black.withOpacity(0.15),
                                 offset: Offset(0, 8),
                               ),
-                              // Inner highlight for glass effect
                               BoxShadow(
                                 blurRadius: 10,
                                 spreadRadius: -2,
                                 color: Colors.white.withOpacity(0.3),
                                 offset: Offset(0, -2),
                               ),
-                              // Soft glow
                               BoxShadow(
                                 blurRadius: 20,
                                 color: isDark
@@ -319,19 +315,16 @@ class _AdminNavScreenState extends State<AdminNavScreen> {
     final navigationProvider = Provider.of<NavigationProvider>(context);
     final currentPage = navigationProvider.currentPage;
 
-    // Check if the current page maps to this index
     final isSelected = (_pageMap[currentPage] ?? 0) == index;
 
     return GestureDetector(
       onTap: () {
-        // Find the NavigationPage key that corresponds to this index
         final newPage = _pageMap.entries
             .firstWhere(
               (element) => element.value == index,
               orElse: () => MapEntry(NavigationPage.Dashboard, 0),
             )
             .key;
-
         navigationProvider.setCurrentPage(newPage);
       },
       child: AnimatedContainer(

@@ -52,6 +52,7 @@ class LeaveProvider with ChangeNotifier {
     required DateTime from,
     required DateTime to,
     required String reason,
+    String? compoffCreditId,
   }) async {
     _isLoading = true;
     _error = null;
@@ -64,6 +65,7 @@ class LeaveProvider with ChangeNotifier {
         from: from,
         to: to,
         reason: reason,
+        compoffCreditId: compoffCreditId,
       );
       await getMyLeaves(employeeId);
     } catch (e) {

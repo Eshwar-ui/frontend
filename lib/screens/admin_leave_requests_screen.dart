@@ -18,6 +18,8 @@ class AdminLeaveRequestsScreen extends StatefulWidget {
 
 class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
   String _selectedStatus = 'all';
+  DateTime? _dateFrom;
+  DateTime? _dateTo;
 
   @override
   void initState() {
@@ -33,10 +35,44 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
   }
 
   List<Leave> _filterLeaveRequests(List<Leave> leaves) {
-    if (_selectedStatus == 'all') return leaves;
-    return leaves
-        .where((leave) => leave.status.toLowerCase() == _selectedStatus)
-        .toList();
+    var filtered = leaves;
+
+    // Status filter
+    if (_selectedStatus != 'all') {
+      filtered = filtered.where((leave) {
+        final status = leave.status.toLowerCase().trim();
+        switch (_selectedStatus) {
+          case 'new':
+            return status == 'new';
+          case 'pending':
+            return status == 'pending' || status.contains('pend');
+          case 'approved':
+            return status == 'approved' || status.contains('approv');
+          case 'rejected':
+            return status == 'rejected' ||
+                status == 'declined' ||
+                status.contains('reject');
+          default:
+            return status == _selectedStatus;
+        }
+      }).toList();
+    }
+
+    // Date filter (leave period overlaps with selected range)
+    if (_dateFrom != null || _dateTo != null) {
+      final from = _dateFrom ?? DateTime(2000);
+      final to = _dateTo ?? DateTime(2100);
+      final rangeStart = DateTime(from.year, from.month, from.day);
+      final rangeEnd = DateTime(to.year, to.month, to.day, 23, 59, 59);
+
+      filtered = filtered.where((leave) {
+        final leaveStart = DateTime(leave.from.year, leave.from.month, leave.from.day);
+        final leaveEnd = DateTime(leave.to.year, leave.to.month, leave.to.day, 23, 59, 59);
+        return !leaveStart.isAfter(rangeEnd) && !leaveEnd.isBefore(rangeStart);
+      }).toList();
+    }
+
+    return filtered;
   }
 
   String _getEmployeeName(Leave leave) {
@@ -139,44 +175,172 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
                 ],
               ),
               SizedBox(height: 16),
-              // Filter dropdown
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    isExpanded: true,
-                    value: _selectedStatus,
-                    dropdownColor: colorScheme.surfaceContainerHighest,
-                    hint: Text('Filter by status'),
-                    items: [
-                      DropdownMenuItem(
-                        value: 'all',
-                        child: Text('All Requests'),
+              // Filters row
+              Row(
+                children: [
+                  // Status filter
+                  Expanded(
+                    flex: 2,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      DropdownMenuItem(
-                        value: 'pending',
-                        child: Text('Pending'),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: _selectedStatus,
+                          dropdownColor: colorScheme.surfaceContainerHighest,
+                          hint: Text('Filter by status'),
+                          items: [
+                            DropdownMenuItem(
+                              value: 'all',
+                              child: Text('All Requests'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'new',
+                              child: Text('New'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'pending',
+                              child: Text('Pending'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'approved',
+                              child: Text('Approved'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'rejected',
+                              child: Text('Rejected'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedStatus = value!;
+                            });
+                          },
+                        ),
                       ),
-                      DropdownMenuItem(
-                        value: 'approved',
-                        child: Text('Approved'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'rejected',
-                        child: Text('Rejected'),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedStatus = value!;
-                      });
-                    },
+                    ),
                   ),
-                ),
+                  SizedBox(width: 12),
+                  // Date filter - From
+                  Expanded(
+                    child: InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _dateFrom ?? DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now().add(Duration(days: 365)),
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            _dateFrom = picked;
+                            if (_dateTo != null && _dateTo!.isBefore(picked)) {
+                              _dateTo = picked;
+                            }
+                          });
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: colorScheme.outline.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_today,
+                                size: 18, color: colorScheme.primary),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _dateFrom != null
+                                    ? DateFormat('dd/MM/yy').format(_dateFrom!)
+                                    : 'From',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13,
+                                  color: _dateFrom != null
+                                      ? colorScheme.onSurface
+                                      : colorScheme.onSurface.withOpacity(0.6),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  // Date filter - To
+                  Expanded(
+                    child: InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _dateTo ?? _dateFrom ?? DateTime.now(),
+                          firstDate: _dateFrom ?? DateTime(2020),
+                          lastDate: DateTime.now().add(Duration(days: 365)),
+                        );
+                        if (picked != null) {
+                          setState(() => _dateTo = picked);
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: colorScheme.outline.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_today,
+                                size: 18, color: colorScheme.primary),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _dateTo != null
+                                    ? DateFormat('dd/MM/yy').format(_dateTo!)
+                                    : 'To',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13,
+                                  color: _dateTo != null
+                                      ? colorScheme.onSurface
+                                      : colorScheme.onSurface.withOpacity(0.6),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (_dateFrom != null || _dateTo != null) ...[
+                    SizedBox(width: 8),
+                    IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _dateFrom = null;
+                          _dateTo = null;
+                        });
+                      },
+                      icon: Icon(Icons.clear, color: colorScheme.primary),
+                      tooltip: 'Clear date filter',
+                    ),
+                  ],
+                ],
               ),
             ],
           ),
@@ -448,8 +612,9 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
               SizedBox(height: 16),
             ],
 
-            // Action Buttons (only for pending requests)
-            if (leave.status.toLowerCase() == 'pending') ...[
+            // Action Buttons (only for new or pending requests)
+            if (leave.status.toLowerCase() == 'new' ||
+                leave.status.toLowerCase() == 'pending') ...[
               Row(
                 children: [
                   Expanded(
@@ -512,6 +677,9 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
         break;
       case 'rejected':
         chipColor = Colors.red;
+        break;
+      case 'new':
+        chipColor = Colors.blue;
         break;
       default:
         chipColor = Colors.grey;
@@ -655,8 +823,9 @@ class _StatusUpdateDialogState extends State<StatusUpdateDialog> {
       _selectedStatus = 'approved';
     } else if (currentStatus == 'pending' || currentStatus.contains('pend')) {
       _selectedStatus = 'pending';
+    } else if (currentStatus == 'new') {
+      _selectedStatus = 'new';
     } else {
-      // Default to pending if status doesn't match
       _selectedStatus = 'pending';
     }
     _commentsController.text = widget.leave.action;
@@ -708,7 +877,7 @@ class _StatusUpdateDialogState extends State<StatusUpdateDialog> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              items: ['pending', 'approved', 'rejected']
+              items: ['new', 'pending', 'approved', 'rejected']
                   .map(
                     (s) => DropdownMenuItem(
                       value: s,
@@ -747,7 +916,7 @@ class _StatusUpdateDialogState extends State<StatusUpdateDialog> {
     try {
       final leaveProvider = Provider.of<LeaveProvider>(context, listen: false);
 
-      // Map frontend status to backend expected format
+      // Map frontend status to backend expected format (New, Approved, Rejected)
       String backendStatus;
       switch (_selectedStatus.toLowerCase()) {
         case 'approved':
@@ -756,6 +925,7 @@ class _StatusUpdateDialogState extends State<StatusUpdateDialog> {
         case 'rejected':
           backendStatus = 'Rejected';
           break;
+        case 'new':
         case 'pending':
           backendStatus = 'New';
           break;

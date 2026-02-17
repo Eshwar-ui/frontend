@@ -1,17 +1,24 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:table_calendar/table_calendar.dart';
-import 'package:timeline_tile/timeline_tile.dart';
 import 'package:quantum_dashboard/models/attendance_model.dart';
 import 'package:quantum_dashboard/models/holiday_model.dart';
 import 'package:quantum_dashboard/models/leave_model.dart';
+import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/providers/attendance_provider.dart';
+import 'package:quantum_dashboard/providers/auth_provider.dart';
+import 'package:quantum_dashboard/providers/employee_provider.dart';
 import 'package:quantum_dashboard/providers/holiday_provider.dart';
 import 'package:quantum_dashboard/providers/leave_provider.dart';
+import 'package:quantum_dashboard/screens/edit_employee_screen.dart';
+import 'package:quantum_dashboard/utils/snackbar_utils.dart';
+import 'package:quantum_dashboard/utils/string_extensions.dart';
+import 'package:table_calendar/table_calendar.dart';
+import 'package:timeline_tile/timeline_tile.dart';
 
 class EmployeeDetailScreen extends StatefulWidget {
   final Employee employee;
@@ -26,6 +33,7 @@ class EmployeeDetailScreen extends StatefulWidget {
 class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late Employee _employee;
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
@@ -33,9 +41,18 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
   Map<DateTime, Holiday> _holidays = {};
   bool _isLoadingCalendarData = false;
 
+  Future<void> _refreshEmployee() async {
+    if (!mounted) return;
+    final emp = await context.read<EmployeeProvider>().getEmployee(_employee.employeeId);
+    if (emp != null && mounted) {
+      setState(() => _employee = emp);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    _employee = widget.employee;
     _tabController = TabController(length: 2, vsync: this);
     _selectedDay = DateTime.now();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -68,7 +85,7 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
 
       // Clear cache for this month to force refresh
       attendanceProvider.clearDateWiseCache(
-        widget.employee.employeeId,
+        _employee.employeeId,
         month: focusedMonth,
         year: focusedYear,
       );
@@ -77,19 +94,19 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
 
       await Future.wait([
         attendanceProvider.getDateWiseData(
-          widget.employee.employeeId,
+          _employee.employeeId,
           month: focusedMonth,
           year: focusedYear,
           forceRefresh: true,
         ),
         attendanceProvider.getPunches(
-          widget.employee.employeeId,
+          _employee.employeeId,
           month: focusedMonth,
           year: focusedYear,
           forceRefresh: true,
         ),
         holidayProvider.getHolidaysByYear(focusedYear),
-        leaveProvider.getMyLeaves(widget.employee.employeeId),
+        leaveProvider.getMyLeaves(_employee.employeeId),
       ]);
 
       final Map<DateTime, List<Attendance>> events = {};
@@ -109,7 +126,7 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
 
       // Also add events from dateWiseData for dates that might not have punches
       final employeeDateWiseData = attendanceProvider.getEmployeeDateWiseData(
-        widget.employee.employeeId,
+        _employee.employeeId,
       );
       for (var data in employeeDateWiseData) {
         try {
@@ -196,24 +213,39 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isAdmin = context.watch<AuthProvider>().isAdmin;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(
-          'Employee Details',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-        ),
+        title: _buildAppBarTitle(colorScheme),
         backgroundColor: colorScheme.primary,
         foregroundColor: colorScheme.onPrimary,
         elevation: 0,
+        actions: [
+          if (isAdmin)
+            IconButton(
+              icon: Icon(Icons.edit_square),
+              tooltip: 'Edit employee',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => EditEmployeeScreen(
+                      employee: _employee,
+                      onEmployeeUpdated: _refreshEmployee,
+                    ),
+                  ),
+                );
+              },
+            ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: colorScheme.onPrimary,
           labelColor: colorScheme.onPrimary,
           unselectedLabelColor: colorScheme.onPrimary.withOpacity(0.7),
           tabs: [
-            Tab(icon: Icon(Icons.person), text: 'Details'),
+            Tab(icon: Icon(Icons.person), text: 'Details',),
             Tab(icon: Icon(Icons.calendar_today), text: 'Attendance'),
           ],
         ),
@@ -229,15 +261,16 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
   }
 
   Widget _buildDetailsTab(ColorScheme colorScheme, ThemeData theme) {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Card
-          _buildHeaderCard(widget.employee, colorScheme),
-          SizedBox(height: 24),
-
+    final padding = MediaQuery.of(context).size.width > 600 ? 24.0 : 16.0;
+    return RefreshIndicator(
+      onRefresh: _refreshEmployee,
+      color: colorScheme.primary,
+      child: SingleChildScrollView(
+        physics: AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.all(padding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           // Personal Information
           _buildSectionCard(
             context: context,
@@ -248,48 +281,48 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
               _buildInfoRow(
                 icon: Icons.person,
                 label: 'Full Name',
-                value: widget.employee.fullName,
+                value: _employee.fullName,
                 colorScheme: colorScheme,
               ),
               _buildInfoRow(
                 icon: Icons.badge,
                 label: 'Employee ID',
-                value: widget.employee.employeeId,
+                value: _employee.employeeId,
                 colorScheme: colorScheme,
               ),
               _buildInfoRow(
                 icon: Icons.person_outline,
                 label: 'First Name',
-                value: widget.employee.firstName,
+                value: _employee.firstName,
                 colorScheme: colorScheme,
               ),
               _buildInfoRow(
                 icon: Icons.person_outline,
                 label: 'Last Name',
-                value: widget.employee.lastName,
+                value: _employee.lastName,
                 colorScheme: colorScheme,
               ),
-              if (widget.employee.gender != null)
+              if (_employee.gender != null)
                 _buildInfoRow(
                   icon: Icons.wc,
                   label: 'Gender',
-                  value: widget.employee.gender!,
+                  value: _employee.gender!,
                   colorScheme: colorScheme,
                 ),
               _buildInfoRow(
                 icon: Icons.cake,
                 label: 'Date of Birth',
-                value: DateFormat(
-                  'dd MMMM yyyy',
-                ).format(widget.employee.dateOfBirth),
+                value: DateFormat('dd MMMM yyyy').format(_employee.dateOfBirth),
                 colorScheme: colorScheme,
+                isLast: _employee.fathername == null,
               ),
-              if (widget.employee.fathername != null)
+              if (_employee.fathername != null)
                 _buildInfoRow(
                   icon: Icons.family_restroom,
                   label: 'Father\'s Name',
-                  value: widget.employee.fathername!,
+                  value: _employee.fathername!,
                   colorScheme: colorScheme,
+                  isLast: true,
                 ),
             ],
           ),
@@ -302,48 +335,47 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
             icon: Icons.work_outline,
             colorScheme: colorScheme,
             children: [
-              if (widget.employee.department != null)
+              if (_employee.department != null)
                 _buildInfoRow(
                   icon: Icons.business,
                   label: 'Department',
-                  value: widget.employee.department!,
+                  value: _employee.department!,
                   colorScheme: colorScheme,
                 ),
-              if (widget.employee.designation != null)
+              if (_employee.designation != null)
                 _buildInfoRow(
                   icon: Icons.stars,
                   label: 'Designation',
-                  value: widget.employee.designation!,
+                  value: _employee.designation!,
                   colorScheme: colorScheme,
                 ),
-              if (widget.employee.grade != null)
+              if (_employee.grade != null)
                 _buildInfoRow(
                   icon: Icons.grade,
                   label: 'Grade',
-                  value: widget.employee.grade!,
+                  value: _employee.grade!,
                   colorScheme: colorScheme,
                 ),
-              if (widget.employee.role != null)
+              if (_employee.role != null)
                 _buildInfoRow(
                   icon: Icons.admin_panel_settings,
                   label: 'Role',
-                  value: widget.employee.role!,
+                  value: _employee.role!,
                   colorScheme: colorScheme,
                 ),
-              if (widget.employee.report != null)
+              if (_employee.report != null)
                 _buildInfoRow(
                   icon: Icons.supervisor_account,
                   label: 'Reports To',
-                  value: widget.employee.report!,
+                  value: _employee.report!,
                   colorScheme: colorScheme,
                 ),
               _buildInfoRow(
                 icon: Icons.calendar_today,
                 label: 'Joining Date',
-                value: DateFormat(
-                  'dd MMMM yyyy',
-                ).format(widget.employee.joiningDate),
+                value: DateFormat('dd MMMM yyyy').format(_employee.joiningDate),
                 colorScheme: colorScheme,
+                isLast: true,
               ),
             ],
           ),
@@ -359,99 +391,108 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
               _buildInfoRow(
                 icon: Icons.email,
                 label: 'Email',
-                value: widget.employee.email,
+                value: _employee.email,
                 colorScheme: colorScheme,
                 copyable: true,
               ),
               _buildInfoRow(
                 icon: Icons.phone,
                 label: 'Mobile',
-                value: widget.employee.mobile,
+                value: _employee.mobile,
                 colorScheme: colorScheme,
                 copyable: true,
+                isLast: _employee.address == null,
               ),
-              if (widget.employee.address != null)
+              if (_employee.address != null)
                 _buildInfoRow(
                   icon: Icons.location_on,
                   label: 'Address',
-                  value: widget.employee.address!,
+                  value: _employee.address!,
                   colorScheme: colorScheme,
+                  isLast: true,
                 ),
             ],
           ),
           SizedBox(height: 16),
 
           // Banking Information (if available)
-          if (widget.employee.bankname != null ||
-              widget.employee.accountnumber != null ||
-              widget.employee.ifsccode != null)
+          if (_employee.bankname != null ||
+              _employee.accountnumber != null ||
+              _employee.ifsccode != null)
             _buildSectionCard(
               context: context,
               title: 'Banking Information',
               icon: Icons.account_balance,
               colorScheme: colorScheme,
               children: [
-                if (widget.employee.bankname != null)
+                if (_employee.bankname != null)
                   _buildInfoRow(
                     icon: Icons.account_balance,
                     label: 'Bank Name',
-                    value: widget.employee.bankname!,
+                    value: _employee.bankname!,
                     colorScheme: colorScheme,
+                    isLast: _employee.accountnumber == null && _employee.ifsccode == null,
                   ),
-                if (widget.employee.accountnumber != null)
+                if (_employee.accountnumber != null)
                   _buildInfoRow(
                     icon: Icons.account_box,
                     label: 'Account Number',
-                    value: widget.employee.accountnumber!,
+                    value: _employee.accountnumber!,
                     colorScheme: colorScheme,
+                    isLast: _employee.ifsccode == null,
                   ),
-                if (widget.employee.ifsccode != null)
+                if (_employee.ifsccode != null)
                   _buildInfoRow(
                     icon: Icons.code,
                     label: 'IFSC Code',
-                    value: widget.employee.ifsccode!,
+                    value: _employee.ifsccode!,
                     colorScheme: colorScheme,
+                    isLast: true,
                   ),
               ],
             ),
           SizedBox(height: 16),
 
           // Government Information (if available)
-          if (widget.employee.PANno != null ||
-              widget.employee.UANno != null ||
-              widget.employee.ESIno != null)
+          if (_employee.PANno != null ||
+              _employee.UANno != null ||
+              _employee.ESIno != null)
             _buildSectionCard(
               context: context,
               title: 'Government Information',
               icon: Icons.description,
               colorScheme: colorScheme,
               children: [
-                if (widget.employee.PANno != null)
+                if (_employee.PANno != null)
                   _buildInfoRow(
                     icon: Icons.badge,
                     label: 'PAN Number',
-                    value: widget.employee.PANno!,
+                    value: _employee.PANno!,
                     colorScheme: colorScheme,
+                    isLast: _employee.UANno == null && _employee.ESIno == null,
                   ),
-                if (widget.employee.UANno != null)
+                if (_employee.UANno != null)
                   _buildInfoRow(
                     icon: Icons.badge,
                     label: 'UAN Number',
-                    value: widget.employee.UANno!,
+                    value: _employee.UANno!,
                     colorScheme: colorScheme,
+                    isLast: _employee.ESIno == null,
                   ),
-                if (widget.employee.ESIno != null)
+                if (_employee.ESIno != null)
                   _buildInfoRow(
                     icon: Icons.badge,
                     label: 'ESI Number',
-                    value: widget.employee.ESIno!,
+                    value: _employee.ESIno!,
                     colorScheme: colorScheme,
+                    isLast: true,
                   ),
               ],
             ),
           SizedBox(height: 32),
         ],
       ),
+    ),
     );
   }
 
@@ -463,10 +504,6 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Card
-          _buildHeaderCard(widget.employee, colorScheme),
-          SizedBox(height: 24),
-
           // Calendar Widget
           Container(
             decoration: BoxDecoration(
@@ -539,7 +576,7 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
                         .read<AttendanceProvider>();
                     final holidayProvider = context.read<HolidayProvider>();
                     final dateWiseData = attendanceProvider
-                        .getEmployeeDateWiseData(widget.employee.employeeId);
+                        .getEmployeeDateWiseData(_employee.employeeId);
                     final holidayList = holidayProvider.holidays;
 
                     // Format date as YYYY-MM-DD for the API
@@ -556,7 +593,7 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
                     try {
                       final punchData = await attendanceProvider
                           .getEmployeeDatePunches(
-                            widget.employee.employeeId,
+                            _employee.employeeId,
                             dateString,
                           );
 
@@ -784,7 +821,7 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
     // Get status from dateWiseData similar to new_calender_screen.dart
     final attendanceProvider = context.read<AttendanceProvider>();
     final dateWiseData = attendanceProvider.getEmployeeDateWiseData(
-      widget.employee.employeeId,
+      _employee.employeeId,
     );
     final status = _getAttendanceStatus(date, dateWiseData, holiday);
 
@@ -1126,70 +1163,42 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
     }
   }
 
-  Widget _buildHeaderCard(Employee employee, ColorScheme colorScheme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.primary,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      padding: EdgeInsets.all(24),
-      child: Row(
-        children: [
-          _buildProfileAvatar(employee, colorScheme),
-          SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  employee.fullName,
-                  style: GoogleFonts.poppins(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+  Widget _buildAppBarTitle(ColorScheme colorScheme) {
+    return Row(
+      children: [
+        _buildCompactAvatar(_employee),
+        SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _employee.fullName.toTitleCase(),
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onPrimary,
                 ),
-                SizedBox(height: 4),
-                if (employee.designation != null)
-                  Text(
-                    employee.designation!,
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      color: Colors.white.withOpacity(0.9),
-                    ),
-                  ),
-                SizedBox(height: 8),
-                Text(
-                  employee.employeeId,
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.white.withOpacity(0.8),
-                  ),
-                ),
-              ],
-            ),
+                overflow: TextOverflow.ellipsis,
+              ),
+              
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildProfileAvatar(Employee employee, ColorScheme colorScheme) {
+  Widget _buildCompactAvatar(Employee employee) {
     return CircleAvatar(
-      radius: 40,
-      backgroundColor: Colors.white.withOpacity(0.2),
-      child: _buildProfileImage(employee),
+      radius: 20,
+      backgroundColor: Colors.white.withOpacity(0.3),
+      child: _buildProfileImage(employee, 40),
     );
   }
 
-  Widget _buildProfileImage(Employee employee) {
+  Widget _buildProfileImage(Employee employee, [double size = 80]) {
     if (employee.profileImage.isNotEmpty) {
       // Handle base64 data URL
       if (employee.profileImage.startsWith('data:image')) {
@@ -1200,15 +1209,15 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
             child: Image.memory(
               bytes,
               fit: BoxFit.cover,
-              width: 80,
-              height: 80,
+              width: size,
+              height: size,
               errorBuilder: (context, error, stackTrace) {
-                return _buildPlaceholderAvatar(employee.firstName);
+                return _buildPlaceholderAvatar(employee.firstName, size);
               },
             ),
           );
         } catch (e) {
-          return _buildPlaceholderAvatar(employee.firstName);
+          return _buildPlaceholderAvatar(employee.firstName, size);
         }
       }
       // Handle network URL
@@ -1220,14 +1229,14 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
               child: Image.network(
                 employee.profileImage,
                 fit: BoxFit.cover,
-                width: 80,
-                height: 80,
+                width: size,
+                height: size,
                 errorBuilder: (context, error, stackTrace) {
-                  return _buildPlaceholderAvatar(employee.firstName);
+                  return _buildPlaceholderAvatar(employee.firstName, size);
                 },
                 loadingBuilder: (context, child, loadingProgress) {
                   if (loadingProgress == null) return child;
-                  return _buildPlaceholderAvatar(employee.firstName);
+                  return _buildPlaceholderAvatar(employee.firstName, size);
                 },
               ),
             );
@@ -1237,17 +1246,18 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
         }
       }
     }
-    return _buildPlaceholderAvatar(employee.firstName);
+    return _buildPlaceholderAvatar(employee.firstName, size);
   }
 
-  Widget _buildPlaceholderAvatar(String firstName) {
+  Widget _buildPlaceholderAvatar(String firstName, [double size = 80]) {
+    if (firstName.isEmpty) firstName = '?';
     return Center(
       child: Text(
         firstName.substring(0, 1).toUpperCase(),
         style: GoogleFonts.poppins(
           color: Colors.white,
           fontWeight: FontWeight.bold,
-          fontSize: 32,
+          fontSize: size * 0.4,
         ),
       ),
     );
@@ -1261,16 +1271,19 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
     required List<Widget> children,
   }) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colorScheme.outline.withOpacity(0.1),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.outline.withValues(alpha: theme.brightness == Brightness.dark ? 0.15 : 0.08),
-            blurRadius: 10,
+            color: colorScheme.outline.withValues(alpha: theme.brightness == Brightness.dark ? 0.12 : 0.06),
+            blurRadius: 12,
             offset: Offset(0, 4),
           ),
         ],
@@ -1282,27 +1295,30 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
           Row(
             children: [
               Container(
-                padding: EdgeInsets.all(8),
+                padding: EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: colorScheme.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  color: colorScheme.primary.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: colorScheme.primary.withOpacity(0.2),
+                    width: 1,
+                  ),
                 ),
-                child: Icon(icon, color: colorScheme.primary, size: 20),
+                child: Icon(icon, color: colorScheme.primary, size: 22),
               ),
-              SizedBox(width: 12),
+              SizedBox(width: 14),
               Text(
                 title,
                 style: GoogleFonts.poppins(
-                  fontSize: 18,
+                  fontSize: 17,
                   fontWeight: FontWeight.w600,
                   color: colorScheme.onSurface,
+                  letterSpacing: 0.2,
                 ),
               ),
             ],
           ),
-          SizedBox(height: 16),
-          Divider(color: colorScheme.outline.withOpacity(0.1)),
-          SizedBox(height: 16),
+          SizedBox(height: 18),
           ...children,
         ],
       ),
@@ -1315,14 +1331,22 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
     required String value,
     required ColorScheme colorScheme,
     bool copyable = false,
+    bool isLast = false,
   }) {
     return Padding(
-      padding: EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: colorScheme.primary.withOpacity(0.7)),
-          SizedBox(width: 12),
+          Container(
+            padding: EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 18, color: colorScheme.primary),
+          ),
+          SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1331,7 +1355,7 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
                   label,
                   style: GoogleFonts.poppins(
                     fontSize: 12,
-                    color: colorScheme.onSurface.withOpacity(0.6),
+                    color: colorScheme.onSurface.withOpacity(0.65),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -1349,10 +1373,15 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
           ),
           if (copyable)
             IconButton(
-              icon: Icon(Icons.copy, size: 18),
+              icon: Icon(Icons.copy_outlined, size: 20),
               color: colorScheme.primary,
+              style: IconButton.styleFrom(
+                backgroundColor: colorScheme.primary.withOpacity(0.08),
+                minimumSize: Size(36, 36),
+              ),
               onPressed: () {
-                // Copy functionality can be added here
+                Clipboard.setData(ClipboardData(text: value));
+                SnackbarUtils.showSuccess(context, '$label copied to clipboard');
               },
             ),
         ],

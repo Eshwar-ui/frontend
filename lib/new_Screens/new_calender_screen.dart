@@ -984,12 +984,6 @@ class _new_calender_screenState extends State<new_calender_screen> {
     );
   }
 
-  // Helper method to check if date is in the current week being displayed
-  bool _isInDisplayedWeek(DateTime date) {
-    final weekDates = _weekFor(_selectedDay ?? DateTime.now());
-    return weekDates.any((d) => isSameDay(d, date));
-  }
-
   Widget _buildDayCell(
     DateTime date,
     List<Map<String, dynamic>> dateWiseData,
@@ -1002,7 +996,6 @@ class _new_calender_screenState extends State<new_calender_screen> {
     final isDark = theme.brightness == Brightness.dark;
     final status = _getAttendanceStatus(date, dateWiseData, holidays);
     final color = _getStatusColor(status);
-    final isInWeek = _isInDisplayedWeek(date);
 
     Color backgroundColor = Colors.transparent;
     Color textColor = colorScheme.onSurface;
@@ -1078,21 +1071,11 @@ class _new_calender_screenState extends State<new_calender_screen> {
       ];
     }
 
-    // Add light blue week highlight as a background layer
     return AnimatedContainer(
-      duration: Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 200),
       curve: Curves.easeInOut,
-      decoration: BoxDecoration(
-        // Week row highlight - creates a continuous bar effect
-        color: isInWeek && !isSelected && !isToday
-            ? (isDark
-                  ? colorScheme.surfaceContainerHighest.withOpacity(0.3)
-                  : const Color(0xFFE3F2FD))
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(4),
-      ),
       child: AnimatedScale(
-        duration: Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 200),
         scale: isSelected || isToday ? 1.05 : 1.0,
         child: Container(
           margin: const EdgeInsets.all(2),
@@ -1109,17 +1092,7 @@ class _new_calender_screenState extends State<new_calender_screen> {
             border: isSelected || isToday
                 ? Border.all(color: Colors.white, width: 2)
                 : null,
-            boxShadow:
-                shadows ??
-                (isInWeek && !isSelected && !isToday
-                    ? [
-                        BoxShadow(
-                          color: colorScheme.primary.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ]
-                    : null),
+            boxShadow: shadows,
           ),
           child: Center(
             child: Column(

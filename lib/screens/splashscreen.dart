@@ -86,8 +86,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final logoAsset = isDark ? AppAssets.quantumLogoDark : AppAssets.quantumLogoLight;
+    final logoAsset = AppAssets.quantumLogo;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,

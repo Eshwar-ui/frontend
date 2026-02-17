@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quantum_dashboard/utils/responsive_utils.dart';
 
 /// Design tokens and theme-based helpers so the app uses one source of truth
 /// and avoids scattered `isDark ? ... : ...` and hardcoded Colors.
@@ -22,6 +23,26 @@ class AppDesignSystem {
   // --- Elevation ---
   static const double elevationCard = 2.0;
   static const double elevationDialog = 6.0;
+}
+
+/// Responsive helpers that need BuildContext (use MediaQuery.sizeOf / textScaler).
+extension AppDesignSystemResponsive on BuildContext {
+  /// Font size scaled by current text scaler (respects app clamp). Use for critical text.
+  double scaledFontSize(double base) {
+    final scale = MediaQuery.textScalerOf(this).scale(1.0);
+    return (base * scale).clamp(base, base * 1.3);
+  }
+
+  /// Horizontal padding that scales with screen width.
+  EdgeInsets get responsivePaddingHorizontal =>
+      ResponsiveUtils.paddingHorizontal(this);
+
+  /// General padding that scales with screen size.
+  EdgeInsets get responsivePadding => ResponsiveUtils.padding(this);
+
+  /// Spacing value for the current screen size.
+  double responsiveSpacing([double base = 16.0]) =>
+      ResponsiveUtils.spacing(this, base: base);
 }
 
 /// Theme-based colors and styles. Use these instead of checking brightness

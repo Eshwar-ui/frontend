@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/utils/text_styles.dart';
+import 'package:quantum_dashboard/utils/string_extensions.dart';
 import 'package:quantum_dashboard/widgets/custom_floating_container.dart';
 import 'package:quantum_dashboard/widgets/photo_upload_widget.dart';
 import 'package:intl/intl.dart';
@@ -447,18 +448,5 @@ class _ProfileScreenState extends State<ProfileScreen> {
         behavior: SnackBarBehavior.floating,
       ),
     );
-  }
-}
-
-extension on String {
-  String toTitleCase() {
-    if (isEmpty) return this;
-    return split(' ')
-        .map(
-          (word) => word.isEmpty
-              ? word
-              : '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}',
-        )
-        .join(' ');
   }
 }

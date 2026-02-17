@@ -12,7 +12,7 @@ class NetworkConfig {
 
   // Development settings (for local development)
   static const String _devMachineIp =
-      '192.168.1.36'; // Android emulator default
+      '192.168.1.28'; // Android emulator default
   // static const String _devMachineIp = '10.0.2.2';
   static const int _serverPort = 4444; // Backend runs on port 4444
 

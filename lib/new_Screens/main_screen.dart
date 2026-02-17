@@ -10,6 +10,8 @@ import 'package:quantum_dashboard/new_Screens/new_search_screen.dart';
 import 'package:quantum_dashboard/providers/attendance_provider.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/providers/navigation_provider.dart';
+import 'package:quantum_dashboard/widgets/app_drawer.dart';
+import 'package:quantum_dashboard/services/attendance_settings_service.dart';
 
 class NavScreen extends StatefulWidget {
   const NavScreen({super.key});
@@ -24,6 +26,7 @@ class _NavScreenState extends State<NavScreen> {
     NavigationPage.Leaves: 1, // Assuming calendar is for leaves
     NavigationPage.Holidays: 2, // Assuming search is for holidays
     NavigationPage.Profile: 3,
+    NavigationPage.CompoffWallet: 0,
   };
 
   static const List<Widget> _widgetOptions = <Widget>[
@@ -36,6 +39,9 @@ class _NavScreenState extends State<NavScreen> {
   static const MethodChannel _platformChannel = MethodChannel(
     'com.quantum.dashboard/windows',
   );
+
+  final AttendanceSettingsService _attendanceSettingsService =
+      AttendanceSettingsService();
 
   @override
   void initState() {
@@ -66,6 +72,21 @@ class _NavScreenState extends State<NavScreen> {
     }
 
     try {
+      final locationRequired =
+          await _attendanceSettingsService.getLocationPunchInEnabled();
+
+      if (!locationRequired) {
+        debugPrint('Auto Punch Out: Location not required, punching out.');
+        final result = await attendanceProvider.punchOut(
+          user.employeeId,
+          user.fullName,
+          0.0,
+          0.0,
+        );
+        debugPrint('Auto Punch Out Result: $result');
+        return;
+      }
+
       // Check if we have location permission
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
@@ -129,7 +150,11 @@ class _NavScreenState extends State<NavScreen> {
           child: Stack(
             children: [
               // Main content with bottom padding to prevent overlap with nav bar
-              _widgetOptions[_selectedIndex],
+              Consumer<NavigationProvider>(
+                builder: (context, navProvider, child) {
+                  return _widgetOptions[_selectedIndex];
+                },
+              ),
               // Floating Navigation Bar with absolute positioning
               // Only show when this screen is the current route (no routes pushed on top)
               Builder(
@@ -176,9 +201,7 @@ class _NavScreenState extends State<NavScreen> {
                           height: navBarHeight,
                           padding: EdgeInsets.symmetric(
                             horizontal: navBarHorizontalPadding,
-                            vertical:
-                                navBarHeight *
-                                0.08, // about 8% of navBar height
+                            vertical: navBarHeight * 0.08,
                           ),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
@@ -202,7 +225,6 @@ class _NavScreenState extends State<NavScreen> {
                               width: 1.5,
                             ),
                             boxShadow: [
-                              // Outer shadow for depth
                               BoxShadow(
                                 blurRadius: 30,
                                 spreadRadius: -5,
@@ -211,14 +233,12 @@ class _NavScreenState extends State<NavScreen> {
                                     : Colors.black.withOpacity(0.15),
                                 offset: Offset(0, 8),
                               ),
-                              // Inner highlight for glass effect
                               BoxShadow(
                                 blurRadius: 10,
                                 spreadRadius: -2,
                                 color: Colors.white.withOpacity(0.3),
                                 offset: Offset(0, -2),
                               ),
-                              // Soft glow
                               BoxShadow(
                                 blurRadius: 20,
                                 color: isDark

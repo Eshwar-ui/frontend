@@ -7,6 +7,7 @@ import 'package:quantum_dashboard/providers/employee_provider.dart';
 import 'package:quantum_dashboard/providers/payslip_provider.dart';
 import 'package:quantum_dashboard/providers/notification_provider.dart';
 import 'package:quantum_dashboard/models/payslip_model.dart';
+import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/screens/generate_payslip_screen.dart';
 import 'package:quantum_dashboard/utils/snackbar_utils.dart';
 import 'package:intl/intl.dart';
@@ -23,16 +24,40 @@ class _AdminPayslipsScreenState extends State<AdminPayslipsScreen> {
   String? _selectedEmployeeId;
   int? _selectedMonth;
   int? _selectedYear;
+  final TextEditingController _employeeSearchController =
+      TextEditingController();
+  final FocusNode _employeeSearchFocusNode = FocusNode();
+
+  Uri _withCacheBuster(Uri uri) {
+    final qp = Map<String, String>.from(uri.queryParameters);
+    qp['v'] = DateTime.now().millisecondsSinceEpoch.toString();
+    return uri.replace(queryParameters: qp);
+  }
 
   @override
   void initState() {
     super.initState();
     _selectedYear = DateTime.now().year;
     _selectedMonth = DateTime.now().month;
+    _employeeSearchFocusNode.addListener(_onEmployeeSearchFocusChange);
+    _employeeSearchController.addListener(_onEmployeeSearchFocusChange);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<EmployeeProvider>(context, listen: false).getAllEmployees();
       _loadPayslips();
     });
+  }
+
+  @override
+  void dispose() {
+    _employeeSearchController.removeListener(_onEmployeeSearchFocusChange);
+    _employeeSearchController.dispose();
+    _employeeSearchFocusNode.removeListener(_onEmployeeSearchFocusChange);
+    _employeeSearchFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _onEmployeeSearchFocusChange() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadPayslips() async {
@@ -211,10 +236,13 @@ class _AdminPayslipsScreenState extends State<AdminPayslipsScreen> {
         );
       }
 
-      final url = Uri.parse(urlString);
+      final url = _withCacheBuster(Uri.parse(urlString));
 
-      // Launch URL - use platformDefault which works best on most platforms
-      final launched = await launchUrl(url, mode: LaunchMode.platformDefault);
+      // Force external app/browser for reliable PDF rendering on mobile.
+      final launched = await launchUrl(
+        url,
+        mode: LaunchMode.externalApplication,
+      );
 
       // Close loading indicator
       if (mounted) {
@@ -337,11 +365,14 @@ class _AdminPayslipsScreenState extends State<AdminPayslipsScreen> {
 
                 if (isWide) {
                   return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: _buildEmployeeDropdown(
+                        flex: 2,
+                        child: _buildEmployeeSearch(
                           colorScheme,
                           employeeProvider,
+                          isDark,
                         ),
                       ),
                       SizedBox(width: 12),
@@ -352,8 +383,13 @@ class _AdminPayslipsScreenState extends State<AdminPayslipsScreen> {
                   );
                 } else {
                   return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _buildEmployeeDropdown(colorScheme, employeeProvider),
+                      _buildEmployeeSearch(
+                        colorScheme,
+                        employeeProvider,
+                        isDark,
+                      ),
                       SizedBox(height: 12),
                       Row(
                         children: [
@@ -609,42 +645,176 @@ class _AdminPayslipsScreenState extends State<AdminPayslipsScreen> {
     );
   }
 
-  Widget _buildEmployeeDropdown(
+  List<Employee> _getFilteredEmployees(
+    EmployeeProvider employeeProvider,
+    String query,
+  ) {
+    if (query.isEmpty) return employeeProvider.employees;
+    final q = query.trim().toLowerCase();
+    return employeeProvider.employees.where((e) {
+      return e.fullName.toLowerCase().contains(q) ||
+          e.employeeId.toLowerCase().contains(q);
+    }).toList();
+  }
+
+  Widget _buildEmployeeSearch(
     ColorScheme colorScheme,
     EmployeeProvider employeeProvider,
+    bool isDark,
   ) {
-    return DropdownButtonFormField<String?>(
-      value: _selectedEmployeeId,
-      decoration: InputDecoration(
-        labelText: 'Employee',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        filled: true,
-        fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.3),
-      ),
-      menuMaxHeight: 300,
-      isExpanded: true,
-      items: [
-        DropdownMenuItem<String?>(
-          value: null,
-          child: Text('All Employees', overflow: TextOverflow.ellipsis),
-        ),
-        ...employeeProvider.employees.map((emp) {
-          return DropdownMenuItem<String?>(
-            value: emp.employeeId,
-            child: Text(
-              '${emp.employeeId} - ${emp.fullName}',
-              overflow: TextOverflow.ellipsis,
+    final query = _employeeSearchController.text.trim();
+    final showList = _employeeSearchFocusNode.hasFocus;
+    final filtered = _getFilteredEmployees(employeeProvider, query);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: _employeeSearchController,
+          focusNode: _employeeSearchFocusNode,
+          onChanged: (_) => setState(() {}),
+          decoration: InputDecoration(
+            labelText: 'Employee',
+            hintText: 'Search by name or ID...',
+            hintStyle: GoogleFonts.poppins(
+              fontSize: 14,
+              color: colorScheme.onSurface.withOpacity(0.5),
             ),
-          );
-        }),
+            prefixIcon: Icon(
+              Icons.search,
+              color: colorScheme.onSurface.withOpacity(0.6),
+              size: 22,
+            ),
+            suffixIcon: _selectedEmployeeId != null
+                ? IconButton(
+                    icon: Icon(
+                      Icons.clear,
+                      size: 20,
+                      color: colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _selectedEmployeeId = null;
+                        _employeeSearchController.clear();
+                      });
+                      _loadPayslips();
+                    },
+                    tooltip: 'Clear selection',
+                  )
+                : null,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            filled: true,
+            fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+          ),
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: colorScheme.onSurface,
+          ),
+          onTap: () {
+            if (_selectedEmployeeId != null) {
+              _employeeSearchController.clear();
+              setState(() => _selectedEmployeeId = null);
+            }
+          },
+        ),
+        if (showList) ...[
+          SizedBox(height: 4),
+          Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(8),
+            color: isDark
+                ? colorScheme.surfaceContainerHighest
+                : colorScheme.surface,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: 280),
+              child: ListView(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                children: [
+                  ListTile(
+                    leading: Icon(
+                      Icons.people,
+                      size: 22,
+                      color: colorScheme.primary,
+                    ),
+                    title: Text(
+                      'All Employees',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    onTap: () {
+                      setState(() {
+                        _selectedEmployeeId = null;
+                        _employeeSearchController.clear();
+                      });
+                      _employeeSearchFocusNode.unfocus();
+                      _loadPayslips();
+                    },
+                  ),
+                  Divider(height: 1),
+                  ...filtered.map((emp) {
+                    final isSelected = _selectedEmployeeId == emp.employeeId;
+                    return ListTile(
+                      leading: Icon(
+                        Icons.person_outline,
+                        size: 22,
+                        color: isSelected
+                            ? colorScheme.primary
+                            : colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                      title: Text(
+                        '${emp.employeeId} - ${emp.fullName}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                          color: colorScheme.onSurface,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () {
+                        final selectedLabel =
+                            '${emp.employeeId} - ${emp.fullName}';
+                        setState(() {
+                          _selectedEmployeeId = emp.employeeId;
+                          _employeeSearchController.value =
+                              TextEditingValue(
+                                text: selectedLabel,
+                                selection: TextSelection.collapsed(
+                                  offset: selectedLabel.length,
+                                ),
+                              );
+                        });
+                        _employeeSearchFocusNode.unfocus();
+                        _loadPayslips();
+                      },
+                    );
+                  }),
+                  if (filtered.isEmpty)
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(
+                        child: Text(
+                          'No employees match "$query"',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            color: colorScheme.onSurface.withOpacity(0.6),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ],
-      onChanged: (value) {
-        setState(() {
-          _selectedEmployeeId = value;
-        });
-        _loadPayslips();
-      },
     );
   }
 

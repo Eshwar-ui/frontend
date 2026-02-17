@@ -490,18 +490,26 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
           ),
           const SizedBox(height: 12),
           // Legend
-          Row(
-            children: [
-              _buildLegendItem(Icons.check_circle, Colors.green, "Present"),
-              const SizedBox(width: 16),
-              _buildLegendItem(
-                Icons.access_time_filled,
-                Colors.orange,
-                "Half Day",
-              ),
-              const SizedBox(width: 16),
-              _buildLegendItem(Icons.cancel, Colors.red, "Absent"),
-            ],
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const ClampingScrollPhysics(),
+            child: Row(
+              children: [
+                _buildLegendItem(Icons.check_circle, Colors.green, "Present"),
+                const SizedBox(width: 16),
+                _buildLegendItem(
+                  Icons.access_time_filled,
+                  Colors.orange,
+                  "Half Day",
+                ),
+                const SizedBox(width: 16),
+                _buildLegendItem(Icons.cancel, Colors.red, "Absent"),
+                const SizedBox(width: 16),
+                _buildLegendItem(Icons.event_available, Colors.teal, "Compoff"),
+                const SizedBox(width: 16),
+                _buildLegendItem(Icons.event_note, Colors.blue, "Leave"),
+              ],
+            ),
           ),
         ],
       ),
@@ -921,6 +929,40 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
       );
     } else if (status == 'Absent') {
       return Icon(Icons.cancel, color: Colors.red.withOpacity(0.7), size: 20);
+    } else if (status == 'Compoff') {
+      return Container(
+        padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.teal.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: Colors.teal.withOpacity(0.35)),
+        ),
+        child: Text(
+          'C',
+          style: GoogleFonts.poppins(
+            color: Colors.teal,
+            fontWeight: FontWeight.bold,
+            fontSize: 10,
+          ),
+        ),
+      );
+    } else if (status == 'Leave') {
+      return Container(
+        padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.blue.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: Colors.blue.withOpacity(0.3)),
+        ),
+        child: Text(
+          'L',
+          style: GoogleFonts.poppins(
+            color: Colors.blue,
+            fontWeight: FontWeight.bold,
+            fontSize: 10,
+          ),
+        ),
+      );
     }
 
     return SizedBox();

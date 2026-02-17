@@ -18,6 +18,13 @@ class _PayslipsScreenState extends State<PayslipsScreen> {
   int _selectedMonth = DateTime.now().month;
   bool _showGeneratedPayslips = true;
 
+  String _withCacheBuster(String rawUrl) {
+    final uri = Uri.parse(rawUrl);
+    final qp = Map<String, String>.from(uri.queryParameters);
+    qp['v'] = DateTime.now().millisecondsSinceEpoch.toString();
+    return uri.replace(queryParameters: qp).toString();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -148,24 +155,50 @@ class _PayslipsScreenState extends State<PayslipsScreen> {
                   }
                 });
 
+                final theme = Theme.of(context);
+                final colorScheme = theme.colorScheme;
                 return Container(
                   padding: EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: [
                       Expanded(
-                        child: DropdownButton<int>(
+                        child: DropdownButtonFormField<int>(
                           value: availableMonths.contains(_selectedMonth)
                               ? _selectedMonth
                               : (availableMonths.isNotEmpty
                                     ? availableMonths.first
                                     : _selectedMonth),
+                          decoration: InputDecoration(
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            filled: true,
+                            fillColor: colorScheme.surfaceContainerHighest,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: colorScheme.outline,
+                              ),
+                            ),
+                          ),
+                          dropdownColor: colorScheme.surfaceContainerHighest,
                           items: availableMonths.map((month) {
                             return DropdownMenuItem(
                               value: month,
-                              child: Text(
-                                DateFormat(
-                                  'MMMM',
-                                ).format(DateTime(2023, month)),
+                              child: Padding(
+                                padding: EdgeInsets.only(left: 16),
+                                child: Text(
+                                  DateFormat(
+                                    'MMMM',
+                                  ).format(DateTime(2023, month)),
+                                  style: TextStyle(
+                                    color: colorScheme.onSurface,
+                                  ),
+                                ),
                               ),
                             );
                           }).toList(),
@@ -178,16 +211,37 @@ class _PayslipsScreenState extends State<PayslipsScreen> {
                       ),
                       SizedBox(width: 16),
                       Expanded(
-                        child: DropdownButton<int>(
+                        child: DropdownButtonFormField<int>(
                           value: availableYears.contains(_selectedYear)
                               ? _selectedYear
                               : (availableYears.isNotEmpty
                                     ? availableYears.first
                                     : _selectedYear),
+                          decoration: InputDecoration(
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            filled: true,
+                            fillColor: colorScheme.surfaceContainerHighest,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: colorScheme.outline,
+                              ),
+                            ),
+                          ),
+                          dropdownColor: colorScheme.surfaceContainerHighest,
                           items: availableYears.map((year) {
                             return DropdownMenuItem(
                               value: year,
-                              child: Text(year.toString()),
+                              child: Text(
+                                year.toString(),
+                                style: TextStyle(color: colorScheme.onSurface),
+                              ),
                             );
                           }).toList(),
                           onChanged: (value) {
@@ -349,7 +403,7 @@ class _PayslipsScreenState extends State<PayslipsScreen> {
                         payslip.year,
                       );
                       await downloadAndOpenPdf(
-                        payslip.payslipUrl,
+                        _withCacheBuster(payslip.payslipUrl),
                         fileName,
                         context,
                       );
@@ -382,7 +436,8 @@ class _PayslipsScreenState extends State<PayslipsScreen> {
                     onPressed: () async {
                       try {
                         await url_launcher.launchUrl(
-                          Uri.parse(payslip.payslipUrl),
+                          Uri.parse(_withCacheBuster(payslip.payslipUrl)),
+                          mode: url_launcher.LaunchMode.externalApplication,
                         );
                       } catch (e) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -477,7 +532,10 @@ class _PayslipsScreenState extends State<PayslipsScreen> {
         onTap: () async {
           try {
             // await PdfUtils.openPdfInExternalApp(payslip.url);
-            await url_launcher.launchUrl(Uri.parse(payslip.url));
+            await url_launcher.launchUrl(
+              Uri.parse(_withCacheBuster(payslip.url)),
+              mode: url_launcher.LaunchMode.externalApplication,
+            );
           } catch (e) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -526,7 +584,10 @@ class _PayslipsScreenState extends State<PayslipsScreen> {
                 onPressed: () async {
                   try {
                     // await PdfUtils.openPdfInExternalApp(payslip.url);
-                    await url_launcher.launchUrl(Uri.parse(payslip.url));
+                    await url_launcher.launchUrl(
+                      Uri.parse(_withCacheBuster(payslip.url)),
+                      mode: url_launcher.LaunchMode.externalApplication,
+                    );
                   } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(

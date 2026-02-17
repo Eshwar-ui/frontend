@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+/// Shared text styles. When using in constrained layouts, prefer
+/// [Text] with [overflow] (e.g. [TextOverflow.ellipsis]) and [maxLines]
+/// to avoid overflow on small or large font scales.
 class AppTextStyles {
   static TextStyle get heading => TextStyle(
     fontSize: 24,

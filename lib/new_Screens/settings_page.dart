@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/providers/theme_provider.dart';
+import 'package:quantum_dashboard/services/app_update_service.dart';
 
 import 'package:quantum_dashboard/providers/local_auth_provider.dart';
 import 'package:quantum_dashboard/new_Screens/notification_settings_screen.dart';
@@ -86,6 +87,16 @@ class SettingsPage extends StatelessWidget {
                   'Version and app details',
                   () {
                     _showAboutDialog(context);
+                  },
+                ),
+                const SizedBox(height: 12),
+                _buildSettingsTile(
+                  context,
+                  Icons.system_update_alt,
+                  'Check for Updates',
+                  'Search Play Store for latest version',
+                  () {
+                    _checkForUpdatesManually(context);
                   },
                 ),
                 const SizedBox(height: 32),
@@ -474,6 +485,35 @@ class SettingsPage extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> _checkForUpdatesManually(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await AppUpdateService().checkNow();
+
+    String message;
+    switch (result) {
+      case UpdateCheckResult.updateStarted:
+        message = 'Update available. Play Store update flow started.';
+        break;
+      case UpdateCheckResult.noUpdateAvailable:
+        message = 'Your app is up to date.';
+        break;
+      case UpdateCheckResult.notSupported:
+        message = 'Update check is only available on Android.';
+        break;
+      case UpdateCheckResult.playStoreInstallRequired:
+        message = 'Install this app from Play Store to enable update checks.';
+        break;
+      case UpdateCheckResult.throttled:
+        message = 'Update check already in progress.';
+        break;
+      case UpdateCheckResult.failed:
+        message = 'Could not check updates right now. Please try again.';
+        break;
+    }
+
+    messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _showAboutDialog(BuildContext context) {

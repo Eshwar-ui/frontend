@@ -71,12 +71,13 @@ class NotificationCard extends StatelessWidget {
     final typeColor = _getColorForType(notification.type, context);
 
     return Card(
+      borderOnForeground: true,
       margin: EdgeInsets.only(bottom: 12),
       color: notification.isRead
           ? colorScheme.surfaceContainerHighest
           : (isDark
-                ? colorScheme.primaryContainer.withOpacity(0.3)
-                : colorScheme.primaryContainer.withOpacity(0.1)),
+                ? colorScheme.primaryContainer.withOpacity(0.35)
+                : colorScheme.primary.withOpacity(0.5)),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),

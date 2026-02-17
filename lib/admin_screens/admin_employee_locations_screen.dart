@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/models/employee_location_model.dart';
+import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/providers/employee_provider.dart';
 import 'package:quantum_dashboard/providers/navigation_provider.dart';
 import 'package:quantum_dashboard/services/location_service.dart';
@@ -22,13 +23,43 @@ class _AdminEmployeeLocationsScreenState
   String? _selectedEmployeeId;
   bool _isLoading = false;
   String? _error;
+  final TextEditingController _employeeSearchController =
+      TextEditingController();
+  final FocusNode _employeeSearchFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
+    _employeeSearchFocusNode.addListener(_onEmployeeSearchFocusChange);
+    _employeeSearchController.addListener(_onEmployeeSearchFocusChange);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadEmployees();
     });
+  }
+
+  @override
+  void dispose() {
+    _employeeSearchController.removeListener(_onEmployeeSearchFocusChange);
+    _employeeSearchController.dispose();
+    _employeeSearchFocusNode.removeListener(_onEmployeeSearchFocusChange);
+    _employeeSearchFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _onEmployeeSearchFocusChange() {
+    if (mounted) setState(() {});
+  }
+
+  List<Employee> _getFilteredEmployees(
+    EmployeeProvider employeeProvider,
+    String query,
+  ) {
+    if (query.isEmpty) return employeeProvider.employees;
+    final q = query.trim().toLowerCase();
+    return employeeProvider.employees.where((e) {
+      return e.fullName.toLowerCase().contains(q) ||
+          e.employeeId.toLowerCase().contains(q);
+    }).toList();
   }
 
   Future<void> _loadEmployees() async {
@@ -312,6 +343,137 @@ class _AdminEmployeeLocationsScreenState
     }
   }
 
+  Widget _buildEmployeeSearch(
+    ColorScheme colorScheme,
+    EmployeeProvider employeeProvider,
+    bool isDark,
+  ) {
+    final query = _employeeSearchController.text.trim();
+    final showList = _employeeSearchFocusNode.hasFocus;
+    final filtered = _getFilteredEmployees(employeeProvider, query);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: _employeeSearchController,
+          focusNode: _employeeSearchFocusNode,
+          onChanged: (_) => setState(() {}),
+          decoration: InputDecoration(
+            labelText: 'Select Employee',
+            hintText: 'Search by name or ID...',
+            hintStyle: GoogleFonts.poppins(
+              fontSize: 14,
+              color: colorScheme.onSurface.withOpacity(0.5),
+            ),
+            prefixIcon: Icon(
+              Icons.search,
+              color: colorScheme.onSurface.withOpacity(0.6),
+              size: 22,
+            ),
+            suffixIcon: _selectedEmployeeId != null
+                ? IconButton(
+                    icon: Icon(
+                      Icons.clear,
+                      size: 20,
+                      color: colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _selectedEmployeeId = null;
+                        _employeeSearchController.clear();
+                      });
+                      _loadLocations();
+                    },
+                    tooltip: 'Clear selection',
+                  )
+                : null,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            filled: true,
+            fillColor: colorScheme.surfaceContainer,
+          ),
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: colorScheme.onSurface,
+          ),
+          onTap: () {
+            if (_selectedEmployeeId != null) {
+              _employeeSearchController.clear();
+              setState(() => _selectedEmployeeId = null);
+            }
+          },
+        ),
+        if (showList) ...[
+          SizedBox(height: 4),
+          Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(12),
+            color: isDark
+                ? colorScheme.surfaceContainerHighest
+                : colorScheme.surface,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: 280),
+              child: ListView(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                children: [
+                  ...filtered.map((emp) {
+                    final isSelected = _selectedEmployeeId == emp.employeeId;
+                    return ListTile(
+                      leading: Icon(
+                        Icons.person_outline,
+                        size: 22,
+                        color: isSelected
+                            ? colorScheme.primary
+                            : colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                      title: Text(
+                        '${emp.employeeId} - ${emp.fullName}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.w400,
+                          color: colorScheme.onSurface,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () {
+                        setState(() {
+                          _selectedEmployeeId = emp.employeeId;
+                          _employeeSearchController.text =
+                              '${emp.employeeId} - ${emp.fullName}';
+                        });
+                        _employeeSearchFocusNode.unfocus();
+                        _loadLocations();
+                      },
+                    );
+                  }),
+                  if (filtered.isEmpty)
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(
+                        child: Text(
+                          'No employees match "$query"',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            color: colorScheme.onSurface.withOpacity(0.6),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -349,37 +511,11 @@ class _AdminEmployeeLocationsScreenState
       ),
       body: Column(
         children: [
-          // Employee selector
+          // Employee search selector
           Container(
             padding: EdgeInsets.all(16),
             color: colorScheme.surfaceContainerHighest,
-            child: DropdownButtonFormField<String>(
-              value: _selectedEmployeeId,
-              decoration: InputDecoration(
-                labelText: 'Select Employee',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: colorScheme.surfaceContainer,
-              ),
-              items: employeeProvider.employees.map((employee) {
-                return DropdownMenuItem<String>(
-                  value: employee.employeeId,
-                  child: Text(
-                    '${employee.fullName} (${employee.employeeId})',
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                );
-              }).toList(),
-              onChanged: (employeeId) {
-                setState(() {
-                  _selectedEmployeeId = employeeId;
-                });
-                _loadLocations();
-              },
-              isExpanded: true,
-            ),
+            child: _buildEmployeeSearch(colorScheme, employeeProvider, isDark),
           ),
           // Locations list
           Expanded(

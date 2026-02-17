@@ -3,6 +3,7 @@ import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../utils/app_logger.dart';
 import '../utils/allowed_users.dart';
+import '../utils/server_error_exception.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -15,6 +16,48 @@ class AuthProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isLoggedIn => _user != null;
+
+  String _mapLoginErrorMessage(dynamic error) {
+    final rawMessage = error is ServerErrorException
+        ? error.message
+        : (error?.toString() ?? '');
+    final message = rawMessage.toLowerCase();
+    final statusCode = error is ServerErrorException ? error.statusCode : null;
+
+    if (statusCode == 400 ||
+        statusCode == 401 ||
+        message.contains('invalid email') ||
+        message.contains('invalid password') ||
+        message.contains('invalid credentials') ||
+        message.contains('email address or password')) {
+      return 'Invalid email or password.';
+    }
+
+    if (message.contains('timeout') ||
+        message.contains('socket') ||
+        message.contains('network') ||
+        message.contains('connection') ||
+        message.contains('failed host lookup')) {
+      return 'Unable to connect right now. Please check your internet connection and try again.';
+    }
+
+    if (statusCode == 403 ||
+        message.contains('403') ||
+        message.contains('forbidden') ||
+        message.contains('access denied')) {
+      return 'Your account does not have permission to sign in on this app.';
+    }
+
+    if ((statusCode != null && statusCode >= 500) ||
+        message.contains('500') ||
+        message.contains('502') ||
+        message.contains('503') ||
+        message.contains('server')) {
+      return 'Server is temporarily unavailable. Please try again in a few minutes.';
+    }
+
+    return 'Login failed. Please try again.';
+  }
 
   Future<bool> login(String email, String password) async {
     _isLoading = true;
@@ -44,7 +87,7 @@ class AuthProvider with ChangeNotifier {
             !isAllowedEmail &&
             user.mobileAccessEnabled != true) {
           _error =
-              'Unauthorized Access: Your account is not on the authorized users list and mobile access is not enabled. Please contact your administrator.';
+              'Your account is not authorized for mobile app access. Please contact your administrator.';
           _isLoading = false;
           AppLogger.warning(
             'AuthProvider: Access denied (not in allowlist and no mobile access)',
@@ -60,7 +103,7 @@ class AuthProvider with ChangeNotifier {
                 defaultTargetPlatform == TargetPlatform.iOS)) {
           if (user.mobileAccessEnabled != true) {
             _error =
-                'Mobile Access Unauthorized: Your account does not have mobile access enabled. Please contact your administrator.';
+                'Your account is not authorized for mobile app access. Please contact your administrator.';
             _isLoading = false;
             AppLogger.warning('AuthProvider: Mobile access denied', {
               'employeeId': user.employeeId,
@@ -80,14 +123,14 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return true;
       } else {
-        _error = result['message'] ?? 'Login failed';
+        _error = _mapLoginErrorMessage(result['message']);
         _isLoading = false;
         AppLogger.warning('AuthProvider: Login failed', {'error': _error});
         notifyListeners();
         return false;
       }
     } catch (e, stackTrace) {
-      _error = e.toString();
+      _error = _mapLoginErrorMessage(e);
       _isLoading = false;
       AppLogger.error('AuthProvider: Login exception', e, stackTrace);
       notifyListeners();
@@ -164,6 +207,10 @@ class AuthProvider with ChangeNotifier {
   // Check if user has admin role
   bool get isAdmin =>
       _user?.employeeId == 'QWIT-1001' || _user?.role?.toLowerCase() == 'admin';
+
+  bool get isHr => _user?.role?.toLowerCase() == 'hr';
+
+  bool get isAdminOrHr => isAdmin || isHr;
 
   // Check if user has employee role
   bool get isEmployee => _user?.employeeId != 'QWIT-1001';

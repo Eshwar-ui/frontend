@@ -6,6 +6,7 @@ enum NavigationPage {
   Attendance,
   Payslips,
   Holidays,
+  CompoffWallet,
   ChangePassword,
   Profile,
   // AllEmployees,
@@ -20,6 +21,7 @@ enum NavigationPage {
   AdminEmployeeLocations,
   AdminAttendance,
   AdminLocations,
+  AdminCompoff,
 }
 
 class NavigationProvider with ChangeNotifier {

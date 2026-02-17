@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/screens/change_password_screen.dart';
+import 'package:quantum_dashboard/screens/compoff_wallet_screen.dart';
 import 'package:quantum_dashboard/screens/leaves_screen.dart';
 import 'package:quantum_dashboard/screens/new_payslip_screen.dart';
 import 'package:quantum_dashboard/screens/holidays_screen.dart';
@@ -97,6 +98,24 @@ class _new_search_screenState extends State<new_search_screen> {
       color: Colors.cyan,
       keywords: ['password', 'security', 'update password', 'change password'],
     ),
+    // Compoff Wallet
+    AppService(
+      id: 'compoff_wallet',
+      title: 'Compoff Wallet',
+      description: 'View and use your compoff credits',
+      category: 'Leaves',
+      icon: Icons.account_balance_wallet,
+      color: Colors.teal,
+      keywords: [
+        'compoff',
+        'comp off',
+        'comp-off',
+        'wallet',
+        'credits',
+        'compensatory',
+        'leave credit',
+      ],
+    ),
   ];
 
   @override
@@ -185,6 +204,15 @@ class _new_search_screenState extends State<new_search_screen> {
           );
         }
         break;
+      case 'compoff_wallet':
+        if (_navigator != null && mounted) {
+          _navigator!.push(
+            MaterialPageRoute(
+              builder: (context) => const CompoffWalletScreen(),
+            ),
+          );
+        }
+        break;
       default:
         _showComingSoonMessage(service);
         break;
@@ -228,7 +256,7 @@ class _new_search_screenState extends State<new_search_screen> {
         elevation: 0,
         title: Row(
           children: [
-            Icon(Icons.search, size: 24, color: colorScheme.onSurface),
+            // Icon(Icons.search, size: 24, color: colorScheme.onSurface),
             const SizedBox(width: 12),
             Text(
               'Search Services',
@@ -257,20 +285,26 @@ class _new_search_screenState extends State<new_search_screen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Search Bar
+            // Search Bar — single border and fill for consistent light/dark alignment
             Padding(
               padding: const EdgeInsets.all(16),
               child: Container(
+                clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
-                  color:
-                      theme.inputDecorationTheme.fillColor ??
-                      colorScheme.surfaceContainerHighest,
+                  color: colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: colorScheme.outlineVariant),
+                  border: Border.all(
+                    color: colorScheme.outline.withOpacity(0.5),
+                    width: 0,
+                  ),
                 ),
                 child: TextField(
                   controller: _searchController,
                   onChanged: _performSearch,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: colorScheme.onSurface,
+                  ),
                   decoration: InputDecoration(
                     hintText: 'Search for services, features...',
                     hintStyle: GoogleFonts.poppins(
@@ -294,6 +328,10 @@ class _new_search_screenState extends State<new_search_screen> {
                           )
                         : null,
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 20,
                       vertical: 16,
@@ -351,6 +389,7 @@ class _new_search_screenState extends State<new_search_screen> {
       _allServices.firstWhere((s) => s.id == 'leave_apply'),
       _allServices.firstWhere((s) => s.id == 'payslips'),
       _allServices.firstWhere((s) => s.id == 'holidays'),
+      _allServices.firstWhere((s) => s.id == 'compoff_wallet'),
       _allServices.firstWhere((s) => s.id == 'change_password'),
     ];
 
@@ -499,7 +538,10 @@ class _new_search_screenState extends State<new_search_screen> {
                 _performSearch(search);
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: theme.cardColor,
                   borderRadius: BorderRadius.circular(20),

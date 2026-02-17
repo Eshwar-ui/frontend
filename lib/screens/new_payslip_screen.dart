@@ -19,6 +19,13 @@ class _NewPayslipScreenState extends State<NewPayslipScreen> {
   PayslipProvider? _payslipProvider;
   bool _hasLoadedInitialData = false;
 
+  String _withCacheBuster(String rawUrl) {
+    final uri = Uri.parse(rawUrl);
+    final qp = Map<String, String>.from(uri.queryParameters);
+    qp['v'] = DateTime.now().millisecondsSinceEpoch.toString();
+    return uri.replace(queryParameters: qp).toString();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -148,7 +155,10 @@ class _NewPayslipScreenState extends State<NewPayslipScreen> {
                                     : _selectedYear),
                           decoration: InputDecoration(
                             border: InputBorder.none,
-                            contentPadding: EdgeInsets.zero,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
                             hintText: 'Select Year',
                           ),
                           items: availableYears.map((year) {
@@ -387,7 +397,10 @@ class _NewPayslipScreenState extends State<NewPayslipScreen> {
           onTap: () async {
             if (!mounted) return;
             try {
-              await url_launcher.launchUrl(Uri.parse(payslip.payslipUrl));
+              await url_launcher.launchUrl(
+                Uri.parse(_withCacheBuster(payslip.payslipUrl)),
+                mode: url_launcher.LaunchMode.externalApplication,
+              );
             } catch (e) {
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
@@ -470,7 +483,7 @@ class _NewPayslipScreenState extends State<NewPayslipScreen> {
                             payslip.year,
                           );
                           await downloadAndOpenPdf(
-                            payslip.payslipUrl,
+                            _withCacheBuster(payslip.payslipUrl),
                             fileName,
                             context,
                           );
@@ -504,7 +517,8 @@ class _NewPayslipScreenState extends State<NewPayslipScreen> {
                           if (!mounted) return;
                           try {
                             await url_launcher.launchUrl(
-                              Uri.parse(payslip.payslipUrl),
+                              Uri.parse(_withCacheBuster(payslip.payslipUrl)),
+                              mode: url_launcher.LaunchMode.externalApplication,
                             );
                           } catch (e) {
                             if (!mounted) return;

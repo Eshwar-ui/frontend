@@ -156,6 +156,7 @@ class _GeneratePayslipScreenState extends State<GeneratePayslipScreen> {
                   children: [
                     DropdownButtonFormField<String?>(
                       value: _selectedEmployeeId,
+                      isExpanded: true,
                       decoration: InputDecoration(
                         labelText: 'Employee ID *',
                         border: OutlineInputBorder(),
@@ -164,7 +165,10 @@ class _GeneratePayslipScreenState extends State<GeneratePayslipScreen> {
                       items: widget.employees.map((emp) {
                         return DropdownMenuItem<String?>(
                           value: emp.employeeId,
-                          child: Text('${emp.employeeId} - ${emp.fullName}'),
+                          child: Text(
+                            '${emp.employeeId} - ${emp.fullName}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         );
                       }).toList(),
                       onChanged: (value) {
@@ -185,6 +189,7 @@ class _GeneratePayslipScreenState extends State<GeneratePayslipScreen> {
                         Expanded(
                           child: DropdownButtonFormField<int>(
                             value: _selectedMonth,
+                            isExpanded: true,
                             decoration: InputDecoration(
                               labelText: 'Month *',
                               border: OutlineInputBorder(),
@@ -218,6 +223,7 @@ class _GeneratePayslipScreenState extends State<GeneratePayslipScreen> {
                         Expanded(
                           child: DropdownButtonFormField<int>(
                             value: _selectedYear,
+                            isExpanded: true,
                             decoration: InputDecoration(
                               labelText: 'Year *',
                               border: OutlineInputBorder(),

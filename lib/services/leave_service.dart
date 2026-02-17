@@ -15,6 +15,7 @@ class LeaveService extends ApiService {
     required DateTime from,
     required DateTime to,
     required String reason,
+    String? compoffCreditId,
   }) async {
     final dateFormatter = DateFormat("yyyy-MM-dd");
     final days = to.difference(from).inDays + 1; // inclusive
@@ -30,6 +31,7 @@ class LeaveService extends ApiService {
           'to': dateFormatter.format(to),
           'reason': reason,
           'days': days,
+          if (compoffCreditId != null) 'compoffCreditId': compoffCreditId,
         }),
       ),
     );
@@ -181,7 +183,7 @@ class LeaveService extends ApiService {
     final data = handleResponse(response);
     // Expecting an array of objects with 'leaveType' field
     if (data is List) {
-      return data
+      final types = data
           .map(
             (e) => (e is Map && e['leaveType'] != null)
                 ? e['leaveType'].toString()
@@ -189,7 +191,11 @@ class LeaveService extends ApiService {
           )
           .whereType<String>()
           .toList();
+      if (!types.any((t) => t.toUpperCase() == 'COMPOFF')) {
+        types.add('COMPOFF');
+      }
+      return types;
     }
-    return <String>[];
+    return <String>['COMPOFF'];
   }
 }

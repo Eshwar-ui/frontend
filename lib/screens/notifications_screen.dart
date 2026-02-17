@@ -163,7 +163,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     ),
                     Text(
                       'Show unread only',
-                      style: GoogleFonts.poppins(fontSize: 14),
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: colorScheme.onSurface,
+                    ),
                     ),
                   ],
                 ),
@@ -179,17 +182,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 }
 
                 if (provider.error != null && provider.notifications.isEmpty) {
+                  final theme = Theme.of(context);
+                  final cs = theme.colorScheme;
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.error_outline, size: 64, color: Colors.red),
+                        Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: cs.error,
+                        ),
                         SizedBox(height: 16),
                         Text(
                           'Error loading notifications',
                           style: GoogleFonts.poppins(
                             fontSize: 16,
-                            color: Colors.red,
+                            color: cs.error,
                           ),
                         ),
                         SizedBox(height: 8),
@@ -197,7 +206,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           provider.error!,
                           style: GoogleFonts.poppins(
                             fontSize: 14,
-                            color: Colors.grey,
+                            color: cs.onSurface.withOpacity(0.7),
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -217,6 +226,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 final grouped = _groupByDate(filtered);
 
                 if (filtered.isEmpty) {
+                  final theme = Theme.of(context);
+                  final cs = theme.colorScheme;
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -224,7 +235,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         Icon(
                           Icons.notifications_none,
                           size: 64,
-                          color: Colors.grey,
+                          color: cs.onSurface.withOpacity(0.4),
                         ),
                         SizedBox(height: 16),
                         Text(
@@ -232,7 +243,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           style: GoogleFonts.poppins(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
-                            color: Colors.grey,
+                            color: cs.onSurface.withOpacity(0.85),
                           ),
                         ),
                         SizedBox(height: 8),
@@ -242,7 +253,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               : 'You\'re all caught up!',
                           style: GoogleFonts.poppins(
                             fontSize: 14,
-                            color: Colors.grey,
+                            color: cs.onSurface.withOpacity(0.7),
                           ),
                         ),
                       ],
@@ -323,11 +334,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                         onPressed: () =>
                                             Navigator.pop(context, true),
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.red,
+                                          backgroundColor: Theme.of(context)
+                                              .colorScheme
+                                              .error,
                                         ),
                                         child: Text(
                                           'Delete',
-                                          style: TextStyle(color: Colors.white),
+                                          style: TextStyle(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onError,
+                                          ),
                                         ),
                                       ),
                                     ],

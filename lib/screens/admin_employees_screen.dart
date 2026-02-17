@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/providers/employee_provider.dart';
@@ -10,6 +9,7 @@ import 'package:quantum_dashboard/utils/error_handler.dart';
 import 'package:quantum_dashboard/widgets/error_widget.dart';
 import 'package:quantum_dashboard/screens/employee_detail_screen.dart';
 import 'package:quantum_dashboard/screens/add_employee_screen.dart';
+import 'package:quantum_dashboard/screens/edit_employee_screen.dart';
 
 class AdminEmployeesScreen extends StatefulWidget {
   @override
@@ -20,6 +20,10 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   final Map<String, bool> _expandedTiles = {};
+
+  String _selectedDepartment = 'all';
+  String _selectedRole = 'all';
+  String _selectedDesignation = 'all';
 
   @override
   void initState() {
@@ -48,18 +52,65 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
   }
 
   List<Employee> _filterEmployees(List<Employee> employees) {
-    if (_searchQuery.isEmpty) {
-      return employees;
+    var filtered = employees;
+
+    // Department filter
+    if (_selectedDepartment != 'all') {
+      filtered = filtered.where((e) {
+        final dept = (e.department ?? '').trim();
+        if (_selectedDepartment == 'none') return dept.isEmpty;
+        return dept.toLowerCase() == _selectedDepartment.toLowerCase();
+      }).toList();
     }
 
-    final query = _searchQuery.toLowerCase();
-    return employees.where((employee) {
-      return employee.fullName.toLowerCase().contains(query) ||
-          employee.email.toLowerCase().contains(query) ||
-          employee.employeeId.toLowerCase().contains(query) ||
-          (employee.designation ?? '').toLowerCase().contains(query) ||
-          (employee.department ?? '').toLowerCase().contains(query);
-    }).toList();
+    // Role filter
+    if (_selectedRole != 'all') {
+      filtered = filtered.where((e) {
+        final role = (e.role ?? 'employee').toLowerCase();
+        return role == _selectedRole.toLowerCase();
+      }).toList();
+    }
+
+    // Designation filter
+    if (_selectedDesignation != 'all') {
+      filtered = filtered.where((e) {
+        final des = (e.designation ?? '').trim();
+        if (_selectedDesignation == 'none') return des.isEmpty;
+        return des.toLowerCase() == _selectedDesignation.toLowerCase();
+      }).toList();
+    }
+
+    // Search filter
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
+      filtered = filtered.where((employee) {
+        return employee.fullName.toLowerCase().contains(query) ||
+            employee.email.toLowerCase().contains(query) ||
+            employee.employeeId.toLowerCase().contains(query) ||
+            (employee.designation ?? '').toLowerCase().contains(query) ||
+            (employee.department ?? '').toLowerCase().contains(query);
+      }).toList();
+    }
+
+    return filtered;
+  }
+
+  List<String> _getUniqueDepartments(List<Employee> employees) {
+    final set = <String>{};
+    for (final e in employees) {
+      final d = (e.department ?? '').trim();
+      if (d.isNotEmpty) set.add(d);
+    }
+    return set.toList()..sort();
+  }
+
+  List<String> _getUniqueDesignations(List<Employee> employees) {
+    final set = <String>{};
+    for (final e in employees) {
+      final d = (e.designation ?? '').trim();
+      if (d.isNotEmpty) set.add(d);
+    }
+    return set.toList()..sort();
   }
 
   @override
@@ -179,7 +230,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
           ),
         ),
 
-        // Employee List
+        // Filters and Employee List
         Expanded(
           child: Consumer<EmployeeProvider>(
             builder: (context, employeeProvider, child) {
@@ -233,54 +284,218 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                 employeeProvider.employees,
               );
 
-              if (filteredEmployees.isEmpty && _searchQuery.isNotEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.search_off, size: 64, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text(
-                        'No employees found',
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.onSurface,
+              bool hasActiveFilters = _searchQuery.isNotEmpty ||
+                  _selectedDepartment != 'all' ||
+                  _selectedRole != 'all' ||
+                  _selectedDesignation != 'all';
+
+              if (filteredEmployees.isEmpty && hasActiveFilters) {
+                return Column(
+                  children: [
+                    _buildFilterRow(
+                      employeeProvider.employees,
+                      filteredEmployees.length,
+                      employeeProvider.employees.length,
+                      colorScheme,
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.filter_list_off, size: 64, color: Colors.grey),
+                            SizedBox(height: 16),
+                            Text(
+                              'No employees found',
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Try adjusting your search or filters',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: colorScheme.onSurface.withOpacity(0.7),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Try adjusting your search query',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: colorScheme.onSurface.withOpacity(0.7),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 );
               }
 
-              return RefreshIndicator(
-                onRefresh: () async => _refreshEmployees(),
-                child: ListView.builder(
-                  padding: EdgeInsets.fromLTRB(
-                    24,
-                    0,
-                    24,
-                    120,
-                  ), // Bottom padding for nav bar
-                  itemCount: filteredEmployees.length,
-                  itemBuilder: (context, index) {
-                    final employee = filteredEmployees[index];
-                    return _buildEmployeeCard(employee);
-                  },
-                ),
+              return Column(
+                children: [
+                  _buildFilterRow(
+                    employeeProvider.employees,
+                    filteredEmployees.length,
+                    employeeProvider.employees.length,
+                    colorScheme,
+                  ),
+                  Expanded(
+                      child: RefreshIndicator(
+                      onRefresh: () async => _refreshEmployees(),
+                      child: ListView.builder(
+                        padding: EdgeInsets.fromLTRB(24, 0, 24, 120),
+                        itemCount: filteredEmployees.length,
+                        itemBuilder: (context, index) {
+                          final employee = filteredEmployees[index];
+                          return _buildEmployeeCard(employee);
+                        },
+                      ),
+                    ),
+                  ),
+                ],
               );
             },
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildFilterRow(
+    List<Employee> employees,
+    int filteredCount,
+    int totalCount,
+    ColorScheme colorScheme,
+  ) {
+    final departments = _getUniqueDepartments(employees);
+    final designations = _getUniqueDesignations(employees);
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24, 0, 24, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Count
+          Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: Text(
+              filteredCount == totalCount
+                  ? 'Total: $totalCount employees'
+                  : 'Showing $filteredCount of $totalCount employees',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: colorScheme.onSurface.withOpacity(0.8),
+              ),
+            ),
+          ),
+          // Filter chips row
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                // Department filter
+                _buildFilterDropdown(
+                  label: 'Department',
+                  value: _selectedDepartment,
+                  items: ['all', 'none', ...departments],
+                  displayValues: {
+                    'all': 'All Departments',
+                    'none': 'No Department',
+                    ...{for (var d in departments) d: d},
+                  },
+                  onChanged: (v) => setState(() => _selectedDepartment = v!),
+                  colorScheme: colorScheme,
+                ),
+                SizedBox(width: 12),
+                // Role filter
+                _buildFilterDropdown(
+                  label: 'Role',
+                  value: _selectedRole,
+                  items: ['all', 'employee', 'admin', 'hr'],
+                  displayValues: {
+                    'all': 'All Roles',
+                    'employee': 'Employee',
+                    'admin': 'Admin',
+                    'hr': 'HR',
+                  },
+                  onChanged: (v) => setState(() => _selectedRole = v!),
+                  colorScheme: colorScheme,
+                ),
+                SizedBox(width: 12),
+                // Designation filter
+                _buildFilterDropdown(
+                  label: 'Designation',
+                  value: _selectedDesignation,
+                  items: ['all', 'none', ...designations],
+                  displayValues: {
+                    'all': 'All Designations',
+                    'none': 'No Designation',
+                    ...{for (var d in designations) d: d},
+                  },
+                  onChanged: (v) => setState(() => _selectedDesignation = v!),
+                  colorScheme: colorScheme,
+                ),
+                if (_selectedDepartment != 'all' ||
+                    _selectedRole != 'all' ||
+                    _selectedDesignation != 'all') ...[
+                  SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _selectedDepartment = 'all';
+                        _selectedRole = 'all';
+                        _selectedDesignation = 'all';
+                      });
+                    },
+                    icon: Icon(Icons.clear, color: colorScheme.primary, size: 20),
+                    tooltip: 'Clear filters',
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterDropdown({
+    required String label,
+    required String value,
+    required List<String> items,
+    required Map<String, String> displayValues,
+    required ValueChanged<String?> onChanged,
+    required ColorScheme colorScheme,
+  }) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: colorScheme.outline.withOpacity(0.2),
+        ),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: items.contains(value) ? value : 'all',
+          isExpanded: false,
+          isDense: true,
+          menuMaxHeight: 300,
+          dropdownColor: colorScheme.surfaceContainerHighest,
+          hint: Text(label, style: GoogleFonts.poppins(fontSize: 13)),
+          items: items.map((item) {
+            return DropdownMenuItem<String>(
+              value: item,
+              child: Text(
+                displayValues[item] ?? item,
+                style: GoogleFonts.poppins(fontSize: 13),
+                overflow: TextOverflow.ellipsis,
+              ),
+            );
+          }).toList(),
+          onChanged: onChanged,
+        ),
+      ),
     );
   }
 
@@ -297,7 +512,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.outline.withValues(alpha: theme.brightness == Brightness.dark ? 0.15 : 0.08),
+            color: colorScheme.outline.withValues(alpha: isDark ? 0.15 : 0.08),
             blurRadius: 10,
             offset: Offset(0, 4),
           ),
@@ -408,7 +623,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               TextButton.icon(
-                onPressed: () => _showEditEmployeeDialog(employee),
+                onPressed: () => _showEditEmployee(employee),
                 icon: Icon(Icons.edit, size: 16),
                 label: Text('Edit'),
                 style: TextButton.styleFrom(
@@ -489,12 +704,13 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
     );
   }
 
-  void _showEditEmployeeDialog(Employee employee) {
-    showDialog(
-      context: context,
-      builder: (context) => EditEmployeeDialog(
-        employee: employee,
-        onEmployeeUpdated: _refreshEmployees,
+  void _showEditEmployee(Employee employee) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EditEmployeeScreen(
+          employee: employee,
+          onEmployeeUpdated: _refreshEmployees,
+        ),
       ),
     );
   }
@@ -557,586 +773,5 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
         ),
       );
     }
-  }
-}
-
-// Edit Employee Dialog
-class EditEmployeeDialog extends StatefulWidget {
-  final Employee employee;
-  final VoidCallback onEmployeeUpdated;
-
-  EditEmployeeDialog({required this.employee, required this.onEmployeeUpdated});
-
-  @override
-  _EditEmployeeDialogState createState() => _EditEmployeeDialogState();
-}
-
-class _EditEmployeeDialogState extends State<EditEmployeeDialog> {
-  final _formKey = GlobalKey<FormState>();
-
-  late TextEditingController _firstNameController;
-  late TextEditingController _lastNameController;
-  late TextEditingController _emailController;
-  late TextEditingController _phoneController;
-  late TextEditingController _addressController;
-  late TextEditingController _departmentController;
-  late TextEditingController _designationController;
-  late TextEditingController _gradeController;
-  late TextEditingController _banknameController;
-  late TextEditingController _accountnumberController;
-  late TextEditingController _ifsccodeController;
-  late TextEditingController _PANnoController;
-  late TextEditingController _UANnoController;
-  late TextEditingController _ESInoController;
-  late TextEditingController _fathernameController;
-
-  late String _selectedRole;
-  late String? _selectedGender;
-  late DateTime _dateOfBirth;
-  late DateTime _joiningDate;
-  late bool _mobileAccessEnabled;
-  bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _firstNameController = TextEditingController(
-      text: widget.employee.firstName,
-    );
-    _lastNameController = TextEditingController(text: widget.employee.lastName);
-    _emailController = TextEditingController(text: widget.employee.email);
-    _phoneController = TextEditingController(text: widget.employee.mobile);
-    _addressController = TextEditingController(
-      text: widget.employee.address ?? '',
-    );
-    _departmentController = TextEditingController(
-      text: widget.employee.department ?? '',
-    );
-    _designationController = TextEditingController(
-      text: widget.employee.designation ?? '',
-    );
-    _gradeController = TextEditingController(text: widget.employee.grade ?? '');
-    _banknameController = TextEditingController(
-      text: widget.employee.bankname ?? '',
-    );
-    _accountnumberController = TextEditingController(
-      text: widget.employee.accountnumber ?? '',
-    );
-    _ifsccodeController = TextEditingController(
-      text: widget.employee.ifsccode ?? '',
-    );
-    _PANnoController = TextEditingController(text: widget.employee.PANno ?? '');
-    _UANnoController = TextEditingController(text: widget.employee.UANno ?? '');
-    _ESInoController = TextEditingController(text: widget.employee.ESIno ?? '');
-    _fathernameController = TextEditingController(
-      text: widget.employee.fathername ?? '',
-    );
-    _selectedRole = (widget.employee.role ?? 'employee').toLowerCase();
-    _selectedGender = widget.employee.gender;
-    _dateOfBirth = widget.employee.dateOfBirth;
-    _joiningDate = widget.employee.joiningDate;
-    _mobileAccessEnabled = widget.employee.mobileAccessEnabled ?? false;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-        padding: EdgeInsets.all(24),
-        constraints: BoxConstraints(maxHeight: 600),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Edit Employee',
-              style: GoogleFonts.poppins(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 20),
-            Expanded(
-              child: Form(
-                key: _formKey,
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _firstNameController,
-                              decoration: InputDecoration(
-                                labelText: 'First Name',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              validator: (value) =>
-                                  value?.isEmpty ?? true ? 'Required' : null,
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _lastNameController,
-                              decoration: InputDecoration(
-                                labelText: 'Last Name',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              validator: (value) =>
-                                  value?.isEmpty ?? true ? 'Required' : null,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 12),
-                      TextFormField(
-                        controller: _emailController,
-                        decoration: InputDecoration(
-                          labelText: 'Email',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        validator: (value) =>
-                            value?.isEmpty ?? true ? 'Required' : null,
-                      ),
-                      SizedBox(height: 12),
-                      TextFormField(
-                        controller: _phoneController,
-                        decoration: InputDecoration(
-                          labelText: 'Phone',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _departmentController,
-                              decoration: InputDecoration(
-                                labelText: 'Department',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _designationController,
-                              decoration: InputDecoration(
-                                labelText: 'Designation',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _selectedRole,
-                              decoration: InputDecoration(
-                                labelText: 'Role',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              items: ['employee', 'admin', 'hr'].map((role) {
-                                return DropdownMenuItem(
-                                  value: role,
-                                  child: Text(role.toUpperCase()),
-                                );
-                              }).toList(),
-                              onChanged: (value) =>
-                                  setState(() => _selectedRole = value!),
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: DropdownButtonFormField<String?>(
-                              value: _selectedGender,
-                              decoration: InputDecoration(
-                                labelText: 'Gender',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              items: [
-                                DropdownMenuItem<String?>(
-                                  value: null,
-                                  child: Text('Not Specified'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'Male',
-                                  child: Text('Male'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'Female',
-                                  child: Text('Female'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'Other',
-                                  child: Text('Other'),
-                                ),
-                              ],
-                              onChanged: (value) =>
-                                  setState(() => _selectedGender = value),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 12),
-                      TextFormField(
-                        controller: _gradeController,
-                        decoration: InputDecoration(
-                          labelText: 'Grade',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: InkWell(
-                              onTap: () async {
-                                final picked = await showDatePicker(
-                                  context: context,
-                                  initialDate: _dateOfBirth,
-                                  firstDate: DateTime(1950),
-                                  lastDate: DateTime.now(),
-                                );
-                                if (picked != null) {
-                                  setState(() => _dateOfBirth = picked);
-                                }
-                              },
-                              child: InputDecorator(
-                                decoration: InputDecoration(
-                                  labelText: 'Date of Birth',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  suffixIcon: Icon(Icons.calendar_today),
-                                ),
-                                child: Text(
-                                  DateFormat('dd-MM-yyyy').format(_dateOfBirth),
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: InkWell(
-                              onTap: () async {
-                                final picked = await showDatePicker(
-                                  context: context,
-                                  initialDate: _joiningDate,
-                                  firstDate: DateTime(2000),
-                                  lastDate: DateTime.now(),
-                                );
-                                if (picked != null) {
-                                  setState(() => _joiningDate = picked);
-                                }
-                              },
-                              child: InputDecorator(
-                                decoration: InputDecoration(
-                                  labelText: 'Joining Date',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  suffixIcon: Icon(Icons.calendar_today),
-                                ),
-                                child: Text(
-                                  DateFormat('dd-MM-yyyy').format(_joiningDate),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 12),
-                      TextFormField(
-                        controller: _addressController,
-                        decoration: InputDecoration(
-                          labelText: 'Address',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        maxLines: 2,
-                      ),
-                      SizedBox(height: 12),
-                      Text(
-                        'Bank Details',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      TextFormField(
-                        controller: _banknameController,
-                        decoration: InputDecoration(
-                          labelText: 'Bank Name',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _accountnumberController,
-                              decoration: InputDecoration(
-                                labelText: 'Account Number',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _ifsccodeController,
-                              decoration: InputDecoration(
-                                labelText: 'IFSC Code',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 12),
-                      Text(
-                        'Government IDs',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      TextFormField(
-                        controller: _PANnoController,
-                        decoration: InputDecoration(
-                          labelText: 'PAN Number',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _UANnoController,
-                              decoration: InputDecoration(
-                                labelText: 'UAN Number',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _ESInoController,
-                              decoration: InputDecoration(
-                                labelText: 'ESI Number',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 12),
-                      TextFormField(
-                        controller: _fathernameController,
-                        decoration: InputDecoration(
-                          labelText: 'Father\'s Name',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      SwitchListTile(
-                        title: Text(
-                          'Enable Mobile Access',
-                          style: GoogleFonts.poppins(fontSize: 14),
-                        ),
-                        subtitle: Text(
-                          'Allow employee to log in via mobile app',
-                          style: GoogleFonts.poppins(fontSize: 12),
-                        ),
-                        value: _mobileAccessEnabled,
-                        onChanged: (value) {
-                          setState(() => _mobileAccessEnabled = value);
-                        },
-                        secondary: Icon(
-                          Icons.phone_android,
-                          color: Colors.blue,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(color: Colors.grey.withOpacity(0.3)),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text('Cancel'),
-                    style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _updateEmployee,
-                    child: _isLoading
-                        ? SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text('Update'),
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _updateEmployee() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      final employeeProvider = Provider.of<EmployeeProvider>(
-        context,
-        listen: false,
-      );
-
-      final employeeData = {
-        'firstName': _firstNameController.text.trim(),
-        'lastName': _lastNameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'mobile': _phoneController.text.trim(),
-        'department': _departmentController.text.trim(),
-        'designation': _designationController.text.trim(),
-        'role': _selectedRole,
-        'gender': _selectedGender,
-        'grade': _gradeController.text.trim(),
-        'dateOfBirth': _dateOfBirth.toIso8601String(),
-        'joiningDate': _joiningDate.toIso8601String(),
-        'address': _addressController.text.trim(),
-        'bankname': _banknameController.text.trim(),
-        'accountnumber': _accountnumberController.text.trim(),
-        'ifsccode': _ifsccodeController.text.trim(),
-        'PANno': _PANnoController.text.trim(),
-        'UANno': _UANnoController.text.trim(),
-        'ESIno': _ESInoController.text.trim(),
-        'fathername': _fathernameController.text.trim(),
-        'mobileAccessEnabled': _mobileAccessEnabled,
-      };
-
-      final result = await employeeProvider.updateEmployee(
-        widget.employee.id.isNotEmpty
-            ? widget.employee.id
-            : widget.employee.employeeId,
-        employeeData,
-      );
-
-      if (result['success'] != false) {
-        Navigator.pop(context);
-        widget.onEmployeeUpdated();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Employee updated successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Error updating'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  @override
-  void dispose() {
-    _firstNameController.dispose();
-    _lastNameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _addressController.dispose();
-    _departmentController.dispose();
-    _designationController.dispose();
-    _gradeController.dispose();
-    _banknameController.dispose();
-    _accountnumberController.dispose();
-    _ifsccodeController.dispose();
-    _PANnoController.dispose();
-    _UANnoController.dispose();
-    _ESInoController.dispose();
-    _fathernameController.dispose();
-    super.dispose();
   }
 }
