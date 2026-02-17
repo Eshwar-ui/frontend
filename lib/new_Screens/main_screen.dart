@@ -10,7 +10,6 @@ import 'package:quantum_dashboard/new_Screens/new_search_screen.dart';
 import 'package:quantum_dashboard/providers/attendance_provider.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/providers/navigation_provider.dart';
-import 'package:quantum_dashboard/widgets/app_drawer.dart';
 import 'package:quantum_dashboard/services/attendance_settings_service.dart';
 
 class NavScreen extends StatefulWidget {

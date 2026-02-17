@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/services/api_service.dart';
+import 'package:quantum_dashboard/utils/app_logger.dart';
 
 class EmployeeService extends ApiService {
   // Get individual employee
@@ -41,43 +42,10 @@ class EmployeeService extends ApiService {
 
     final data = handleResponse(response);
     final rawList = data is List ? data : const [];
-    final employees =
-        rawList.map((json) => Employee.fromJson(json)).toList();
-
-    // Print all employee details to console
-    print('\n========== ALL EMPLOYEE DETAILS ==========');
-    print('Total Employees: ${employees.length}\n');
-
-    for (int i = 0; i < employees.length; i++) {
-      final employee = employees[i];
-      print('--- Employee ${i + 1} ---');
-      print('ID: ${employee.id}');
-      print('Employee ID: ${employee.employeeId}');
-      print('Full Name: ${employee.fullName}');
-      print('First Name: ${employee.firstName}');
-      print('Last Name: ${employee.lastName}');
-      print('Email: ${employee.email}');
-      print('Mobile: ${employee.mobile}');
-      print('Date of Birth: ${employee.dateOfBirth}');
-      print('Joining Date: ${employee.joiningDate}');
-      print('Designation: ${employee.designation}');
-      print('Department: ${employee.department}');
-      print('Role: ${employee.role}');
-      print('Gender: ${employee.gender}');
-      print('Grade: ${employee.grade}');
-      print('Profile Image: ${employee.profileImage}');
-      print('Address: ${employee.address}');
-      print('Bank Name: ${employee.bankname}');
-      print('Account Number: ${employee.accountnumber}');
-      print('IFSC Code: ${employee.ifsccode}');
-      print('PAN No: ${employee.PANno}');
-      print('UAN No: ${employee.UANno}');
-      print('ESI No: ${employee.ESIno}');
-      print('Father Name: ${employee.fathername}');
-      print('Report: ${employee.report}');
-      print('');
-    }
-    print('==========================================\n');
+    final employees = rawList.map((json) => Employee.fromJson(json)).toList();
+    AppLogger.debug('EmployeeService: Parsed employees', {
+      'count': employees.length,
+    });
 
     return employees;
   }

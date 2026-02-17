@@ -73,7 +73,7 @@ class _AdminMobileAccessScreenState extends State<AdminMobileAccessScreen> {
       final fullName = (emp['fullName'] ?? '').toString().toLowerCase();
       final email = (emp['email'] ?? '').toString().toLowerCase();
       final employeeId = (emp['employeeId'] ?? '').toString().toLowerCase();
-      final matchesSearch = query.isEmpty || 
+      final matchesSearch = query.isEmpty ||
           fullName.contains(query) ||
           email.contains(query) ||
           employeeId.contains(query);
@@ -89,7 +89,6 @@ class _AdminMobileAccessScreenState extends State<AdminMobileAccessScreen> {
           matchesFilter = !isEnabled;
           break;
         case MobileAccessFilter.all:
-        default:
           matchesFilter = true;
           break;
       }
@@ -102,7 +101,6 @@ class _AdminMobileAccessScreenState extends State<AdminMobileAccessScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,

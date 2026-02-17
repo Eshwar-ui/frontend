@@ -1,15 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:quantum_dashboard/services/holiday_service.dart';
-import 'package:quantum_dashboard/services/api_service.dart';
 
 void main() {
   group('HolidayService', () {
-    late HolidayService holidayService;
-
-    setUp(() {
-      holidayService = HolidayService();
-    });
-
     test('addHoliday should format date correctly', () {
       // Test that dates are formatted in ISO format (yyyy-MM-dd)
       final testDate = DateTime(2024, 12, 25);

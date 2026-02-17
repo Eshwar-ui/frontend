@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:quantum_dashboard/models/holiday_model.dart';
-import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/providers/holiday_provider.dart';
 import 'package:quantum_dashboard/utils/text_styles.dart';

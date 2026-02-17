@@ -632,6 +632,15 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
               ),
               SizedBox(width: 8),
               TextButton.icon(
+                onPressed: () => _showResetPasswordDialog(employee),
+                icon: Icon(Icons.lock_reset, size: 16),
+                label: Text('Reset Password'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.orange.shade700,
+                ),
+              ),
+              SizedBox(width: 8),
+              TextButton.icon(
                 onPressed: () => _confirmDeleteEmployee(employee),
                 icon: Icon(Icons.delete_outline, size: 16),
                 label: Text('Delete'),
@@ -713,6 +722,173 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
         ),
       ),
     );
+  }
+
+  void _showResetPasswordDialog(Employee employee) {
+    final formKey = GlobalKey<FormState>();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+
+    bool obscureNewPassword = true;
+    bool obscureConfirmPassword = true;
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Reset Password'),
+          content: SizedBox(
+            width: 420,
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Reset password for ${employee.fullName} (${employee.employeeId})',
+                    style: GoogleFonts.poppins(fontSize: 13),
+                  ),
+                  SizedBox(height: 12),
+                  TextFormField(
+                    controller: newPasswordController,
+                    obscureText: obscureNewPassword,
+                    decoration: InputDecoration(
+                      labelText: 'New Password',
+                      border: OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        onPressed: () {
+                          setDialogState(() {
+                            obscureNewPassword = !obscureNewPassword;
+                          });
+                        },
+                        icon: Icon(
+                          obscureNewPassword
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'New password is required';
+                      }
+                      if (value.trim().length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 12),
+                  TextFormField(
+                    controller: confirmPasswordController,
+                    obscureText: obscureConfirmPassword,
+                    decoration: InputDecoration(
+                      labelText: 'Confirm Password',
+                      border: OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        onPressed: () {
+                          setDialogState(() {
+                            obscureConfirmPassword = !obscureConfirmPassword;
+                          });
+                        },
+                        icon: Icon(
+                          obscureConfirmPassword
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please confirm password';
+                      }
+                      if (value.trim() != newPasswordController.text.trim()) {
+                        return 'Passwords do not match';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSubmitting
+                  ? null
+                  : () {
+                      Navigator.pop(dialogContext);
+                    },
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isSubmitting
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) {
+                        return;
+                      }
+
+                      setDialogState(() {
+                        isSubmitting = true;
+                      });
+
+                      final authProvider = Provider.of<AuthProvider>(
+                        this.context,
+                        listen: false,
+                      );
+                      final result = await authProvider.adminResetPassword(
+                        employee.employeeId,
+                        newPasswordController.text.trim(),
+                        confirmPasswordController.text.trim(),
+                      );
+
+                      if (!mounted) {
+                        return;
+                      }
+
+                      if (result['success'] == true) {
+                        Navigator.pop(dialogContext);
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Password reset successfully for ${employee.fullName}',
+                            ),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      } else {
+                        setDialogState(() {
+                          isSubmitting = false;
+                        });
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              result['message'] ??
+                                  'Failed to reset password. Please try again.',
+                            ),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    },
+              child: isSubmitting
+                  ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text('Reset Password'),
+            ),
+          ],
+        ),
+      ),
+    ).then((_) {
+      newPasswordController.dispose();
+      confirmPasswordController.dispose();
+    });
   }
 
   void _confirmDeleteEmployee(Employee employee) {

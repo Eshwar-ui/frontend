@@ -1,3 +1,5 @@
+import 'package:quantum_dashboard/utils/app_logger.dart';
+
 class Attendance {
   final String id;
   final String employeeId;
@@ -24,7 +26,7 @@ class Attendance {
   });
 
   factory Attendance.fromJson(Map<String, dynamic> json) {
-    print('AttendanceModel.fromJson: Full JSON data: $json');
+    AppLogger.debug('AttendanceModel.fromJson: Full JSON data: $json');
 
     // Check for different possible break time field names
     double breakTimeValue = 0.0;
@@ -38,7 +40,7 @@ class Attendance {
     for (String field in possibleBreakFields) {
       if (json[field] != null) {
         breakTimeValue = _parseBreakTime(json[field]);
-        print(
+        AppLogger.debug(
           'AttendanceModel.fromJson: Found break time in field "$field": ${json[field]} -> parsed as: $breakTimeValue seconds',
         );
         break;
@@ -46,7 +48,7 @@ class Attendance {
     }
 
     if (breakTimeValue == 0) {
-      print(
+      AppLogger.debug(
         'AttendanceModel.fromJson: No break time found in any field, checking all keys: ${json.keys.toList()}',
       );
     }
@@ -71,7 +73,7 @@ class Attendance {
 
   // Helper method to parse break time from various formats (UTC time, duration, etc.)
   static double _parseBreakTime(dynamic breakValue) {
-    print(
+    AppLogger.debug(
       'AttendanceModel: Parsing break time value: $breakValue (type: ${breakValue.runtimeType})',
     );
 
@@ -79,7 +81,7 @@ class Attendance {
       // If it's already a number, treat as seconds or milliseconds
       if (breakValue is num) {
         final numValue = breakValue.toDouble();
-        print('AttendanceModel: Break time is numeric: $numValue');
+        AppLogger.debug('AttendanceModel: Break time is numeric: $numValue');
         return numValue;
       }
 
@@ -96,12 +98,12 @@ class Attendance {
           );
           final durationFromMidnight = dateTime.difference(midnight);
           final seconds = durationFromMidnight.inSeconds.toDouble();
-          print(
+          AppLogger.debug(
             'AttendanceModel: Break time parsed as UTC time, duration from midnight: $seconds seconds',
           );
           return seconds;
         } catch (e) {
-          print(
+          AppLogger.debug(
             'AttendanceModel: Not a valid UTC time string, trying other formats',
           );
         }
@@ -113,50 +115,50 @@ class Attendance {
             final hours = int.parse(parts[0]);
             final minutes = int.parse(parts[1]);
             final seconds = (hours * 3600) + (minutes * 60);
-            print(
+            AppLogger.debug(
               'AttendanceModel: Break time parsed as HH:MM format: $seconds seconds',
             );
             return seconds.toDouble();
           }
         } catch (e) {
-          print('AttendanceModel: Not a valid HH:MM format');
+          AppLogger.debug('AttendanceModel: Not a valid HH:MM format');
         }
 
         // Try to parse as pure number string
         try {
           final numValue = double.parse(breakValue);
-          print(
+          AppLogger.debug(
             'AttendanceModel: Break time parsed as number string: $numValue',
           );
           return numValue;
         } catch (e) {
-          print('AttendanceModel: Not a valid number string');
+          AppLogger.debug('AttendanceModel: Not a valid number string');
         }
       }
 
-      print('AttendanceModel: Could not parse break time, returning 0');
+      AppLogger.debug('AttendanceModel: Could not parse break time, returning 0');
       return 0.0;
     } catch (e) {
-      print('AttendanceModel: Error parsing break time: $e, returning 0');
+      AppLogger.debug('AttendanceModel: Error parsing break time: $e, returning 0');
       return 0.0;
     }
   }
 
   // Helper method to parse date from various formats
   static DateTime _parseDate(dynamic dateValue) {
-    print(
+    AppLogger.debug(
       'AttendanceModel: Parsing date value: $dateValue (type: ${dateValue.runtimeType})',
     );
     try {
       // If it's already a DateTime object, return it
       if (dateValue is DateTime) {
-        print('AttendanceModel: Date is already DateTime, returning as-is');
+        AppLogger.debug('AttendanceModel: Date is already DateTime, returning as-is');
         return dateValue;
       }
 
       // If it's a String, try to parse it
       if (dateValue is String) {
-        print('AttendanceModel: Date is String, attempting to parse');
+        AppLogger.debug('AttendanceModel: Date is String, attempting to parse');
         // Try parsing as ISO format first (for backward compatibility)
         try {
           // Parse as UTC and convert to local time (IST)
@@ -172,7 +174,7 @@ class Attendance {
               return DateTime(year, month, day);
             }
           } catch (e) {
-            print(
+            AppLogger.debug(
               'Error parsing date string: $dateValue, using current date as fallback',
             );
             return DateTime.now();
@@ -181,19 +183,19 @@ class Attendance {
       }
 
       // If it's neither DateTime nor String, return current date
-      print(
+      AppLogger.debug(
         'Unexpected date type: ${dateValue.runtimeType}, using current date as fallback',
       );
       return DateTime.now();
     } catch (e) {
-      print('Error parsing date: $dateValue, using current date as fallback');
+      AppLogger.debug('Error parsing date: $dateValue, using current date as fallback');
       return DateTime.now();
     }
   }
 
   // Helper method to get formatted working time
   String get formattedWorkingTime {
-    print('AttendanceModel: Working time raw value: $totalWorkingTime');
+    AppLogger.debug('AttendanceModel: Working time raw value: $totalWorkingTime');
 
     // Handle both seconds and milliseconds based on magnitude
     double timeInSeconds = totalWorkingTime > 86400
@@ -201,20 +203,20 @@ class Attendance {
               1000 // Convert milliseconds to seconds
         : totalWorkingTime; // Already in seconds
 
-    print('AttendanceModel: Working time in seconds: $timeInSeconds');
+    AppLogger.debug('AttendanceModel: Working time in seconds: $timeInSeconds');
 
     final hours = (timeInSeconds / 3600).floor();
     final minutes = ((timeInSeconds % 3600) / 60).floor();
     final result = '${hours}:${minutes.toString().padLeft(2, '0')} HRS';
 
-    print('AttendanceModel: Working time formatted: $result');
+    AppLogger.debug('AttendanceModel: Working time formatted: $result');
     return result;
   }
 
   // Helper method to get formatted break time
   String get formattedBreakTime {
-    print('AttendanceModel: Note - individual record shows partial break time');
-    print(
+    AppLogger.debug('AttendanceModel: Note - individual record shows partial break time');
+    AppLogger.debug(
       'AttendanceModel: For total daily break time, use dashboard aggregation',
     );
 
@@ -231,7 +233,7 @@ class Attendance {
         ? '${hours}:${minutes.toString().padLeft(2, '0')} HRS'
         : '${minutes} MIN';
 
-    print(
+    AppLogger.debug(
       'AttendanceModel: Break time calculated: $breakTimeInSeconds seconds -> $result',
     );
     return result;
@@ -242,7 +244,7 @@ class Attendance {
     try {
       // Use the raw breakTime field if available
       if (breakTime > 0) {
-        print('AttendanceModel: Using raw breakTime field: $breakTime');
+        AppLogger.debug('AttendanceModel: Using raw breakTime field: $breakTime');
         // Convert breakTime to seconds if it's in a different unit
         if (breakTime > 86400) {
           // Likely milliseconds
@@ -257,17 +259,17 @@ class Attendance {
 
       // Fallback: try lastPunchedIn/Out if they represent a break session
       if (lastPunchedIn != null && lastPunchedOut != null) {
-        print(
+        AppLogger.debug(
           'AttendanceModel: Using lastPunchedIn/Out: $lastPunchedIn to $lastPunchedOut',
         );
         final breakDuration = lastPunchedOut!.difference(lastPunchedIn!);
         return breakDuration.inSeconds.toDouble();
       }
 
-      print('AttendanceModel: No break time data available');
+      AppLogger.debug('AttendanceModel: No break time data available');
       return 0.0;
     } catch (e) {
-      print('AttendanceModel: Error calculating break time: $e');
+      AppLogger.debug('AttendanceModel: Error calculating break time: $e');
       return 0.0;
     }
   }
@@ -293,3 +295,4 @@ class Attendance {
     }
   }
 }
+

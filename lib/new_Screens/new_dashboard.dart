@@ -19,7 +19,6 @@ import 'package:quantum_dashboard/providers/navigation_provider.dart';
 import 'package:quantum_dashboard/providers/notification_provider.dart';
 import 'package:quantum_dashboard/providers/notification_settings_provider.dart';
 import 'package:quantum_dashboard/widgets/notification_icon_widget.dart';
-import 'package:quantum_dashboard/screens/compoff_wallet_screen.dart';
 import 'package:quantum_dashboard/utils/responsive_utils.dart';
 import 'package:geolocator/geolocator.dart';
 

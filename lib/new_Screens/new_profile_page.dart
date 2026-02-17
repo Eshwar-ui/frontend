@@ -361,6 +361,7 @@ class _NewProfilePageState extends State<NewProfilePage> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildQuickStats(Employee user) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -918,6 +919,7 @@ class _NewProfilePageState extends State<NewProfilePage> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildSettingsTile(
     IconData icon,
     String title,
@@ -980,6 +982,7 @@ class _NewProfilePageState extends State<NewProfilePage> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildThemeToggleTile() {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -1088,6 +1091,7 @@ class _NewProfilePageState extends State<NewProfilePage> {
     );
   }
 
+  // ignore: unused_element
   void _showSettingsDialog(String title, String message) {
     showDialog(
       context: context,
@@ -1118,6 +1122,7 @@ class _NewProfilePageState extends State<NewProfilePage> {
     );
   }
 
+  // ignore: unused_element
   void _showAboutDialog() {
     showDialog(
       context: context,

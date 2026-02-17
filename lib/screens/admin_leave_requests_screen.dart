@@ -445,7 +445,6 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
   Widget _buildLeaveRequestCard(Leave leave) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       margin: EdgeInsets.only(bottom: 16),

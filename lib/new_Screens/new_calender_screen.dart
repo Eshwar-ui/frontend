@@ -672,6 +672,7 @@ class _new_calender_screenState extends State<new_calender_screen> {
     );
   }
 
+  // ignore: unused_element
   List<DateTime> _weekFor(DateTime anchor) {
     final monday = anchor.subtract(Duration(days: anchor.weekday - 1));
     return List.generate(
@@ -1243,6 +1244,7 @@ class _new_calender_screenState extends State<new_calender_screen> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildLegendItem(String label, Color color, IconData icon) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -1273,6 +1275,7 @@ class _new_calender_screenState extends State<new_calender_screen> {
     return h > 0 ? '${h}h ${m}m' : '${m}m';
   }
 
+  // ignore: unused_element
   String _formatPunch(String? inStr, String? outStr) {
     String fmt(String? s) {
       if (s == null) return '--:--';
@@ -1292,6 +1295,7 @@ class _new_calender_screenState extends State<new_calender_screen> {
     return outText != '--:--' ? '$inText - $outText' : 'Punched In: $inText';
   }
 
+  // ignore: unused_element
   String _formatDateRange(DateTime start, DateTime end) {
     if (start.month == end.month && start.year == end.year) {
       return '${DateFormat('MMM d').format(start)} - ${DateFormat('d, yyyy').format(end)}';
@@ -1299,6 +1303,7 @@ class _new_calender_screenState extends State<new_calender_screen> {
     return '${DateFormat('MMM d').format(start)} - ${DateFormat('MMM d, yyyy').format(end)}';
   }
 
+  // ignore: unused_element
   Widget _buildTimeCard(
     String label,
     DateTime? time,
@@ -1377,7 +1382,6 @@ class _new_calender_screenState extends State<new_calender_screen> {
     final dateWiseData = attendance.getEmployeeDateWiseData(employeeId);
     final holidayList = holidays.holidays;
 
-    final weekDates = _weekFor(_selectedDay ?? DateTime.now());
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 

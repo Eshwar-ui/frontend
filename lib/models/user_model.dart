@@ -1,3 +1,5 @@
+import 'package:quantum_dashboard/utils/app_logger.dart';
+
 class Employee {
   final String id;
   final String employeeId;
@@ -204,19 +206,19 @@ class Employee {
 
   // Helper method to parse date from various formats
   static DateTime _parseDate(dynamic dateValue) {
-    print(
+    AppLogger.debug(
       'UserModel: Parsing date value: $dateValue (type: ${dateValue.runtimeType})',
     );
     try {
       // If it's already a DateTime object, return it
       if (dateValue is DateTime) {
-        print('UserModel: Date is already DateTime, returning as-is');
+        AppLogger.debug('UserModel: Date is already DateTime, returning as-is');
         return dateValue;
       }
 
       // If it's a String, try to parse it
       if (dateValue is String) {
-        print('UserModel: Date is String, attempting to parse');
+        AppLogger.debug('UserModel: Date is String, attempting to parse');
         // Try parsing as ISO format first (for backward compatibility)
         try {
           return DateTime.parse(dateValue);
@@ -231,7 +233,7 @@ class Employee {
               return DateTime(year, month, day);
             }
           } catch (e) {
-            print(
+            AppLogger.warning(
               'Error parsing date string: $dateValue, using current date as fallback',
             );
             return DateTime.now();
@@ -240,12 +242,14 @@ class Employee {
       }
 
       // If it's neither DateTime nor String, return current date
-      print(
+      AppLogger.warning(
         'Unexpected date type: ${dateValue.runtimeType}, using current date as fallback',
       );
       return DateTime.now();
     } catch (e) {
-      print('Error parsing date: $dateValue, using current date as fallback');
+      AppLogger.warning(
+        'Error parsing date: $dateValue, using current date as fallback',
+      );
       return DateTime.now();
     }
   }

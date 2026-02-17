@@ -72,11 +72,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final user = Provider.of<AuthProvider>(context, listen: false).user;
     final firstName = user?.firstName ?? 'Admin';
 
-    // Safe substring for avatar
-    final avatarText = firstName.isNotEmpty
-        ? firstName.substring(0, 1).toUpperCase()
-        : 'A';
-
     return Container(
       padding: ResponsiveUtils.padding(context),
       child: Row(
@@ -129,17 +124,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildStatsGrid() {
-    return Consumer2<EmployeeProvider, LeaveProvider>(
-      builder: (context, employeeProvider, leaveProvider, child) {
+    return Consumer<EmployeeProvider>(
+      builder: (context, employeeProvider, child) {
         final employeeCount = employeeProvider.employees.length;
         final departmentCount = _departments.length;
-        final pendingLeaves = leaveProvider.leaves
-            .where(
-              (l) =>
-                  l.status.toLowerCase() == 'pending' ||
-                  l.status.toLowerCase() == 'new',
-            )
-            .length;
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -569,6 +557,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildLegendItem(String label, Color color, int count) {
     return Row(
       children: [
@@ -830,10 +819,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
 
     final entries = monthlyLeaves.entries.toList();
-    final maxCount = entries.isNotEmpty
-        ? entries.map((e) => e.value).reduce((a, b) => a > b ? a : b)
-        : 1;
-
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(

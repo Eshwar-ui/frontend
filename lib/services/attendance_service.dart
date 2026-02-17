@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:quantum_dashboard/models/attendance_model.dart';
 import 'package:quantum_dashboard/services/api_service.dart';
 import 'package:quantum_dashboard/services/location_service.dart';
+import 'package:quantum_dashboard/utils/app_logger.dart';
 
 class AttendanceService extends ApiService {
   final LocationService _locationService = LocationService();
@@ -73,7 +74,8 @@ class AttendanceService extends ApiService {
       );
 
       if (result['valid'] != true) {
-        final message = result['message'] ?? 
+        final message =
+            result['message'] ??
             'You are not at a valid office location to punch in or out.';
         throw Exception(message);
       }
@@ -105,20 +107,25 @@ class AttendanceService extends ApiService {
       '${ApiService.baseUrl}/api/punches/$employeeId',
     ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
-    print('AttendanceService: Fetching punches for employee: $employeeId');
-    print('AttendanceService: API URL: $uri');
+    AppLogger.debug('AttendanceService: Fetching punches', {
+      'employeeId': employeeId,
+      'uri': uri.toString(),
+    });
 
     final response = await sendRequest(
       http.get(uri, headers: await getHeaders()),
     );
 
-    print('AttendanceService: Response status: ${response.statusCode}');
-    print('AttendanceService: Response body: ${response.body}');
+    AppLogger.debug('AttendanceService: Punches response received', {
+      'statusCode': response.statusCode,
+    });
 
     final data = handleResponse(response);
-    print('AttendanceService: Parsed data: $data');
     final punches = (data['punches'] as List?) ?? const [];
-    print('AttendanceService: Number of punches: ${punches.length}');
+    AppLogger.debug('AttendanceService: Punches parsed', {
+      'employeeId': employeeId,
+      'count': punches.length,
+    });
 
     return {
       'punches': punches

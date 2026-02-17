@@ -1,3 +1,5 @@
+import 'package:quantum_dashboard/utils/app_logger.dart';
+
 class Holiday {
   final String id;
   final String title;
@@ -25,17 +27,19 @@ class Holiday {
 
   // Helper method to parse date from various formats
   static DateTime _parseDate(dynamic dateValue) {
-    print('HolidayModel: Parsing date value: $dateValue (type: ${dateValue.runtimeType})');
+    AppLogger.debug(
+      'HolidayModel: Parsing date value: $dateValue (type: ${dateValue.runtimeType})',
+    );
     try {
       // If it's already a DateTime object, return it
       if (dateValue is DateTime) {
-        print('HolidayModel: Date is already DateTime, returning as-is');
+        AppLogger.debug('HolidayModel: Date is already DateTime, returning as-is');
         return dateValue;
       }
       
       // If it's a String, try to parse it
       if (dateValue is String) {
-        print('HolidayModel: Date is String, attempting to parse');
+        AppLogger.debug('HolidayModel: Date is String, attempting to parse');
         // Try parsing as ISO format first (for backward compatibility)
         try {
           return DateTime.parse(dateValue);
@@ -50,17 +54,23 @@ class Holiday {
               return DateTime(year, month, day);
             }
           } catch (e) {
-            print('Error parsing date string: $dateValue, using current date as fallback');
+            AppLogger.warning(
+              'Error parsing date string: $dateValue, using current date as fallback',
+            );
             return DateTime.now();
           }
         }
       }
       
       // If it's neither DateTime nor String, return current date
-      print('Unexpected date type: ${dateValue.runtimeType}, using current date as fallback');
+      AppLogger.warning(
+        'Unexpected date type: ${dateValue.runtimeType}, using current date as fallback',
+      );
       return DateTime.now();
     } catch (e) {
-      print('Error parsing date: $dateValue, using current date as fallback');
+      AppLogger.warning(
+        'Error parsing date: $dateValue, using current date as fallback',
+      );
       return DateTime.now();
     }
   }

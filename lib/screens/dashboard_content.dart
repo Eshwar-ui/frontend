@@ -218,6 +218,7 @@ class _DashboardContentState extends State<DashboardContent> {
   }
 
   // Calculate total working time for today
+  // ignore: unused_element
   double _getTotalWorkingTime() {
     double totalWorkingTime = 0.0;
     for (var punch in _todayPunches) {
@@ -227,6 +228,7 @@ class _DashboardContentState extends State<DashboardContent> {
   }
 
   // Calculate total break time for today
+  // ignore: unused_element
   double _getTotalBreakTime() {
     if (_todayPunches.length < 2) {
       print(
@@ -268,18 +270,6 @@ class _DashboardContentState extends State<DashboardContent> {
 
     print('Dashboard: Total break time calculated: $totalBreakTime seconds');
     return totalBreakTime;
-  }
-
-  // Calculate net working time (working time - break time)
-  double _getNetWorkingTime() {
-    return _getTotalWorkingTime() - _getTotalBreakTime();
-  }
-
-  // Format time in hours and minutes
-  String _formatTime(double seconds) {
-    final hours = (seconds / 3600).floor();
-    final minutes = ((seconds % 3600) / 60).floor();
-    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}';
   }
 
   @override

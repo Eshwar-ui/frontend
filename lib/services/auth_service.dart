@@ -101,6 +101,39 @@ class AuthService extends ApiService {
     }
   }
 
+  // Admin reset employee password
+  Future<Map<String, dynamic>> adminResetPassword(
+    String employeeId,
+    String newPassword,
+    String confirmPassword,
+  ) async {
+    try {
+      final response = await sendRequest(
+        http.put(
+          Uri.parse('${ApiService.baseUrl}/api/changepassword/$employeeId'),
+          headers: await getHeaders(),
+          body: json.encode({
+            'newPassword': newPassword,
+            'confirmPassword': confirmPassword,
+          }),
+        ),
+      );
+
+      final data = handleResponse(response);
+      AppLogger.info('AuthService: Admin reset password successful', {
+        'employeeId': employeeId,
+      });
+      return {'success': true, 'message': data.toString()};
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'AuthService: Error resetting employee password',
+        e,
+        stackTrace,
+      );
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
   // Logout
   Future<void> logout() async {
     await removeToken();

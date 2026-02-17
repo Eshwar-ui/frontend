@@ -1,4 +1,5 @@
 import 'package:quantum_dashboard/models/user_model.dart';
+import 'package:quantum_dashboard/utils/app_logger.dart';
 
 class Leave {
   final String id;
@@ -56,7 +57,7 @@ class Leave {
         }
         employee = Employee.fromJson(employeeJson);
       } catch (e) {
-        print('Error parsing employee data: $e');
+        AppLogger.warning('Error parsing employee data: $e');
         employee = null;
       }
     }
@@ -80,17 +81,19 @@ class Leave {
 
   // Helper method to parse date from various formats
   static DateTime _parseDate(dynamic dateValue) {
-    print('LeaveModel: Parsing date value: $dateValue (type: ${dateValue.runtimeType})');
+    AppLogger.debug(
+      'LeaveModel: Parsing date value: $dateValue (type: ${dateValue.runtimeType})',
+    );
     try {
       // If it's already a DateTime object, return it
       if (dateValue is DateTime) {
-        print('LeaveModel: Date is already DateTime, returning as-is');
+        AppLogger.debug('LeaveModel: Date is already DateTime, returning as-is');
         return dateValue;
       }
       
       // If it's a String, try to parse it
       if (dateValue is String) {
-        print('LeaveModel: Date is String, attempting to parse');
+        AppLogger.debug('LeaveModel: Date is String, attempting to parse');
         // Try parsing as ISO format first (for backward compatibility)
         try {
           return DateTime.parse(dateValue);
@@ -105,17 +108,23 @@ class Leave {
               return DateTime(year, month, day);
             }
           } catch (e) {
-            print('Error parsing date string: $dateValue, using current date as fallback');
+            AppLogger.warning(
+              'Error parsing date string: $dateValue, using current date as fallback',
+            );
             return DateTime.now();
           }
         }
       }
       
       // If it's neither DateTime nor String, return current date
-      print('Unexpected date type: ${dateValue.runtimeType}, using current date as fallback');
+      AppLogger.warning(
+        'Unexpected date type: ${dateValue.runtimeType}, using current date as fallback',
+      );
       return DateTime.now();
     } catch (e) {
-      print('Error parsing date: $dateValue, using current date as fallback');
+      AppLogger.warning(
+        'Error parsing date: $dateValue, using current date as fallback',
+      );
       return DateTime.now();
     }
   }

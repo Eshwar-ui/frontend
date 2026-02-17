@@ -184,6 +184,47 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> adminResetPassword(
+    String employeeId,
+    String newPassword,
+    String confirmPassword,
+  ) async {
+    if (!isAdmin) {
+      return {
+        'success': false,
+        'message': 'Only administrators can reset employee passwords.',
+      };
+    }
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      AppLogger.info('AuthProvider: Attempting admin password reset', {
+        'employeeId': employeeId,
+      });
+      final result = await _authService.adminResetPassword(
+        employeeId,
+        newPassword,
+        confirmPassword,
+      );
+      _isLoading = false;
+      AppLogger.info('AuthProvider: Admin password reset result', {
+        'employeeId': employeeId,
+        'success': result['success'] == true,
+      });
+      notifyListeners();
+      return result;
+    } catch (e, stackTrace) {
+      _error = e.toString();
+      _isLoading = false;
+      AppLogger.error('AuthProvider: Admin password reset error', e, stackTrace);
+      notifyListeners();
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
   void clearError() {
     _error = null;
     notifyListeners();
@@ -213,7 +254,7 @@ class AuthProvider with ChangeNotifier {
   bool get isAdminOrHr => isAdmin || isHr;
 
   // Check if user has employee role
-  bool get isEmployee => _user?.employeeId != 'QWIT-1001';
+  bool get isEmployee => _user != null && _user!.employeeId != 'QWIT-1001';
 
   // Check if user has admin privileges
   bool get hasAdminPrivileges => isAdmin;

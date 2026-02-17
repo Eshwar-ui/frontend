@@ -3,22 +3,23 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:quantum_dashboard/models/holiday_model.dart';
 import 'package:quantum_dashboard/services/api_service.dart';
+import 'package:quantum_dashboard/utils/app_logger.dart';
 
 class HolidayService extends ApiService {
-  
   // Get all holidays
   Future<List<Holiday>> getHolidays() async {
     final uri = Uri.parse('${ApiService.baseUrl}/api/get-holidays');
-    print('HolidayService: Fetching holidays from: $uri');
+    AppLogger.debug('HolidayService: Fetching holidays', {'uri': uri.toString()});
     
     final response = await sendRequest(
       http.get(uri, headers: await getHeaders()),
     );
-    print('HolidayService: Response status: ${response.statusCode}');
-    print('HolidayService: Response body: ${response.body}');
+    AppLogger.debug('HolidayService: Response received', {
+      'statusCode': response.statusCode,
+    });
 
     final data = handleResponse(response);
-    print('HolidayService: Parsed data: $data');
+    AppLogger.debug('HolidayService: Parsed holiday payload');
     
     // The API returns a list directly
     if (data is List) {
@@ -28,7 +29,9 @@ class HolidayService extends ApiService {
           holidays.add(Holiday.fromJson(item));
         }
       }
-      print('HolidayService: Successfully parsed ${holidays.length} holidays');
+      AppLogger.debug('HolidayService: Successfully parsed holidays', {
+        'count': holidays.length,
+      });
       return holidays;
     } else {
       return [];
