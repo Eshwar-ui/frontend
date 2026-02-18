@@ -12,12 +12,12 @@ class NetworkConfig {
 
   // Development settings (for local development)
   static const String _devMachineIp =
-      '192.168.1.28'; // Android emulator default
+      '192.168.1.17'; // Android emulator default
   // static const String _devMachineIp = '10.0.2.2';
   static const int _serverPort = 4444; // Backend runs on port 4444
 
   // Set to true to use production backend, false for local development
-  static const bool _useProductionBackend = true;
+  static const bool _useProductionBackend = false;
 
   // Whether the app is using production backend
   static bool get isUsingProduction => _useProductionBackend;

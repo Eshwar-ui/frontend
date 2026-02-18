@@ -23,14 +23,11 @@ class PayslipService extends ApiService {
     ).replace(queryParameters: queryParams);
 
     final headers = await getHeaders();
-    final response = await sendRequest(
-      http.get(uri, headers: headers),
-    );
+    final response = await sendRequest(http.get(uri, headers: headers));
 
     final data = handleResponse(response);
     final rawList = data is List ? data : const [];
-    final payslips =
-        rawList.map((json) => Payslip.fromJson(json)).toList();
+    final payslips = rawList.map((json) => Payslip.fromJson(json)).toList();
 
     return payslips;
   }
@@ -46,8 +43,9 @@ class PayslipService extends ApiService {
 
     final data = handleResponse(response);
     final rawList = data is List ? data : const [];
-    final employeePayslips =
-        rawList.map((json) => EmployeePayslip.fromJson(json)).toList();
+    final employeePayslips = rawList
+        .map((json) => EmployeePayslip.fromJson(json))
+        .toList();
 
     return employeePayslips;
   }
@@ -130,7 +128,9 @@ class PayslipService extends ApiService {
   Future<Map<String, dynamic>> deleteEmployeePayslip(String payslipId) async {
     final response = await sendRequest(
       http.delete(
-        Uri.parse('${ApiService.baseUrl}/api/delete-employeepayslip/$payslipId'),
+        Uri.parse(
+          '${ApiService.baseUrl}/api/delete-employeepayslip/$payslipId',
+        ),
         headers: await getHeaders(),
       ),
     );
@@ -150,5 +150,54 @@ class PayslipService extends ApiService {
 
     final data = handleResponse(response);
     return data;
+  }
+
+  // Bulk generate payslips (Admin)
+  Future<Map<String, dynamic>> bulkGeneratePayslips(
+    List<Map<String, dynamic>> rows,
+  ) async {
+    final normalizedRows = rows.map((row) {
+      final month = row['month'];
+      final year = row['year'];
+      final paidDays = row['paidDays'];
+      final lopDays = row['lopDays'];
+
+      return {
+        'empId': row['empId'],
+        'month': month is int ? month : int.tryParse(month.toString()) ?? 0,
+        'year': year is int ? year : int.tryParse(year.toString()) ?? 0,
+        'basicSalary': (row['basicSalary'] ?? 0).toDouble(),
+        'HRA': (row['hra'] ?? 0).toDouble(),
+        'TA': (row['ta'] ?? 0).toDouble(),
+        'DA': (row['da'] ?? 0).toDouble(),
+        'conveyanceAllowance': (row['conveyanceAllowance'] ?? 0).toDouble(),
+        'total': (row['total'] ?? 0).toDouble(),
+        'employeesContributionPF': (row['employeesContributionPF'] ?? 0)
+            .toDouble(),
+        'employersContributionPF': (row['employersContributionPF'] ?? 0)
+            .toDouble(),
+        'professionalTAX': (row['professionalTAX'] ?? 0).toDouble(),
+        'totalDeductions': (row['totalDeductions'] ?? 0).toDouble(),
+        'NetSalary': (row['netSalary'] ?? 0).toDouble(),
+        'paidDays': paidDays is int
+            ? paidDays
+            : int.tryParse(paidDays.toString()) ?? 0,
+        'LOPDays': lopDays is int
+            ? lopDays
+            : int.tryParse(lopDays.toString()) ?? 0,
+        'arrear': (row['arrear'] ?? 0).toDouble(),
+      };
+    }).toList();
+
+    final response = await sendRequest(
+      http.post(
+        Uri.parse('${ApiService.baseUrl}/api/generate-payslip-bulk'),
+        headers: await getHeaders(),
+        body: json.encode({'rows': normalizedRows}),
+      ),
+    );
+
+    final data = handleResponse(response);
+    return data is Map<String, dynamic> ? data : {'results': data};
   }
 }

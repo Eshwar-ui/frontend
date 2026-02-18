@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
@@ -9,6 +12,7 @@ import 'package:quantum_dashboard/providers/notification_provider.dart';
 import 'package:quantum_dashboard/models/payslip_model.dart';
 import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/screens/generate_payslip_screen.dart';
+import 'package:quantum_dashboard/utils/payslip_bulk_utils.dart';
 import 'package:quantum_dashboard/utils/snackbar_utils.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -157,6 +161,258 @@ class _AdminPayslipsScreenState extends State<AdminPayslipsScreen> {
         }
       }
     }
+  }
+
+  Future<void> _downloadBulkTemplate() async {
+    try {
+      final path = await PayslipBulkUtils.exportTemplateXlsx();
+      if (!mounted) return;
+      SnackbarUtils.showSuccess(context, 'Template downloaded: $path');
+    } catch (e) {
+      if (!mounted) return;
+      SnackbarUtils.showError(
+        context,
+        'Unable to download template: ${e.toString()}',
+      );
+    }
+  }
+
+  Future<void> _showBulkGenerateDialog() async {
+    PlatformFile? selectedFile;
+    BulkPayslipParseResult? parseResult;
+    bool isSubmitting = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final validRows = parseResult?.validRows.length ?? 0;
+          final issues = parseResult?.issues.length ?? 0;
+
+          return AlertDialog(
+            title: Text('Bulk Generate Payslips'),
+            content: SizedBox(
+              width: 560,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Upload an Excel (.xlsx) or CSV file to generate payslips for multiple employee IDs.',
+                      style: GoogleFonts.poppins(fontSize: 13),
+                    ),
+                    SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _downloadBulkTemplate,
+                          icon: Icon(Icons.download),
+                          label: Text('Download Template'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: isSubmitting
+                              ? null
+                              : () async {
+                                  final result = await FilePicker.platform
+                                      .pickFiles(
+                                        type: FileType.custom,
+                                        withData: true,
+                                        allowedExtensions: ['xlsx', 'csv'],
+                                      );
+                                  if (result == null ||
+                                      result.files.isEmpty ||
+                                      result.files.first.bytes == null) {
+                                    return;
+                                  }
+
+                                  final file = result.files.first;
+                                  final bytes = file.bytes!;
+                                  final parsed =
+                                      PayslipBulkUtils.parseFileBytes(
+                                        Uint8List.fromList(bytes),
+                                        file.name,
+                                      );
+
+                                  setDialogState(() {
+                                    selectedFile = file;
+                                    parseResult = parsed;
+                                  });
+                                },
+                          icon: Icon(Icons.upload_file),
+                          label: Text('Choose File'),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    if (selectedFile != null)
+                      Text(
+                        'Selected file: ${selectedFile!.name}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    if (parseResult != null) ...[
+                      SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Rows ready: $validRows',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Rows with issues: $issues',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                            if (issues > 0) ...[
+                              SizedBox(height: 8),
+                              ...parseResult!.issues
+                                  .take(5)
+                                  .map(
+                                    (i) => Text(
+                                      'Row ${i.rowNumber}: ${i.message}',
+                                      style: GoogleFonts.poppins(fontSize: 11),
+                                    ),
+                                  ),
+                              if (parseResult!.issues.length > 5)
+                                Text(
+                                  '+ ${parseResult!.issues.length - 5} more issue(s)',
+                                  style: GoogleFonts.poppins(fontSize: 11),
+                                ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSubmitting
+                    ? null
+                    : () {
+                        Navigator.pop(dialogContext);
+                      },
+                child: Text('Cancel'),
+              ),
+              ElevatedButton.icon(
+                onPressed:
+                    isSubmitting ||
+                        parseResult == null ||
+                        parseResult!.validRows.isEmpty
+                    ? null
+                    : () async {
+                        setDialogState(() {
+                          isSubmitting = true;
+                        });
+
+                        final provider = Provider.of<PayslipProvider>(
+                          this.context,
+                          listen: false,
+                        );
+                        final result = await provider.bulkGeneratePayslips(
+                          parseResult!.validRows,
+                        );
+
+                        if (!mounted) return;
+                        Navigator.pop(dialogContext);
+                        await _loadPayslips();
+                        _showBulkResultDialog(result);
+                      },
+                icon: isSubmitting
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(Icons.playlist_add_check),
+                label: Text('Generate'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showBulkResultDialog(Map<String, dynamic> result) {
+    final totalRows = result['totalRows'] ?? 0;
+    final successCount = result['successCount'] ?? 0;
+    final failureCount = result['failureCount'] ?? 0;
+    final rows = (result['results'] as List?) ?? const [];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Bulk Generation Result'),
+        content: SizedBox(
+          width: 620,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Total rows: $totalRows'),
+                Text('Success: $successCount'),
+                Text('Failed: $failureCount'),
+                SizedBox(height: 12),
+                ...rows.take(20).map((item) {
+                  final status = item['status']?.toString() ?? 'failed';
+                  final rowNumber = item['rowNumber']?.toString() ?? '-';
+                  final empId = item['empId']?.toString() ?? '-';
+                  final message = item['message']?.toString() ?? '';
+
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: 6),
+                    child: Text(
+                      'Row $rowNumber | $empId | $status | $message',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: status == 'success'
+                            ? Colors.green
+                            : Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  );
+                }),
+                if (rows.length > 20)
+                  Text(
+                    'Showing first 20 results. Total result entries: ${rows.length}',
+                    style: GoogleFonts.poppins(fontSize: 11),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _deletePayslip(Payslip payslip) async {
@@ -333,6 +589,11 @@ class _AdminPayslipsScreenState extends State<AdminPayslipsScreen> {
             icon: Icon(Icons.refresh),
             onPressed: _loadPayslips,
             tooltip: 'Refresh',
+          ),
+          IconButton(
+            icon: Icon(Icons.upload_file),
+            onPressed: _showBulkGenerateDialog,
+            tooltip: 'Bulk Generate',
           ),
           IconButton(
             icon: Icon(Icons.add),
@@ -783,13 +1044,12 @@ class _AdminPayslipsScreenState extends State<AdminPayslipsScreen> {
                             '${emp.employeeId} - ${emp.fullName}';
                         setState(() {
                           _selectedEmployeeId = emp.employeeId;
-                          _employeeSearchController.value =
-                              TextEditingValue(
-                                text: selectedLabel,
-                                selection: TextSelection.collapsed(
-                                  offset: selectedLabel.length,
-                                ),
-                              );
+                          _employeeSearchController.value = TextEditingValue(
+                            text: selectedLabel,
+                            selection: TextSelection.collapsed(
+                              offset: selectedLabel.length,
+                            ),
+                          );
                         });
                         _employeeSearchFocusNode.unfocus();
                         _loadPayslips();

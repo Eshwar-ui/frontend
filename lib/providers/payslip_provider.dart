@@ -3,7 +3,10 @@ import 'package:quantum_dashboard/models/payslip_model.dart';
 import 'package:quantum_dashboard/services/payslip_service.dart';
 
 class PayslipProvider with ChangeNotifier {
-  final PayslipService _payslipService = PayslipService();
+  final PayslipService _payslipService;
+
+  PayslipProvider({PayslipService? payslipService})
+    : _payslipService = payslipService ?? PayslipService();
 
   List<Payslip> _payslips = [];
   List<EmployeePayslip> _employeePayslips = [];
@@ -189,6 +192,26 @@ class PayslipProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> bulkGeneratePayslips(
+    List<Map<String, dynamic>> rows,
+  ) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final result = await _payslipService.bulkGeneratePayslips(rows);
+      _isLoading = false;
+      notifyListeners();
+      return result;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return {'success': false, 'error': e.toString()};
     }
   }
 
