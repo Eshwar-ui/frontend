@@ -201,10 +201,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       title: 'Personal Information',
       icon: Icons.person,
       children: [
-        _buildInfoRow(Icons.person, 'Full Name', user.fullName),
-        _buildInfoRow(Icons.badge, 'Employee ID', user.employeeId),
-        _buildInfoRow(Icons.person_outline, 'First Name', user.firstName),
-        _buildInfoRow(Icons.person_outline, 'Last Name', user.lastName),
+        _buildInfoRow(Icons.person, 'Full Name', user.fullName.toTitleCase()),
+        _buildInfoRow(Icons.badge, 'Employee ID', user.employeeId.toUpperCase()),
+        _buildInfoRow(Icons.person_outline, 'First Name', user.firstName.toTitleCase()),
+        _buildInfoRow(Icons.person_outline, 'Last Name', user.lastName.toTitleCase()),
         _buildInfoRow(Icons.wc, 'Gender', user.gender ?? 'Not specified'),
         _buildInfoRow(
           Icons.cake,

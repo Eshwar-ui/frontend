@@ -5,6 +5,7 @@ import 'package:quantum_dashboard/providers/employee_provider.dart';
 import 'package:quantum_dashboard/providers/notification_provider.dart';
 import 'package:quantum_dashboard/services/department_service.dart';
 import 'package:quantum_dashboard/utils/snackbar_utils.dart';
+import 'package:quantum_dashboard/utils/string_extensions.dart';
 
 class SendNotificationScreen extends StatefulWidget {
   const SendNotificationScreen({super.key});
@@ -215,7 +216,7 @@ class _SendNotificationScreenState extends State<SendNotificationScreen> {
                               items: provider.employees.map((emp) {
                                 return DropdownMenuItem(
                                   value: emp.employeeId,
-                                  child: Text(emp.fullName),
+                                  child: Text(emp.fullName.toTitleCase()),
                                 );
                               }).toList(),
                               onChanged: (value) {

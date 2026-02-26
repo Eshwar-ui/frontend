@@ -20,6 +20,7 @@ import 'package:quantum_dashboard/providers/notification_provider.dart';
 import 'package:quantum_dashboard/providers/notification_settings_provider.dart';
 import 'package:quantum_dashboard/widgets/notification_icon_widget.dart';
 import 'package:quantum_dashboard/utils/responsive_utils.dart';
+import 'package:quantum_dashboard/utils/string_extensions.dart';
 import 'package:geolocator/geolocator.dart';
 
 class new_dashboard extends StatefulWidget {
@@ -1441,20 +1442,24 @@ class _new_dashboardState extends State<new_dashboard> {
       }
     }
 
+    final padding = ResponsiveUtils.padding(context);
+
     return Container(
-      padding: EdgeInsets.all(24),
+      padding: EdgeInsets.fromLTRB(
+        padding.left,
+        padding.top,
+        padding.right,
+        padding.bottom,
+      ),
       child: Row(
         children: [
-          // Here, you would get the user name and profile info, but for this rewrite,
-          // we'll show a sample name and pretend profile image (using initials).
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 220,
-                // Adjust as needed or use LayoutBuilder for more dynamic width
-                child: Text(
-                  'Hey $firstName',
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Hey ${(firstName ?? 'User').toTitleCase()}',
                   style: GoogleFonts.poppins(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -1463,29 +1468,19 @@ class _new_dashboardState extends State<new_dashboard> {
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                 ),
-              ),
-              Text(
-                '${getGreeting()}',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                  color: colorScheme.onSurface.withOpacity(0.7),
+                Text(
+                  getGreeting(),
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          Spacer(),
-          // IconButton(
-          //   icon: const Icon(Icons.account_balance_wallet_outlined),
-          //   tooltip: 'Compoff Wallet',
-          //   onPressed: () {
-          //     Navigator.of(context).push(
-          //       MaterialPageRoute(
-          //         builder: (context) => const CompoffWalletScreen(),
-          //       ),
-          //     );
-          //   },
-          // ),
           NotificationIconWidget(),
           SizedBox(width: 12),
           GestureDetector(

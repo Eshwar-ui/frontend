@@ -7,6 +7,7 @@ import 'package:quantum_dashboard/providers/employee_provider.dart';
 import 'package:quantum_dashboard/providers/navigation_provider.dart';
 import 'package:quantum_dashboard/services/location_service.dart';
 import 'package:quantum_dashboard/utils/snackbar_utils.dart';
+import 'package:quantum_dashboard/utils/string_extensions.dart';
 
 class AdminEmployeeLocationsScreen extends StatefulWidget {
   const AdminEmployeeLocationsScreen({super.key});
@@ -432,7 +433,7 @@ class _AdminEmployeeLocationsScreenState
                             : colorScheme.onSurface.withOpacity(0.6),
                       ),
                       title: Text(
-                        '${emp.employeeId} - ${emp.fullName}',
+                        '${emp.employeeId} - ${emp.fullName.toTitleCase()}',
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           fontWeight:
@@ -445,7 +446,7 @@ class _AdminEmployeeLocationsScreenState
                         setState(() {
                           _selectedEmployeeId = emp.employeeId;
                           _employeeSearchController.text =
-                              '${emp.employeeId} - ${emp.fullName}';
+                              '${emp.employeeId} - ${emp.fullName.toTitleCase()}';
                         });
                         _employeeSearchFocusNode.unfocus();
                         _loadLocations();

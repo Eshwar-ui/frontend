@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/providers/employee_provider.dart';
 import 'package:quantum_dashboard/utils/snackbar_utils.dart';
+import 'package:quantum_dashboard/utils/string_extensions.dart';
 
 class EditEmployeeScreen extends StatefulWidget {
   final Employee employee;
@@ -49,8 +50,8 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
   @override
   void initState() {
     super.initState();
-    _firstNameController = TextEditingController(text: widget.employee.firstName);
-    _lastNameController = TextEditingController(text: widget.employee.lastName);
+    _firstNameController = TextEditingController(text: widget.employee.firstName.toTitleCase());
+    _lastNameController = TextEditingController(text: widget.employee.lastName.toTitleCase());
     _emailController = TextEditingController(text: widget.employee.email);
     _phoneController = TextEditingController(text: widget.employee.mobile);
     _addressController = TextEditingController(text: widget.employee.address ?? '');

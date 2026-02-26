@@ -15,6 +15,7 @@ import 'package:quantum_dashboard/screens/generate_payslip_screen.dart';
 import 'package:quantum_dashboard/utils/payslip_bulk_utils.dart';
 import 'package:quantum_dashboard/utils/snackbar_utils.dart';
 import 'package:intl/intl.dart';
+import 'package:quantum_dashboard/utils/string_extensions.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AdminPayslipsScreen extends StatefulWidget {
@@ -1029,7 +1030,7 @@ class _AdminPayslipsScreenState extends State<AdminPayslipsScreen> {
                             : colorScheme.onSurface.withOpacity(0.6),
                       ),
                       title: Text(
-                        '${emp.employeeId} - ${emp.fullName}',
+                        '${emp.employeeId} - ${emp.fullName.toTitleCase()}',
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           fontWeight: isSelected
@@ -1041,7 +1042,7 @@ class _AdminPayslipsScreenState extends State<AdminPayslipsScreen> {
                       ),
                       onTap: () {
                         final selectedLabel =
-                            '${emp.employeeId} - ${emp.fullName}';
+                            '${emp.employeeId} - ${emp.fullName.toTitleCase()}';
                         setState(() {
                           _selectedEmployeeId = emp.employeeId;
                           _employeeSearchController.value = TextEditingValue(

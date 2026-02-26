@@ -9,7 +9,9 @@ import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/providers/theme_provider.dart';
 import 'package:quantum_dashboard/widgets/photo_upload_widget.dart';
 import 'package:quantum_dashboard/new_Screens/settings_page.dart';
+import 'package:quantum_dashboard/admin_screens/admin_offer_letters_screen.dart';
 import 'package:quantum_dashboard/providers/navigation_provider.dart';
+import 'package:quantum_dashboard/utils/string_extensions.dart';
 
 class NewProfilePage extends StatefulWidget {
   const NewProfilePage({super.key});
@@ -170,7 +172,7 @@ class _NewProfilePageState extends State<NewProfilePage> {
             const SizedBox(height: 16),
             // Name
             Text(
-              user.fullName,
+              user.fullName.toTitleCase(),
               style: GoogleFonts.poppins(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -191,7 +193,7 @@ class _NewProfilePageState extends State<NewProfilePage> {
                   Icon(Icons.badge, size: 18, color: Colors.white),
                   SizedBox(width: 8),
                   Text(
-                    user.employeeId,
+                    user.employeeId.toUpperCase(),
                     style: GoogleFonts.poppins(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -466,9 +468,9 @@ class _NewProfilePageState extends State<NewProfilePage> {
       icon: Icons.person_outline,
       color: Color(0xFF1976D2),
       children: [
-        _buildInfoTile(Icons.person, 'Full Name', user.fullName),
-        _buildInfoTile(Icons.person_outline, 'First Name', user.firstName),
-        _buildInfoTile(Icons.person_outline, 'Last Name', user.lastName),
+        _buildInfoTile(Icons.person, 'Full Name', user.fullName.toTitleCase()),
+        _buildInfoTile(Icons.person_outline, 'First Name', user.firstName.toTitleCase()),
+        _buildInfoTile(Icons.person_outline, 'Last Name', user.lastName.toTitleCase()),
         _buildInfoTile(
           Icons.cake,
           'Date of Birth',
@@ -491,7 +493,7 @@ class _NewProfilePageState extends State<NewProfilePage> {
       icon: Icons.work_outline,
       color: Colors.purple,
       children: [
-        _buildInfoTile(Icons.badge, 'Employee ID', user.employeeId),
+        _buildInfoTile(Icons.badge, 'Employee ID', user.employeeId.toUpperCase()),
         if (user.department != null)
           _buildInfoTile(Icons.business, 'Department', user.department!),
         if (user.designation != null)
@@ -743,6 +745,19 @@ class _NewProfilePageState extends State<NewProfilePage> {
           'Set up and edit leave policies',
           () =>
               navigationProvider.setCurrentPage(NavigationPage.AdminLeaveTypes),
+        ),
+        _buildAdminSettingsTile(
+          Icons.description_outlined,
+          'Offer Letters',
+          'Create candidates and send secure offer emails',
+          () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AdminOfferLettersScreen(),
+              ),
+            );
+          },
         ),
       ],
     );

@@ -127,9 +127,11 @@ class _AdminCompanyLocationsScreenState extends State<AdminCompanyLocationsScree
           latitude: double.parse(latitudeController.text.trim()),
           longitude: double.parse(longitudeController.text.trim()),
         );
+        if (!mounted) return;
         SnackbarUtils.showSuccess(context, 'Company location added successfully');
         _loadLocations();
       } catch (e) {
+        if (!mounted) return;
         SnackbarUtils.showError(context, 'Failed to add location: ${e.toString()}');
       }
     }
@@ -214,9 +216,11 @@ class _AdminCompanyLocationsScreenState extends State<AdminCompanyLocationsScree
           latitude: double.parse(latitudeController.text.trim()),
           longitude: double.parse(longitudeController.text.trim()),
         );
+        if (!mounted) return;
         SnackbarUtils.showSuccess(context, 'Company location updated successfully');
         _loadLocations();
       } catch (e) {
+        if (!mounted) return;
         SnackbarUtils.showError(context, 'Failed to update location: ${e.toString()}');
       }
     }
@@ -245,9 +249,11 @@ class _AdminCompanyLocationsScreenState extends State<AdminCompanyLocationsScree
     if (confirmed == true) {
       try {
         await _locationService.deleteCompanyLocation(location.id);
+        if (!mounted) return;
         SnackbarUtils.showSuccess(context, 'Company location deleted successfully');
         _loadLocations();
       } catch (e) {
+        if (!mounted) return;
         SnackbarUtils.showError(context, 'Failed to delete location: ${e.toString()}');
       }
     }

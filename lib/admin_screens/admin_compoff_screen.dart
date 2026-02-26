@@ -7,6 +7,7 @@ import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/providers/compoff_provider.dart';
 import 'package:quantum_dashboard/providers/employee_provider.dart';
 import 'package:quantum_dashboard/utils/snackbar_utils.dart';
+import 'package:quantum_dashboard/utils/string_extensions.dart';
 
 class AdminCompoffScreen extends StatefulWidget {
   const AdminCompoffScreen({super.key});
@@ -263,7 +264,7 @@ class _AdminCompoffScreenState extends State<AdminCompoffScreen>
                 : colorScheme.surface,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(isDark ? 0.2 : 0.06),
+                color: (isDark ? Colors.white : Colors.black).withValues(alpha: isDark ? 0.08 : 0.06),
                 blurRadius: 8,
                 offset: Offset(0, 2),
               ),
@@ -424,7 +425,7 @@ class _AdminCompoffScreenState extends State<AdminCompoffScreen>
               color: colorScheme.surface,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
+                  color: (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black).withValues(alpha: 0.06),
                   blurRadius: 8,
                   offset: Offset(0, -2),
                 ),
@@ -699,7 +700,7 @@ class _AdminCompoffScreenState extends State<AdminCompoffScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          name,
+                          name.toTitleCase(),
                           style: GoogleFonts.poppins(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -832,7 +833,7 @@ class _AdminCompoffScreenState extends State<AdminCompoffScreen>
                       padding: EdgeInsets.symmetric(vertical: 16),
                       child: Center(
                         child: Text(
-                          'No employees match \"$query\"',
+                          'No employees match "$query"',
                           style: GoogleFonts.poppins(
                             fontSize: 13,
                             color: colorScheme.onSurface.withOpacity(0.6),
@@ -852,7 +853,7 @@ class _AdminCompoffScreenState extends State<AdminCompoffScreen>
                               : colorScheme.onSurface.withOpacity(0.6),
                         ),
                         title: Text(
-                          '${emp.employeeId} - ${emp.fullName}',
+                          '${emp.employeeId} - ${emp.fullName.toTitleCase()}',
                           style: GoogleFonts.poppins(
                             fontSize: 14,
                             fontWeight: isSelected
@@ -866,7 +867,7 @@ class _AdminCompoffScreenState extends State<AdminCompoffScreen>
                           setState(() {
                             _monitorEmployeeId = emp.employeeId;
                             _monitorEmployeeSearchController.text =
-                                '${emp.employeeId} - ${emp.fullName}';
+                                '${emp.employeeId} - ${emp.fullName.toTitleCase()}';
                           });
                           _monitorEmployeeSearchFocusNode.unfocus();
                           _loadMonitorCredits(emp.employeeId);
@@ -1138,7 +1139,7 @@ class _AdminCompoffScreenState extends State<AdminCompoffScreen>
                         ),
                         SizedBox(height: 6),
                         Text(
-                          'Try changing the status filter or turning off the \"Show only expired without use\" toggle.',
+                          'Try changing the status filter or turning off the "Show only expired without use" toggle.',
                           style: GoogleFonts.poppins(
                             fontSize: 12,
                             color: colorScheme.onSurface.withOpacity(0.6),

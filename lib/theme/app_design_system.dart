@@ -43,6 +43,36 @@ extension AppDesignSystemResponsive on BuildContext {
   /// Spacing value for the current screen size.
   double responsiveSpacing([double base = 16.0]) =>
       ResponsiveUtils.spacing(this, base: base);
+
+  /// Proportional scale for arbitrary dimensions (based on design width).
+  double scaleDimension(double value) => ResponsiveUtils.scale(this, value);
+
+  /// Font size scaled by screen width with sensible clamps.
+  double responsiveFontSize(
+    double base, {
+    double? min,
+    double? max,
+  }) =>
+      ResponsiveUtils.responsiveFontSize(this, base, min: min, max: max);
+
+  /// Border radius that scales gently with screen width.
+  double responsiveRadius(
+    double base, {
+    double min = 4.0,
+    double max = 24.0,
+  }) =>
+      ResponsiveUtils.responsiveRadius(this, base, min: min, max: max);
+
+  /// Icon size that scales with width but keeps a usable tap target.
+  double responsiveIconSize(
+    double base, {
+    double min = 16.0,
+    double max = 32.0,
+  }) =>
+      ResponsiveUtils.responsiveIconSize(this, base, min: min, max: max);
+
+  /// Recommended max content width for centering main content on wide screens.
+  double get maxContentWidth => ResponsiveUtils.maxContentWidth(this);
 }
 
 /// Theme-based colors and styles. Use these instead of checking brightness

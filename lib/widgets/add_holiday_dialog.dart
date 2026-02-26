@@ -49,13 +49,14 @@ class _AddHolidayDialogState extends State<AddHolidayDialog> {
       firstDate: DateTime.now().subtract(Duration(days: 365)),
       lastDate: DateTime.now().add(Duration(days: 365 * 2)),
       builder: (context, child) {
+        final theme = Theme.of(context);
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Color(0xFF1976D2),
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Colors.black,
+          data: theme.copyWith(
+            colorScheme: theme.colorScheme.copyWith(
+              primary: const Color(0xFF1976D2),
+              onPrimary: theme.colorScheme.onPrimary,
+              surface: theme.colorScheme.surface,
+              onSurface: theme.colorScheme.onSurface,
             ),
           ),
           child: child!,
@@ -218,7 +219,7 @@ class _AddHolidayDialogState extends State<AddHolidayDialog> {
                 child: Container(
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[300]!),
+                    border: Border.all(color: Theme.of(context).colorScheme.outline),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -233,7 +234,7 @@ class _AddHolidayDialogState extends State<AddHolidayDialog> {
                               'Holiday Date',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey[600],
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                             ),
                             SizedBox(height: 4),
@@ -243,14 +244,16 @@ class _AddHolidayDialogState extends State<AddHolidayDialog> {
                                   : 'Select a date',
                               style: TextStyle(
                                 fontSize: 16,
-                                color: _selectedDate != null ? Colors.black : Colors.grey[600],
+                                color: _selectedDate != null
+                                    ? Theme.of(context).colorScheme.onSurface
+                                    : Theme.of(context).colorScheme.onSurfaceVariant,
                                 fontWeight: _selectedDate != null ? FontWeight.w500 : FontWeight.normal,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
+                      Icon(Icons.arrow_drop_down, color: Theme.of(context).colorScheme.onSurfaceVariant),
                     ],
                   ),
                 ),

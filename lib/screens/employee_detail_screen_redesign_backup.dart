@@ -12,6 +12,7 @@ import 'package:quantum_dashboard/models/leave_model.dart';
 import 'package:quantum_dashboard/providers/attendance_provider.dart';
 import 'package:quantum_dashboard/providers/holiday_provider.dart';
 import 'package:quantum_dashboard/providers/leave_provider.dart';
+import 'package:quantum_dashboard/utils/string_extensions.dart';
 
 class EmployeeDetailScreen extends StatefulWidget {
   final Employee employee;
@@ -205,7 +206,7 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
                 ],
                 centerTitle: true,
                 title: Text(
-                  widget.employee.fullName,
+                  widget.employee.fullName.toTitleCase(),
                   style: GoogleFonts.poppins(
                     fontWeight: FontWeight.bold,
                     fontSize: 20,
@@ -374,7 +375,7 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
               _buildInfoRow(
                 icon: Icons.person,
                 label: 'Full Name',
-                value: widget.employee.fullName,
+                value: widget.employee.fullName.toTitleCase(),
                 colorScheme: colorScheme,
               ),
               _buildInfoRow(
@@ -386,13 +387,13 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
               _buildInfoRow(
                 icon: Icons.person_outline,
                 label: 'First Name',
-                value: widget.employee.firstName,
+                value: widget.employee.firstName.toTitleCase(),
                 colorScheme: colorScheme,
               ),
               _buildInfoRow(
                 icon: Icons.person_outline,
                 label: 'Last Name',
-                value: widget.employee.lastName,
+                value: widget.employee.lastName.toTitleCase(),
                 colorScheme: colorScheme,
               ),
               if (widget.employee.gender != null)
@@ -1150,7 +1151,7 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  employee.fullName,
+                  employee.fullName.toTitleCase(),
                   style: GoogleFonts.poppins(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,

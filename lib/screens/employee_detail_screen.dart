@@ -74,7 +74,7 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Reset password for ${_employee.fullName} (${_employee.employeeId})',
+                    'Reset password for ${_employee.fullName.toTitleCase()} (${_employee.employeeId})',
                     style: GoogleFonts.poppins(fontSize: 13),
                   ),
                   SizedBox(height: 12),
@@ -176,7 +176,7 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
                         ScaffoldMessenger.of(this.context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              'Password reset successfully for ${_employee.fullName}',
+                              'Password reset successfully for ${_employee.fullName.toTitleCase()}',
                             ),
                             backgroundColor: Colors.green,
                           ),
@@ -451,7 +451,7 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
               _buildInfoRow(
                 icon: Icons.person,
                 label: 'Full Name',
-                value: _employee.fullName,
+                value: _employee.fullName.toTitleCase(),
                 colorScheme: colorScheme,
               ),
               _buildInfoRow(
@@ -463,13 +463,13 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
               _buildInfoRow(
                 icon: Icons.person_outline,
                 label: 'First Name',
-                value: _employee.firstName,
+                value: _employee.firstName.toTitleCase(),
                 colorScheme: colorScheme,
               ),
               _buildInfoRow(
                 icon: Icons.person_outline,
                 label: 'Last Name',
-                value: _employee.lastName,
+                value: _employee.lastName.toTitleCase(),
                 colorScheme: colorScheme,
               ),
               if (_employee.gender != null)

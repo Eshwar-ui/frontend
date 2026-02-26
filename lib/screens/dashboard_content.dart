@@ -13,6 +13,7 @@ import 'package:quantum_dashboard/widgets/custom_button.dart';
 import 'package:quantum_dashboard/widgets/custom_floating_container.dart';
 import 'package:quantum_dashboard/widgets/loading_dots_animation.dart';
 import 'package:timeline_tile/timeline_tile.dart';
+import 'package:quantum_dashboard/utils/string_extensions.dart';
 
 class DashboardContent extends StatefulWidget {
   @override
@@ -333,7 +334,7 @@ class _DashboardContentState extends State<DashboardContent> {
                                   image: AssetImage(AppAssets.avatarPng),
                                   fit: BoxFit.cover,
                                 ),
-                                color: Colors.grey[300],
+                                color: Theme.of(context).colorScheme.outline,
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -343,7 +344,7 @@ class _DashboardContentState extends State<DashboardContent> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  '${user.firstName}${user.lastName}',
+                                  user.fullName.toTitleCase(),
                                   style: AppTextStyles.subheading,
                                 ),
                                 Text(
@@ -362,7 +363,7 @@ class _DashboardContentState extends State<DashboardContent> {
                               title: 'Employee ID',
                               value: user.employeeId,
                             ),
-                            Container(width: 1, height: 50, color: Colors.grey),
+                            Container(width: 1, height: 50, color: Theme.of(context).colorScheme.outline),
                             _employeeDetails(
                               title: 'Joining Date',
                               value: user.joiningDate
@@ -371,7 +372,7 @@ class _DashboardContentState extends State<DashboardContent> {
                                   .split(' ')[0],
                               // value: DateFormat.yMMMd().format(user.joiningDate),
                             ),
-                            Container(width: 1, height: 50, color: Colors.grey),
+                            Container(width: 1, height: 50, color: Theme.of(context).colorScheme.outline),
                             _employeeDetails(
                               title: 'Department',
                               value: user.department ?? 'N/A',
@@ -410,7 +411,7 @@ class _DashboardContentState extends State<DashboardContent> {
                           Text(
                             'You started your day at ${_getFirstCheckInTime()}',
                             style: AppTextStyles.body.copyWith(
-                              color: Colors.black,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
                               // fontStyle: FontStyle.italic,
@@ -532,7 +533,7 @@ class _DashboardContentState extends State<DashboardContent> {
                   color: Colors.lightBlue.shade400,
                 ),
                 beforeLineStyle: LineStyle(
-                  color: Colors.grey,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   thickness: isLast ? 0 : 2,
                 ),
                 endChild: Padding(
@@ -552,7 +553,7 @@ class _DashboardContentState extends State<DashboardContent> {
                   alignment: TimelineAlign.start,
                   indicatorStyle: IndicatorStyle(width: 16, color: Colors.blue),
                   beforeLineStyle: LineStyle(
-                    color: Colors.grey,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     thickness: isLast ? 0 : 2,
                   ),
                   endChild: Padding(
@@ -595,7 +596,7 @@ class _employeeDetails extends StatelessWidget {
         ),
         Text(
           value,
-          style: AppTextStyles.body.copyWith(color: Colors.grey, fontSize: 14),
+          style: AppTextStyles.body.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14),
         ),
       ],
     );

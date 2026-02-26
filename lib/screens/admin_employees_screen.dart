@@ -10,6 +10,7 @@ import 'package:quantum_dashboard/widgets/error_widget.dart';
 import 'package:quantum_dashboard/screens/employee_detail_screen.dart';
 import 'package:quantum_dashboard/screens/add_employee_screen.dart';
 import 'package:quantum_dashboard/screens/edit_employee_screen.dart';
+import 'package:quantum_dashboard/utils/string_extensions.dart';
 
 class AdminEmployeesScreen extends StatefulWidget {
   @override
@@ -125,7 +126,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.lock, size: 64, color: Colors.grey),
+            Icon(Icons.lock, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant),
             SizedBox(height: 16),
             Text('Access Denied', style: AppTextStyles.subheading),
             SizedBox(height: 8),
@@ -251,7 +252,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.people_outline, size: 64, color: Colors.grey),
+                      Icon(Icons.people_outline, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant),
                       SizedBox(height: 16),
                       Text(
                         'No Employees Found',
@@ -303,7 +304,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.filter_list_off, size: 64, color: Colors.grey),
+                            Icon(Icons.filter_list_off, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant),
                             SizedBox(height: 16),
                             Text(
                               'No employees found',
@@ -545,7 +546,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
           ),
         ),
         title: Text(
-          employee.fullName,
+          employee.fullName.toTitleCase(),
           style: GoogleFonts.poppins(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -747,7 +748,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Reset password for ${employee.fullName} (${employee.employeeId})',
+                    'Reset password for ${employee.fullName.toTitleCase()} (${employee.employeeId})',
                     style: GoogleFonts.poppins(fontSize: 13),
                   ),
                   SizedBox(height: 12),
@@ -854,7 +855,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                         ScaffoldMessenger.of(this.context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              'Password reset successfully for ${employee.fullName}',
+                              'Password reset successfully for ${employee.fullName.toTitleCase()}',
                             ),
                             backgroundColor: Colors.green,
                           ),
@@ -897,7 +898,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
       builder: (context) => AlertDialog(
         title: Text('Delete Employee'),
         content: Text(
-          'Are you sure you want to delete ${employee.fullName}? This action cannot be undone.',
+          'Are you sure you want to delete ${employee.fullName.toTitleCase()}? This action cannot be undone.',
         ),
         actions: [
           TextButton(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:quantum_dashboard/models/user_model.dart';
+import 'package:quantum_dashboard/utils/string_extensions.dart';
 
 class GeneratePayslipScreen extends StatefulWidget {
   final List<Employee> employees;
@@ -166,7 +167,7 @@ class _GeneratePayslipScreenState extends State<GeneratePayslipScreen> {
                         return DropdownMenuItem<String?>(
                           value: emp.employeeId,
                           child: Text(
-                            '${emp.employeeId} - ${emp.fullName}',
+                            '${emp.employeeId} - ${emp.fullName.toTitleCase()}',
                             overflow: TextOverflow.ellipsis,
                           ),
                         );

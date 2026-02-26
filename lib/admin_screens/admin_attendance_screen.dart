@@ -9,6 +9,7 @@ import 'package:quantum_dashboard/screens/employee_detail_screen.dart';
 import 'package:quantum_dashboard/services/attendance_service.dart';
 import 'package:quantum_dashboard/utils/excel_export_utils.dart';
 import 'package:quantum_dashboard/utils/snackbar_utils.dart';
+import 'package:quantum_dashboard/utils/string_extensions.dart';
 
 class AdminAttendanceScreen extends StatefulWidget {
   const AdminAttendanceScreen({super.key});
@@ -767,7 +768,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            empName,
+                            empName.toString().toTitleCase(),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.poppins(

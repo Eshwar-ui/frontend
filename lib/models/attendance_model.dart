@@ -207,7 +207,7 @@ class Attendance {
 
     final hours = (timeInSeconds / 3600).floor();
     final minutes = ((timeInSeconds % 3600) / 60).floor();
-    final result = '${hours}:${minutes.toString().padLeft(2, '0')} HRS';
+    final result = '$hours:${minutes.toString().padLeft(2, '0')} HRS';
 
     AppLogger.debug('AttendanceModel: Working time formatted: $result');
     return result;
@@ -230,8 +230,8 @@ class Attendance {
     final hours = (breakTimeInSeconds / 3600).floor();
     final minutes = ((breakTimeInSeconds % 3600) / 60).floor();
     final result = hours > 0
-        ? '${hours}:${minutes.toString().padLeft(2, '0')} HRS'
-        : '${minutes} MIN';
+        ? '$hours:${minutes.toString().padLeft(2, '0')} HRS'
+        : '$minutes MIN';
 
     AppLogger.debug(
       'AttendanceModel: Break time calculated: $breakTimeInSeconds seconds -> $result',

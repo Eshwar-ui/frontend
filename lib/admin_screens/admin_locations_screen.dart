@@ -9,6 +9,7 @@ import 'package:quantum_dashboard/providers/navigation_provider.dart';
 import 'package:quantum_dashboard/services/attendance_settings_service.dart';
 import 'package:quantum_dashboard/services/location_service.dart';
 import 'package:quantum_dashboard/utils/snackbar_utils.dart';
+import 'package:quantum_dashboard/utils/string_extensions.dart';
 
 class AdminLocationsScreen extends StatefulWidget {
   const AdminLocationsScreen({super.key});
@@ -666,7 +667,8 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen>
                       Switch(
                         value: _locationPunchInEnabled,
                         onChanged: _toggleLocationPunchIn,
-                        activeColor: colorScheme.primary,
+                        activeTrackColor: colorScheme.primary.withValues(alpha: 0.5),
+                        activeThumbColor: colorScheme.primary,
                       ),
                   ],
                 ),
@@ -803,7 +805,7 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen>
                             : colorScheme.onSurface.withOpacity(0.6),
                       ),
                       title: Text(
-                        '${emp.employeeId} - ${emp.fullName}',
+                        '${emp.employeeId} - ${emp.fullName.toTitleCase()}',
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           fontWeight:
@@ -816,7 +818,7 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen>
                         setState(() {
                           _selectedEmployeeId = emp.employeeId;
                           _employeeSearchController.text =
-                              '${emp.employeeId} - ${emp.fullName}';
+                              '${emp.employeeId} - ${emp.fullName.toTitleCase()}';
                         });
                         _employeeSearchFocusNode.unfocus();
                         _loadEmployeeLocations();
@@ -853,7 +855,7 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen>
       children: [
         Container(
           padding: const EdgeInsets.all(16),
-          color: colorScheme.surfaceVariant.withOpacity(0.5),
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
           child: _buildEmployeeSearch(colorScheme, employeeProvider, isDark),
         ),
         Expanded(

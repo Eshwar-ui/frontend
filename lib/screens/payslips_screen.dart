@@ -315,13 +315,13 @@ class _PayslipsScreenState extends State<PayslipsScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.description, size: 64, color: Colors.grey),
+            Icon(Icons.description, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant),
             SizedBox(height: 16),
             Text('No generated payslips found for selected period.'),
             SizedBox(height: 8),
             Text(
               'Available months: ${payslips.map((p) => '${p.monthName} ${p.year}').join(', ')}',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ],
         ),
@@ -485,7 +485,7 @@ class _PayslipsScreenState extends State<PayslipsScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.upload, size: 64, color: Colors.grey),
+            Icon(Icons.upload, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant),
             SizedBox(height: 16),
             Text('No uploaded payslips found.'),
           ],

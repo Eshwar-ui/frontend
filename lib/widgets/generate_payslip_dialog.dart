@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:quantum_dashboard/models/user_model.dart';
+import 'package:quantum_dashboard/theme/app_design_system.dart';
+import 'package:quantum_dashboard/utils/string_extensions.dart';
 
 class GeneratePayslipDialog extends StatefulWidget {
   final List<Employee> employees;
@@ -157,55 +159,69 @@ class _GeneratePayslipDialogState extends State<GeneratePayslipDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final maxWidth = context.maxContentWidth.clamp(320, 700);
+
     return Dialog(
       backgroundColor: Colors.transparent,
-      child: Container(
+      child: ConstrainedBox(
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.9,
+          maxWidth: maxWidth.toDouble(),
         ),
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header
-            Container(
-              padding: EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: colorScheme.primary,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(
+              context.responsiveRadius(16),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: EdgeInsets.all(context.responsiveSpacing(20)),
+                decoration: BoxDecoration(
+                  color: colorScheme.primary,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(context.responsiveRadius(16)),
+                    topRight: Radius.circular(context.responsiveRadius(16)),
+                  ),
                 ),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.receipt_long, color: colorScheme.onPrimary),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Generate Payslip',
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: colorScheme.onPrimary,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.receipt_long,
+                      color: colorScheme.onPrimary,
+                      size: context.responsiveIconSize(20),
+                    ),
+                    SizedBox(width: context.responsiveSpacing(12)),
+                    Expanded(
+                      child: Text(
+                        'Generate Payslip',
+                        style: GoogleFonts.poppins(
+                          fontSize: context.responsiveFontSize(20),
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onPrimary,
+                        ),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.close, color: colorScheme.onPrimary),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
+                    IconButton(
+                      icon: Icon(
+                        Icons.close,
+                        color: colorScheme.onPrimary,
+                        size: context.responsiveIconSize(20),
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
               ),
-            ),
 
             // Form content
             Flexible(
               child: SingleChildScrollView(
-                padding: EdgeInsets.all(20),
+                padding: EdgeInsets.all(context.responsiveSpacing(20)),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -222,7 +238,7 @@ class _GeneratePayslipDialogState extends State<GeneratePayslipDialog> {
                         items: widget.employees.map((emp) {
                           return DropdownMenuItem<String?>(
                             value: emp.employeeId,
-                            child: Text('${emp.employeeId} - ${emp.fullName}'),
+                            child: Text('${emp.employeeId} - ${emp.fullName.toTitleCase()}'),
                           );
                         }).toList(),
                         onChanged: (value) {
@@ -237,7 +253,7 @@ class _GeneratePayslipDialogState extends State<GeneratePayslipDialog> {
                           return null;
                         },
                       ),
-                      SizedBox(height: 16),
+                      SizedBox(height: context.responsiveSpacing(16)),
 
                       // Month and Year
                       Row(
@@ -274,7 +290,7 @@ class _GeneratePayslipDialogState extends State<GeneratePayslipDialog> {
                               },
                             ),
                           ),
-                          SizedBox(width: 16),
+                          SizedBox(width: context.responsiveSpacing(16)),
                           Expanded(
                             child: DropdownButtonFormField<int>(
                               value: _selectedYear,
@@ -305,18 +321,18 @@ class _GeneratePayslipDialogState extends State<GeneratePayslipDialog> {
                           ),
                         ],
                       ),
-                      SizedBox(height: 24),
+                      SizedBox(height: context.responsiveSpacing(24)),
 
                       // Earnings section
                       Text(
                         'Earnings',
                         style: GoogleFonts.poppins(
-                          fontSize: 18,
+                          fontSize: context.responsiveFontSize(18),
                           fontWeight: FontWeight.w600,
                           color: colorScheme.onSurface,
                         ),
                       ),
-                      SizedBox(height: 12),
+                      SizedBox(height: context.responsiveSpacing(12)),
                       _buildTextField(
                         controller: _basicSalaryController,
                         label: 'Basic Salary *',
@@ -331,71 +347,71 @@ class _GeneratePayslipDialogState extends State<GeneratePayslipDialog> {
                           return null;
                         },
                       ),
-                      SizedBox(height: 12),
+                      SizedBox(height: context.responsiveSpacing(12)),
                       _buildTextField(
                         controller: _hraController,
                         label: 'HRA (House Rent Allowance)',
                         icon: Icons.home,
                       ),
-                      SizedBox(height: 12),
+                      SizedBox(height: context.responsiveSpacing(12)),
                       _buildTextField(
                         controller: _taController,
                         label: 'TA (Travel Allowance)',
                         icon: Icons.directions_car,
                       ),
-                      SizedBox(height: 12),
+                      SizedBox(height: context.responsiveSpacing(12)),
                       _buildTextField(
                         controller: _daController,
                         label: 'DA (Dearness Allowance)',
                         icon: Icons.attach_money,
                       ),
-                      SizedBox(height: 12),
+                      SizedBox(height: context.responsiveSpacing(12)),
                       _buildTextField(
                         controller: _conveyanceAllowanceController,
                         label: 'Conveyance Allowance',
                         icon: Icons.train,
                       ),
-                      SizedBox(height: 24),
+                      SizedBox(height: context.responsiveSpacing(24)),
 
                       // Deductions section
                       Text(
                         'Deductions',
                         style: GoogleFonts.poppins(
-                          fontSize: 18,
+                          fontSize: context.responsiveFontSize(18),
                           fontWeight: FontWeight.w600,
                           color: colorScheme.onSurface,
                         ),
                       ),
-                      SizedBox(height: 12),
+                      SizedBox(height: context.responsiveSpacing(12)),
                       _buildTextField(
                         controller: _employeesContributionPFController,
                         label: 'Employee\'s Contribution PF',
                         icon: Icons.account_balance,
                       ),
-                      SizedBox(height: 12),
+                      SizedBox(height: context.responsiveSpacing(12)),
                       _buildTextField(
                         controller: _employersContributionPFController,
                         label: 'Employer\'s Contribution PF',
                         icon: Icons.business,
                       ),
-                      SizedBox(height: 12),
+                      SizedBox(height: context.responsiveSpacing(12)),
                       _buildTextField(
                         controller: _professionalTAXController,
                         label: 'Professional Tax',
                         icon: Icons.receipt,
                       ),
-                      SizedBox(height: 24),
+                      SizedBox(height: context.responsiveSpacing(24)),
 
                       // Other details
                       Text(
                         'Other Details',
                         style: GoogleFonts.poppins(
-                          fontSize: 18,
+                          fontSize: context.responsiveFontSize(18),
                           fontWeight: FontWeight.w600,
                           color: colorScheme.onSurface,
                         ),
                       ),
-                      SizedBox(height: 12),
+                      SizedBox(height: context.responsiveSpacing(12)),
                       Row(
                         children: [
                           Expanded(
@@ -414,7 +430,7 @@ class _GeneratePayslipDialogState extends State<GeneratePayslipDialog> {
                               },
                             ),
                           ),
-                          SizedBox(width: 16),
+                          SizedBox(width: context.responsiveSpacing(16)),
                           Expanded(
                             child: _buildTextField(
                               controller: _lopDaysController,
@@ -424,20 +440,22 @@ class _GeneratePayslipDialogState extends State<GeneratePayslipDialog> {
                           ),
                         ],
                       ),
-                      SizedBox(height: 12),
+                      SizedBox(height: context.responsiveSpacing(12)),
                       _buildTextField(
                         controller: _arrearController,
                         label: 'Arrear',
                         icon: Icons.payment,
                       ),
-                      SizedBox(height: 24),
+                      SizedBox(height: context.responsiveSpacing(24)),
 
                       // Summary
                       Container(
-                        padding: EdgeInsets.all(16),
+                        padding: EdgeInsets.all(context.responsiveSpacing(16)),
                         decoration: BoxDecoration(
                           color: colorScheme.primaryContainer.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(
+                            context.responsiveRadius(12),
+                          ),
                         ),
                         child: Column(
                           children: [
@@ -446,13 +464,13 @@ class _GeneratePayslipDialogState extends State<GeneratePayslipDialog> {
                               _totalEarnings,
                               colorScheme.primary,
                             ),
-                            SizedBox(height: 8),
+                            SizedBox(height: context.responsiveSpacing(8)),
                             _buildSummaryRow(
                               'Total Deductions',
                               _totalDeductions,
                               colorScheme.error,
                             ),
-                            Divider(height: 24),
+                            Divider(height: context.responsiveSpacing(24)),
                             _buildSummaryRow(
                               'Net Salary',
                               _netSalary,
@@ -525,7 +543,7 @@ class _GeneratePayslipDialogState extends State<GeneratePayslipDialog> {
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildTextField({

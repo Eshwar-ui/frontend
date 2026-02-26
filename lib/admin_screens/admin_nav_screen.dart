@@ -15,6 +15,7 @@ import 'package:quantum_dashboard/screens/admin_holidays_screen.dart';
 import 'package:quantum_dashboard/screens/admin_leave_requests_screen.dart';
 import 'package:quantum_dashboard/new_Screens/new_profile_page.dart';
 import 'package:quantum_dashboard/providers/navigation_provider.dart';
+import 'package:quantum_dashboard/theme/app_design_system.dart';
 
 class AdminNavScreen extends StatefulWidget {
   const AdminNavScreen({super.key});
@@ -93,18 +94,16 @@ class _AdminNavScreenState extends State<AdminNavScreen> {
     final currentPage = navigationProvider.currentPage;
 
     // Default to index 0 if the current page is not in the map (e.g. employee pages)
-    int _selectedIndex = _pageMap[currentPage] ?? 0;
+    int selectedIndex = _pageMap[currentPage] ?? 0;
 
-    // Safety check: if _selectedIndex is out of bounds (shouldn't happen with correct map), default to 0
-    if (_selectedIndex >= _widgetOptions.length) {
-      _selectedIndex = 0;
+    // Safety check: if selectedIndex is out of bounds (shouldn't happen with correct map), default to 0
+    if (selectedIndex >= _widgetOptions.length) {
+      selectedIndex = 0;
     }
-
-    debugPrint("Building AdminNavScreen with selectedIndex: $_selectedIndex");
 
     return PopScope(
       canPop: currentPage == NavigationPage.Dashboard,
-      onPopInvoked: (bool didPop) {
+      onPopInvokedWithResult: (bool didPop, dynamic result) {
         if (didPop) return;
 
         // If we are not on the dashboard, go back to dashboard
@@ -153,7 +152,7 @@ class _AdminNavScreenState extends State<AdminNavScreen> {
                       currentScreen = AdminLocationsScreen();
                       break;
                     default:
-                      currentScreen = _widgetOptions[_selectedIndex];
+                      currentScreen = _widgetOptions[selectedIndex];
                   }
 
                   return currentScreen;
@@ -357,7 +356,7 @@ class _AdminNavScreenState extends State<AdminNavScreen> {
                   : (isDark
                         ? colorScheme.onSurface.withOpacity(0.7)
                         : Colors.grey[600]),
-              size: 24,
+              size: context.responsiveIconSize(24),
             ),
             if (isSelected) ...[
               const SizedBox(width: 8),
@@ -366,9 +365,9 @@ class _AdminNavScreenState extends State<AdminNavScreen> {
                 opacity: isSelected ? 1.0 : 0.0,
                 child: Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 14,
+                    fontSize: context.responsiveFontSize(14),
                     fontWeight: FontWeight.w600,
                   ),
                 ),

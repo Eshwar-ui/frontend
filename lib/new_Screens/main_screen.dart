@@ -11,6 +11,7 @@ import 'package:quantum_dashboard/providers/attendance_provider.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/providers/navigation_provider.dart';
 import 'package:quantum_dashboard/services/attendance_settings_service.dart';
+import 'package:quantum_dashboard/theme/app_design_system.dart';
 
 class NavScreen extends StatefulWidget {
   const NavScreen({super.key});
@@ -71,8 +72,8 @@ class _NavScreenState extends State<NavScreen> {
     }
 
     try {
-      final locationRequired =
-          await _attendanceSettingsService.getLocationPunchInEnabled();
+      final locationRequired = await _attendanceSettingsService
+          .getLocationPunchInEnabled();
 
       if (!locationRequired) {
         debugPrint('Auto Punch Out: Location not required, punching out.');
@@ -130,12 +131,11 @@ class _NavScreenState extends State<NavScreen> {
     final navigationProvider = Provider.of<NavigationProvider>(context);
     final currentPage = navigationProvider.currentPage;
 
-    int _selectedIndex = _pageMap[currentPage] ?? 0;
-    debugPrint("Building NavScreen with selectedIndex: $_selectedIndex");
+    int selectedIndex = _pageMap[currentPage] ?? 0;
 
     return PopScope(
       canPop: currentPage == NavigationPage.Dashboard,
-      onPopInvoked: (bool didPop) {
+      onPopInvokedWithResult: (bool didPop, dynamic result) {
         if (didPop) return;
 
         // If we are not on the dashboard, go back to dashboard
@@ -151,7 +151,7 @@ class _NavScreenState extends State<NavScreen> {
               // Main content with bottom padding to prevent overlap with nav bar
               Consumer<NavigationProvider>(
                 builder: (context, navProvider, child) {
-                  return _widgetOptions[_selectedIndex];
+                  return _widgetOptions[selectedIndex];
                 },
               ),
               // Floating Navigation Bar with absolute positioning
@@ -308,13 +308,11 @@ class _NavScreenState extends State<NavScreen> {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
         padding: EdgeInsets.symmetric(
-          horizontal: isSelected ? 20 : 16,
+          horizontal: isSelected ? 16 : 16,
           vertical: 12,
         ),
         decoration: BoxDecoration(
-          color: isSelected
-              ? colorScheme.primary
-              : colorScheme.surface,
+          color: isSelected ? colorScheme.primary : colorScheme.surface,
           borderRadius: BorderRadius.circular(25),
           boxShadow: [
             BoxShadow(
@@ -336,18 +334,18 @@ class _NavScreenState extends State<NavScreen> {
                   : (isDark
                         ? colorScheme.onSurface.withOpacity(0.7)
                         : Colors.grey[600]),
-              size: 24,
+              size: context.responsiveIconSize(24),
             ),
             if (isSelected) ...[
-              const SizedBox(width: 8),
+              const SizedBox(width: 2),
               AnimatedOpacity(
                 duration: const Duration(milliseconds: 200),
                 opacity: isSelected ? 1.0 : 0.0,
                 child: Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 14,
+                    fontSize: context.responsiveFontSize(14),
                     fontWeight: FontWeight.w600,
                   ),
                 ),

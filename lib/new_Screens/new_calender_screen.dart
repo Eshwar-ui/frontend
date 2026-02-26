@@ -6,7 +6,10 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/providers/attendance_provider.dart';
 import 'package:quantum_dashboard/providers/holiday_provider.dart';
+import 'package:quantum_dashboard/providers/leave_provider.dart';
 import 'package:quantum_dashboard/models/holiday_model.dart';
+import 'package:quantum_dashboard/models/leave_model.dart';
+import 'package:quantum_dashboard/utils/responsive_utils.dart';
 
 class new_calender_screen extends StatefulWidget {
   const new_calender_screen({super.key});
@@ -16,9 +19,10 @@ class new_calender_screen extends StatefulWidget {
 }
 
 class _new_calender_screenState extends State<new_calender_screen> {
-  DateTime _focusedDay = DateTime.now();
+  final ValueNotifier<DateTime> _focusedDay = ValueNotifier(DateTime.now());
   DateTime? _selectedDay = DateTime.now();
   final ScrollController _scrollController = ScrollController();
+  PageController? _calendarPageController;
 
   // Centralized attendance legend configuration (same as attendance_screen.dart)
   static const Map<String, Map<String, dynamic>> _attendanceLegend = {
@@ -38,6 +42,11 @@ class _new_calender_screenState extends State<new_calender_screen> {
       'label': 'Half Day',
     },
     'absent': {'color': Colors.red, 'icon': Icons.cancel, 'label': 'Absent'},
+    'leave': {
+      'color': Colors.teal,
+      'icon': Icons.event_busy,
+      'label': 'Leave',
+    },
     'holiday': {
       'color': Colors.purple,
       'icon': Icons.celebration,
@@ -88,10 +97,22 @@ class _new_calender_screenState extends State<new_calender_screen> {
   void initState() {
     super.initState();
     _loadData();
+    // Ensure we don't start on a month before joining date
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final join = Provider.of<AuthProvider>(context, listen: false).user?.joiningDate;
+      if (join != null && mounted) {
+        final joinMonth = DateTime(join.year, join.month, 1);
+        final current = DateTime(_focusedDay.value.year, _focusedDay.value.month, 1);
+        if (current.isBefore(joinMonth)) {
+          _focusedDay.value = join;
+        }
+      }
+    });
   }
 
   @override
   void dispose() {
+    _focusedDay.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -103,28 +124,27 @@ class _new_calender_screenState extends State<new_calender_screen> {
 
     final attendance = Provider.of<AttendanceProvider>(context, listen: false);
     final holidayProv = Provider.of<HolidayProvider>(context, listen: false);
+    final leaveProv = Provider.of<LeaveProvider>(context, listen: false);
 
     await Future.wait([
       attendance.getDateWiseData(
         employeeId,
-        month: _focusedDay.month,
-        year: _focusedDay.year,
+        month: _focusedDay.value.month,
+        year: _focusedDay.value.year,
       ),
-      holidayProv.getHolidaysByYear(_focusedDay.year),
+      holidayProv.getHolidaysByYear(_focusedDay.value.year),
+      leaveProv.getMyLeaves(employeeId),
     ]);
   }
 
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
     if (!isSameDay(_selectedDay, selectedDay)) {
       final monthChanged =
-          _focusedDay.month != selectedDay.month ||
-          _focusedDay.year != selectedDay.year;
-      setState(() {
-        _selectedDay = selectedDay;
-        _focusedDay = focusedDay;
-      });
+          _focusedDay.value.month != selectedDay.month ||
+          _focusedDay.value.year != selectedDay.year;
+      _focusedDay.value = focusedDay;
+      setState(() => _selectedDay = selectedDay);
       if (monthChanged) _loadData();
-      // No longer show bottom sheet on calendar cell click
     }
   }
 
@@ -154,7 +174,7 @@ class _new_calender_screenState extends State<new_calender_screen> {
     final breakHours =
         ((dayData['totalBreakTime'] ?? 0.0) as num).toDouble() / 3600.0;
 
-    print(
+    debugPrint(
       'Break time from backend: ${dayData['totalBreakTime']} seconds = $breakHours hours',
     );
 
@@ -171,7 +191,7 @@ class _new_calender_screenState extends State<new_calender_screen> {
         lastPunchOut = DateTime.parse(dayData['lastPunchOut'].toString());
       }
     } catch (e) {
-      print('Error parsing firstPunchIn/lastPunchOut from dayData: $e');
+      debugPrint('Error parsing firstPunchIn/lastPunchOut from dayData: $e');
     }
 
     // Fallback: try to extract from punches array if not found in dayData
@@ -202,23 +222,23 @@ class _new_calender_screenState extends State<new_calender_screen> {
           }
         }
       } catch (e) {
-        print('Error parsing punch times from punches array: $e');
+        debugPrint('Error parsing punch times from punches array: $e');
       }
     }
 
-    print('=== Calendar Bottom Sheet Data ===');
-    print('Date: $date');
-    print('Day Data Keys: ${dayData.keys.toList()}');
-    print('First Punch In (UTC): $firstPunchIn');
-    print('First Punch In (Local): ${firstPunchIn?.toLocal()}');
-    print('Last Punch Out (UTC): $lastPunchOut');
-    print('Last Punch Out (Local): ${lastPunchOut?.toLocal()}');
-    print(
+    debugPrint('=== Calendar Bottom Sheet Data ===');
+    debugPrint('Date: $date');
+    debugPrint('Day Data Keys: ${dayData.keys.toList()}');
+    debugPrint('First Punch In (UTC): $firstPunchIn');
+    debugPrint('First Punch In (Local): ${firstPunchIn?.toLocal()}');
+    debugPrint('Last Punch Out (UTC): $lastPunchOut');
+    debugPrint('Last Punch Out (Local): ${lastPunchOut?.toLocal()}');
+    debugPrint(
       'Working Hours (from backend): ${workingHours.toStringAsFixed(2)} hours',
     );
-    print('Break Hours (from backend): ${breakHours.toStringAsFixed(2)} hours');
-    print('Number of punches: ${punches.length}');
-    print('================================');
+    debugPrint('Break Hours (from backend): ${breakHours.toStringAsFixed(2)} hours');
+    debugPrint('Number of punches: ${punches.length}');
+    debugPrint('================================');
 
     // Check for holiday
     final holiday = holidayList.firstWhere(
@@ -226,6 +246,9 @@ class _new_calender_screenState extends State<new_calender_screen> {
       orElse: () =>
           Holiday(id: '', title: '', date: DateTime.now(), day: '', action: ''),
     );
+
+    final leaves = Provider.of<LeaveProvider>(context, listen: false).leaves;
+    final leaveForDate = _getLeaveForDate(date, leaves);
 
     return _buildDayDetailsWidget(
       date,
@@ -237,6 +260,7 @@ class _new_calender_screenState extends State<new_calender_screen> {
       firstPunchIn,
       lastPunchOut,
       holiday,
+      leave: leaveForDate,
     );
   }
 
@@ -249,8 +273,9 @@ class _new_calender_screenState extends State<new_calender_screen> {
     double breakHours,
     DateTime? firstPunchIn,
     DateTime? lastPunchOut,
-    Holiday holiday,
-  ) {
+    Holiday holiday, {
+    Leave? leave,
+  }) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -258,8 +283,10 @@ class _new_calender_screenState extends State<new_calender_screen> {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(28),
-          topRight: Radius.circular(28),
+          topLeft: Radius.circular(
+              ResponsiveUtils.responsiveRadius(context, 28)),
+          topRight: Radius.circular(
+              ResponsiveUtils.responsiveRadius(context, 28)),
         ),
         boxShadow: [
           BoxShadow(
@@ -279,7 +306,10 @@ class _new_calender_screenState extends State<new_calender_screen> {
             children: [
               // Handle bar
               Container(
-                margin: EdgeInsets.only(top: 12, bottom: 8),
+                margin: EdgeInsets.only(
+                  top: ResponsiveUtils.spacing(context, base: 12),
+                  bottom: ResponsiveUtils.spacing(context, base: 8),
+                ),
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
@@ -290,12 +320,16 @@ class _new_calender_screenState extends State<new_calender_screen> {
 
               // Header with date and status
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: EdgeInsets.symmetric(
+                  horizontal: ResponsiveUtils.paddingHorizontal(context).left,
+                  vertical: ResponsiveUtils.spacing(context, base: 16),
+                ),
                 child: Row(
                   children: [
                     Container(
-                      width: 60,
-                      height: 60,
+                      width: ResponsiveUtils.scale(context, 60, maxScale: 1.2),
+                      height:
+                          ResponsiveUtils.scale(context, 60, maxScale: 1.2),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
@@ -318,12 +352,17 @@ class _new_calender_screenState extends State<new_calender_screen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(icon, color: color, size: 24),
-                          SizedBox(height: 2),
+                          Icon(icon, color: color,
+                              size: ResponsiveUtils.responsiveIconSize(
+                                  context, 24)),
+                          SizedBox(
+                              height: ResponsiveUtils.spacing(context,
+                                  base: 2)),
                           Text(
                             '${date.day}',
                             style: GoogleFonts.poppins(
-                              fontSize: 12,
+                              fontSize: ResponsiveUtils.responsiveFontSize(
+                                  context, 12),
                               fontWeight: FontWeight.bold,
                               color: color,
                             ),
@@ -331,7 +370,8 @@ class _new_calender_screenState extends State<new_calender_screen> {
                         ],
                       ),
                     ),
-                    SizedBox(width: 16),
+                    SizedBox(
+                        width: ResponsiveUtils.spacing(context, base: 16)),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -339,7 +379,8 @@ class _new_calender_screenState extends State<new_calender_screen> {
                           Text(
                             DateFormat('EEEE').format(date),
                             style: GoogleFonts.poppins(
-                              fontSize: 20,
+                              fontSize: ResponsiveUtils.responsiveFontSize(
+                                  context, 20),
                               fontWeight: FontWeight.bold,
                               color: colorScheme.onSurface,
                             ),
@@ -347,7 +388,8 @@ class _new_calender_screenState extends State<new_calender_screen> {
                           Text(
                             DateFormat('MMM d, yyyy').format(date),
                             style: GoogleFonts.poppins(
-                              fontSize: 14,
+                              fontSize: ResponsiveUtils.responsiveFontSize(
+                                  context, 14),
                               color: colorScheme.onSurface.withOpacity(0.6),
                             ),
                           ),
@@ -361,10 +403,14 @@ class _new_calender_screenState extends State<new_calender_screen> {
               // Status Badge
               if (status.isNotEmpty)
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24),
+                  padding: ResponsiveUtils.paddingHorizontal(context),
                   child: Container(
                     width: double.infinity,
-                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    padding: EdgeInsets.symmetric(
+                      vertical: ResponsiveUtils.spacing(context, base: 12),
+                      horizontal:
+                          ResponsiveUtils.spacing(context, base: 16),
+                    ),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
@@ -374,7 +420,8 @@ class _new_calender_screenState extends State<new_calender_screen> {
                           color.withOpacity(0.05),
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(
+                          ResponsiveUtils.responsiveRadius(context, 12)),
                       border: Border.all(
                         color: color.withOpacity(0.3),
                         width: 1,
@@ -383,12 +430,18 @@ class _new_calender_screenState extends State<new_calender_screen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(icon, size: 20, color: color),
-                        SizedBox(width: 8),
+                        Icon(icon,
+                            size: ResponsiveUtils.responsiveIconSize(
+                                context, 20),
+                            color: color),
+                        SizedBox(
+                            width: ResponsiveUtils.spacing(context,
+                                base: 8)),
                         Text(
                           status,
                           style: GoogleFonts.poppins(
-                            fontSize: 16,
+                            fontSize: ResponsiveUtils.responsiveFontSize(
+                                context, 16),
                             fontWeight: FontWeight.w600,
                             color: color,
                           ),
@@ -398,14 +451,79 @@ class _new_calender_screenState extends State<new_calender_screen> {
                   ),
                 ),
 
-              // Holiday info
-              if (holiday.id.isNotEmpty) ...[
-                SizedBox(height: 16),
+              // Leave info (when day is on approved leave)
+              if (leave != null) ...[
+                SizedBox(height: ResponsiveUtils.spacing(context, base: 16)),
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24),
+                  padding: ResponsiveUtils.paddingHorizontal(context),
                   child: Container(
                     width: double.infinity,
-                    padding: EdgeInsets.all(16),
+                    padding: ResponsiveUtils.padding(context),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.teal.withOpacity(0.15),
+                          Colors.teal.withOpacity(0.05),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(
+                          ResponsiveUtils.responsiveRadius(context, 12)),
+                      border: Border.all(
+                        color: Colors.teal.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.event_busy, color: Colors.teal,
+                            size: ResponsiveUtils.responsiveIconSize(
+                                context, 24)),
+                        SizedBox(
+                            width: ResponsiveUtils.spacing(context,
+                                base: 12)),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                leave.type,
+                                style: GoogleFonts.poppins(
+                                  fontSize: ResponsiveUtils.responsiveFontSize(
+                                      context, 14),
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.teal.shade800,
+                                ),
+                              ),
+                              if (leave.reason.isNotEmpty)
+                                Text(
+                                  leave.reason,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: ResponsiveUtils.responsiveFontSize(
+                                        context, 12),
+                                    color: colorScheme.onSurface.withOpacity(0.7),
+                                  ),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+
+              // Holiday info
+              if (holiday.id.isNotEmpty) ...[
+                SizedBox(height: ResponsiveUtils.spacing(context, base: 16)),
+                Padding(
+                  padding: ResponsiveUtils.paddingHorizontal(context),
+                  child: Container(
+                    width: double.infinity,
+                    padding: ResponsiveUtils.padding(context),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
@@ -415,7 +533,8 @@ class _new_calender_screenState extends State<new_calender_screen> {
                           Colors.purple.withOpacity(0.05),
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(
+                          ResponsiveUtils.responsiveRadius(context, 12)),
                       border: Border.all(
                         color: Colors.purple.withOpacity(0.3),
                         width: 1,
@@ -423,8 +542,12 @@ class _new_calender_screenState extends State<new_calender_screen> {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.celebration, color: Colors.purple, size: 24),
-                        SizedBox(width: 12),
+                        Icon(Icons.celebration, color: Colors.purple,
+                            size: ResponsiveUtils.responsiveIconSize(
+                                context, 24)),
+                        SizedBox(
+                            width: ResponsiveUtils.spacing(context,
+                                base: 12)),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -432,7 +555,8 @@ class _new_calender_screenState extends State<new_calender_screen> {
                               Text(
                                 'Holiday',
                                 style: GoogleFonts.poppins(
-                                  fontSize: 12,
+                                  fontSize: ResponsiveUtils.responsiveFontSize(
+                                      context, 12),
                                   fontWeight: FontWeight.w500,
                                   color: Colors.purple[800],
                                 ),
@@ -440,7 +564,8 @@ class _new_calender_screenState extends State<new_calender_screen> {
                               Text(
                                 holiday.title,
                                 style: GoogleFonts.poppins(
-                                  fontSize: 16,
+                                  fontSize: ResponsiveUtils.responsiveFontSize(
+                                      context, 16),
                                   fontWeight: FontWeight.w600,
                                   color: Colors.purple[900],
                                 ),
@@ -458,15 +583,16 @@ class _new_calender_screenState extends State<new_calender_screen> {
 
               // First Punch In
               if (firstPunchIn != null) ...[
-                SizedBox(height: 16),
+                SizedBox(height: ResponsiveUtils.spacing(context, base: 16)),
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24),
+                  padding: ResponsiveUtils.paddingHorizontal(context),
                   child: Container(
                     width: double.infinity,
-                    padding: EdgeInsets.all(16),
+                    padding: ResponsiveUtils.padding(context),
                     decoration: BoxDecoration(
                       color: theme.cardColor,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(
+                          ResponsiveUtils.responsiveRadius(context, 12)),
                       border: Border.all(
                         color: colorScheme.outline.withOpacity(0.2),
                         width: 1,
@@ -477,16 +603,20 @@ class _new_calender_screenState extends State<new_calender_screen> {
                         Icon(
                           Icons.login,
                           color: colorScheme.onSurface.withOpacity(0.7),
-                          size: 24,
+                          size: ResponsiveUtils.responsiveIconSize(
+                              context, 24),
                         ),
-                        SizedBox(width: 12),
+                        SizedBox(
+                            width: ResponsiveUtils.spacing(context,
+                                base: 12)),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'First Punch In',
                               style: GoogleFonts.poppins(
-                                fontSize: 12,
+                                fontSize: ResponsiveUtils.responsiveFontSize(
+                                    context, 12),
                                 fontWeight: FontWeight.w500,
                                 color: colorScheme.onSurface.withOpacity(0.7),
                               ),
@@ -496,7 +626,8 @@ class _new_calender_screenState extends State<new_calender_screen> {
                                 'h:mm a',
                               ).format(firstPunchIn.toLocal()),
                               style: GoogleFonts.poppins(
-                                fontSize: 18,
+                                fontSize: ResponsiveUtils.responsiveFontSize(
+                                    context, 18),
                                 fontWeight: FontWeight.bold,
                                 color: colorScheme.onSurface,
                               ),
@@ -511,15 +642,16 @@ class _new_calender_screenState extends State<new_calender_screen> {
 
               // Last Punch Out
               if (lastPunchOut != null) ...[
-                SizedBox(height: 16),
+                SizedBox(height: ResponsiveUtils.spacing(context, base: 16)),
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24),
+                  padding: ResponsiveUtils.paddingHorizontal(context),
                   child: Container(
                     width: double.infinity,
-                    padding: EdgeInsets.all(16),
+                    padding: ResponsiveUtils.padding(context),
                     decoration: BoxDecoration(
                       color: theme.cardColor,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(
+                          ResponsiveUtils.responsiveRadius(context, 12)),
                       border: Border.all(
                         color: colorScheme.outline.withOpacity(0.2),
                         width: 1,
@@ -530,16 +662,20 @@ class _new_calender_screenState extends State<new_calender_screen> {
                         Icon(
                           Icons.logout,
                           color: colorScheme.onSurface.withOpacity(0.7),
-                          size: 24,
+                          size: ResponsiveUtils.responsiveIconSize(
+                              context, 24),
                         ),
-                        SizedBox(width: 12),
+                        SizedBox(
+                            width: ResponsiveUtils.spacing(context,
+                                base: 12)),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'Last Punch Out',
                               style: GoogleFonts.poppins(
-                                fontSize: 12,
+                                fontSize: ResponsiveUtils.responsiveFontSize(
+                                    context, 12),
                                 fontWeight: FontWeight.w500,
                                 color: colorScheme.onSurface.withOpacity(0.7),
                               ),
@@ -549,7 +685,8 @@ class _new_calender_screenState extends State<new_calender_screen> {
                                 'h:mm a',
                               ).format(lastPunchOut.toLocal()),
                               style: GoogleFonts.poppins(
-                                fontSize: 18,
+                                fontSize: ResponsiveUtils.responsiveFontSize(
+                                    context, 18),
                                 fontWeight: FontWeight.bold,
                                 color: colorScheme.onSurface,
                               ),
@@ -564,15 +701,16 @@ class _new_calender_screenState extends State<new_calender_screen> {
 
               // Working Hours
               ...[
-                SizedBox(height: 16),
+                SizedBox(height: ResponsiveUtils.spacing(context, base: 16)),
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24),
+                  padding: ResponsiveUtils.paddingHorizontal(context),
                   child: Container(
                     width: double.infinity,
-                    padding: EdgeInsets.all(16),
+                    padding: ResponsiveUtils.padding(context),
                     decoration: BoxDecoration(
                       color: theme.cardColor,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(
+                          ResponsiveUtils.responsiveRadius(context, 12)),
                       border: Border.all(
                         color: colorScheme.outline.withOpacity(0.2),
                         width: 1,
@@ -583,16 +721,20 @@ class _new_calender_screenState extends State<new_calender_screen> {
                         Icon(
                           Icons.timer_outlined,
                           color: colorScheme.onSurface.withOpacity(0.7),
-                          size: 24,
+                          size: ResponsiveUtils.responsiveIconSize(
+                              context, 24),
                         ),
-                        SizedBox(width: 12),
+                        SizedBox(
+                            width: ResponsiveUtils.spacing(context,
+                                base: 12)),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'Working Hours',
                               style: GoogleFonts.poppins(
-                                fontSize: 12,
+                                fontSize: ResponsiveUtils.responsiveFontSize(
+                                    context, 12),
                                 fontWeight: FontWeight.w500,
                                 color: colorScheme.onSurface.withOpacity(0.7),
                               ),
@@ -600,7 +742,8 @@ class _new_calender_screenState extends State<new_calender_screen> {
                             Text(
                               _formatHours(workingHours),
                               style: GoogleFonts.poppins(
-                                fontSize: 18,
+                                fontSize: ResponsiveUtils.responsiveFontSize(
+                                    context, 18),
                                 fontWeight: FontWeight.bold,
                                 color: colorScheme.onSurface,
                               ),
@@ -615,15 +758,16 @@ class _new_calender_screenState extends State<new_calender_screen> {
 
               // Break Hours
               ...[
-                SizedBox(height: 16),
+                SizedBox(height: ResponsiveUtils.spacing(context, base: 16)),
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24),
+                  padding: ResponsiveUtils.paddingHorizontal(context),
                   child: Container(
                     width: double.infinity,
-                    padding: EdgeInsets.all(16),
+                    padding: ResponsiveUtils.padding(context),
                     decoration: BoxDecoration(
                       color: theme.cardColor,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(
+                          ResponsiveUtils.responsiveRadius(context, 12)),
                       border: Border.all(
                         color: colorScheme.outline.withOpacity(0.2),
                         width: 1,
@@ -634,16 +778,20 @@ class _new_calender_screenState extends State<new_calender_screen> {
                         Icon(
                           Icons.pause_circle_outline,
                           color: colorScheme.onSurface.withOpacity(0.7),
-                          size: 24,
+                          size: ResponsiveUtils.responsiveIconSize(
+                              context, 24),
                         ),
-                        SizedBox(width: 12),
+                        SizedBox(
+                            width: ResponsiveUtils.spacing(context,
+                                base: 12)),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'Break Hours',
                               style: GoogleFonts.poppins(
-                                fontSize: 12,
+                                fontSize: ResponsiveUtils.responsiveFontSize(
+                                    context, 12),
                                 fontWeight: FontWeight.w500,
                                 color: colorScheme.onSurface.withOpacity(0.7),
                               ),
@@ -651,7 +799,8 @@ class _new_calender_screenState extends State<new_calender_screen> {
                             Text(
                               _formatHours(breakHours),
                               style: GoogleFonts.poppins(
-                                fontSize: 18,
+                                fontSize: ResponsiveUtils.responsiveFontSize(
+                                    context, 18),
                                 fontWeight: FontWeight.bold,
                                 color: colorScheme.onSurface,
                               ),
@@ -681,11 +830,53 @@ class _new_calender_screenState extends State<new_calender_screen> {
     );
   }
 
+  /// Returns true if [date] falls on or within an approved leave for current employee.
+  bool _isDateOnLeave(DateTime date, List<Leave> leaves) {
+    final d = DateTime(date.year, date.month, date.day);
+    for (final leave in leaves) {
+      if (leave.status.toLowerCase() != 'approved') continue;
+      final from = DateTime(leave.from.year, leave.from.month, leave.from.day);
+      final to = DateTime(leave.to.year, leave.to.month, leave.to.day);
+      if ((d.isAtSameMomentAs(from) || d.isAfter(from)) &&
+          (d.isAtSameMomentAs(to) || d.isBefore(to))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Returns the approved leave that covers [date], if any.
+  Leave? _getLeaveForDate(DateTime date, List<Leave> leaves) {
+    final d = DateTime(date.year, date.month, date.day);
+    for (final leave in leaves) {
+      if (leave.status.toLowerCase() != 'approved') continue;
+      final from = DateTime(leave.from.year, leave.from.month, leave.from.day);
+      final to = DateTime(leave.to.year, leave.to.month, leave.to.day);
+      if ((d.isAtSameMomentAs(from) || d.isAfter(from)) &&
+          (d.isAtSameMomentAs(to) || d.isBefore(to))) {
+        return leave;
+      }
+    }
+    return null;
+  }
+
   String _getAttendanceStatus(
     DateTime date,
     List<Map<String, dynamic>> dateWiseData,
     List<Holiday> holidays,
   ) {
+    final user = Provider.of<AuthProvider>(context, listen: false).user;
+    final joiningDate = user?.joiningDate;
+    final leaves = Provider.of<LeaveProvider>(context, listen: false).leaves;
+
+    // Before join date: show as nil (empty), not absent
+    if (joiningDate != null) {
+      final joinDay = DateTime(
+          joiningDate.year, joiningDate.month, joiningDate.day);
+      final d = DateTime(date.year, date.month, date.day);
+      if (d.isBefore(joinDay)) return '';
+    }
+
     final key =
         '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}';
     final day = dateWiseData.firstWhere(
@@ -701,6 +892,9 @@ class _new_calender_screenState extends State<new_calender_screen> {
       }
       // If there is activity, proceed to calculate status
     }
+
+    // Check for approved leave (employee's leaves)
+    if (_isDateOnLeave(date, leaves)) return 'Leave';
 
     // Check for holiday
     final holiday = holidays.firstWhere(
@@ -719,7 +913,7 @@ class _new_calender_screenState extends State<new_calender_screen> {
         final normalizedStatus =
             backendStatus.substring(0, 1).toUpperCase() +
             backendStatus.substring(1).toLowerCase();
-        print(
+        debugPrint(
           '📅 Date $key: Backend status = $backendStatus -> $normalizedStatus',
         );
         return normalizedStatus;
@@ -733,7 +927,7 @@ class _new_calender_screenState extends State<new_calender_screen> {
 
       // Present: >= 7.5 hours (7h 30m)
       if (workingHours >= 7.5) {
-        print(
+        debugPrint(
           '📅 Date $key: Calculated status = Present (${workingHours.toStringAsFixed(2)}h)',
         );
         return 'Present';
@@ -741,7 +935,7 @@ class _new_calender_screenState extends State<new_calender_screen> {
 
       // Half Day: >= 3.5 hours (3h 30m) but < 7.5 hours
       if (workingHours >= 3.5) {
-        print(
+        debugPrint(
           '📅 Date $key: Calculated status = Half Day (${workingHours.toStringAsFixed(2)}h)',
         );
         return 'Half Day';
@@ -752,7 +946,7 @@ class _new_calender_screenState extends State<new_calender_screen> {
         final now = DateTime.now();
         final today = DateTime(now.year, now.month, now.day);
         if (date.isBefore(today)) {
-          print(
+          debugPrint(
             '📅 Date $key: Calculated status = Absent (${workingHours.toStringAsFixed(2)}h < 3.5h required)',
           );
           return 'Absent';
@@ -764,12 +958,12 @@ class _new_calender_screenState extends State<new_calender_screen> {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     if (date.isBefore(today)) {
-      print('📅 Date $key: Status = Absent (past date, no data)');
+      debugPrint('📅 Date $key: Status = Absent (past date, no data)');
       return 'Absent';
     }
 
     // Future dates or current day with no data
-    print('📅 Date $key: Status = Empty (future/current date, no data)');
+    debugPrint('📅 Date $key: Status = Empty (future/current date, no data)');
     return '';
   }
 
@@ -779,8 +973,9 @@ class _new_calender_screenState extends State<new_calender_screen> {
 
   Widget _buildCalendar(
     List<Map<String, dynamic>> dateWiseData,
-    List<Holiday> holidays,
-  ) {
+    List<Holiday> holidays, {
+    DateTime? joiningDate,
+  }) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
@@ -796,7 +991,8 @@ class _new_calender_screenState extends State<new_calender_screen> {
                 colors: [Color(0xFFF7F9FC), Color(0xFFFFFFFF)],
               ),
         color: isDark ? theme.cardColor : null,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(
+            ResponsiveUtils.responsiveRadius(context, 20)),
         boxShadow: [
           BoxShadow(
             color: (isDark
@@ -817,119 +1013,141 @@ class _new_calender_screenState extends State<new_calender_screen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Custom header with gradient
-          Container(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDark
-                    ? [
-                        colorScheme.primaryContainer,
-                        colorScheme.primaryContainer.withOpacity(0.8),
-                      ]
-                    : [
-                        colorScheme.primary.withOpacity(0.1),
-                        colorScheme.primary.withOpacity(0.05),
-                      ],
-              ),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _focusedDay = DateTime(
-                        _focusedDay.year,
-                        _focusedDay.month - 1,
-                      );
-                    });
-                    _loadData();
-                  },
-                  icon: Container(
-                    padding: EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surface.withOpacity(0.5),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: Offset(0, 2),
+          // Custom header with gradient (ValueListenableBuilder avoids setState on month change so TableCalendar is not rebuilt)
+          ValueListenableBuilder<DateTime>(
+            valueListenable: _focusedDay,
+            builder: (context, value, _) {
+              final firstAllowedMonth = joiningDate != null
+                  ? DateTime(joiningDate.year, joiningDate.month, 1)
+                  : null;
+              final prevMonth = DateTime(value.year, value.month - 1, 1);
+              final canGoPrev = firstAllowedMonth == null ||
+                  !prevMonth.isBefore(firstAllowedMonth);
+              return Container(
+                padding: EdgeInsets.symmetric(
+                    vertical: ResponsiveUtils.spacing(context, base: 16)),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: isDark
+                        ? [
+                            colorScheme.primaryContainer,
+                            colorScheme.primaryContainer.withOpacity(0.8),
+                          ]
+                        : [
+                            colorScheme.primary.withOpacity(0.1),
+                            colorScheme.primary.withOpacity(0.05),
+                          ],
+                  ),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(
+                        ResponsiveUtils.responsiveRadius(context, 20)),
+                    topRight: Radius.circular(
+                        ResponsiveUtils.responsiveRadius(context, 20)),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      onPressed: canGoPrev
+                          ? () {
+                              _calendarPageController?.previousPage(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeOut,
+                              );
+                            }
+                          : null,
+                      icon: Opacity(
+                        opacity: canGoPrev ? 1.0 : 0.4,
+                        child: Container(
+                        padding: EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surface.withOpacity(0.5),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.chevron_left,
-                        color: colorScheme.primary,
-                        size: 24,
+                        child: Center(
+                          child: Icon(
+                            Icons.chevron_left,
+                            color: colorScheme.primary,
+                            size: ResponsiveUtils.responsiveIconSize(context, 24),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                Text(
-                  DateFormat('MMMM yyyy').format(_focusedDay),
-                  style: GoogleFonts.poppins(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-                IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _focusedDay = DateTime(
-                        _focusedDay.year,
-                        _focusedDay.month + 1,
-                      );
-                    });
-                    _loadData();
-                  },
-                  icon: Container(
-                    padding: EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surface.withOpacity(0.5),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 8,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
                     ),
-                    child: Center(
-                      child: Icon(
-                        Icons.chevron_right,
-                        color: colorScheme.primary,
-                        size: 24,
+                    Text(
+                      DateFormat('MMMM yyyy').format(value),
+                      style: GoogleFonts.poppins(
+                        fontSize: ResponsiveUtils.responsiveFontSize(context, 20),
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
                       ),
                     ),
-                  ),
+                    IconButton(
+                      onPressed: () {
+                        _calendarPageController?.nextPage(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOut,
+                        );
+                      },
+                      icon: Container(
+                        padding: EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surface.withOpacity(0.5),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Icon(
+                            Icons.chevron_right,
+                            color: colorScheme.primary,
+                            size: ResponsiveUtils.responsiveIconSize(context, 24),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              );
+            },
           ),
-          SizedBox(height: 16),
+          SizedBox(height: ResponsiveUtils.spacing(context, base: 16)),
 
           TableCalendar(
-            firstDay: DateTime(2020),
+            key: ValueKey(
+                'attendance_cal_${joiningDate?.millisecondsSinceEpoch ?? 0}'),
+            onCalendarCreated: (controller) {
+              _calendarPageController = controller;
+            },
+            firstDay: joiningDate != null
+                ? DateTime(joiningDate.year, joiningDate.month, 1)
+                : DateTime(2020),
             lastDay: DateTime(2030),
-            focusedDay: _focusedDay,
+            focusedDay: _focusedDay.value,
             calendarFormat: CalendarFormat.month,
             selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
             onDaySelected: _onDaySelected,
             onPageChanged: (focusedDay) {
-              setState(() {
-                _focusedDay = focusedDay;
-              });
+              final firstDay = joiningDate != null
+                  ? DateTime(joiningDate.year, joiningDate.month, 1)
+                  : DateTime(2020);
+              final clamped = focusedDay.isBefore(firstDay) ? firstDay : focusedDay;
+              _focusedDay.value = clamped;
               _loadData();
             },
             headerVisible:
@@ -940,12 +1158,12 @@ class _new_calender_screenState extends State<new_calender_screen> {
             ),
             daysOfWeekStyle: DaysOfWeekStyle(
               weekdayStyle: GoogleFonts.poppins(
-                fontSize: 12,
+                fontSize: ResponsiveUtils.responsiveFontSize(context, 12),
                 fontWeight: FontWeight.w600,
                 color: colorScheme.onSurface.withOpacity(0.7),
               ),
               weekendStyle: GoogleFonts.poppins(
-                fontSize: 12,
+                fontSize: ResponsiveUtils.responsiveFontSize(context, 12),
                 fontWeight: FontWeight.w600,
                 color: colorScheme.onSurface.withOpacity(0.7),
               ),
@@ -1102,7 +1320,7 @@ class _new_calender_screenState extends State<new_calender_screen> {
                 Text(
                   '${date.day}',
                   style: GoogleFonts.poppins(
-                    fontSize: 14,
+                    fontSize: ResponsiveUtils.responsiveFontSize(context, 14),
                     fontWeight: isSelected || isToday
                         ? FontWeight.bold
                         : FontWeight.w600,
@@ -1152,6 +1370,7 @@ class _new_calender_screenState extends State<new_calender_screen> {
       'present',
       'halfday',
       'absent',
+      'leave',
       'holiday',
       'weekend',
       'today',
@@ -1166,10 +1385,14 @@ class _new_calender_screenState extends State<new_calender_screen> {
     final textColor = isDark ? colorScheme.onSurface : Colors.grey[800];
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: ResponsiveUtils.padding(context).left,
+        vertical: ResponsiveUtils.spacing(context, base: 8),
+      ),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: const BorderRadius.all(Radius.circular(12)),
+        borderRadius: BorderRadius.all(
+            Radius.circular(ResponsiveUtils.responsiveRadius(context, 12))),
         boxShadow: [
           if (!isDark)
             BoxShadow(
@@ -1185,15 +1408,15 @@ class _new_calender_screenState extends State<new_calender_screen> {
           Text(
             'Attendance Legend',
             style: GoogleFonts.poppins(
-              fontSize: 16,
+              fontSize: ResponsiveUtils.responsiveFontSize(context, 16),
               fontWeight: FontWeight.bold,
               color: textColor,
             ),
           ),
-          SizedBox(height: 12),
+          SizedBox(height: ResponsiveUtils.spacing(context, base: 12)),
           Wrap(
-            spacing: 16,
-            runSpacing: 8,
+            spacing: ResponsiveUtils.spacing(context, base: 16),
+            runSpacing: ResponsiveUtils.spacing(context, base: 8),
             children: legendOrder.map((status) {
               final config = _getAttendanceConfig(status);
               if (config != null) {
@@ -1205,12 +1428,14 @@ class _new_calender_screenState extends State<new_calender_screen> {
                     ? colorScheme.onSurface
                     : Colors.grey[700];
 
+                final iconSz =
+                    ResponsiveUtils.responsiveIconSize(context, 16);
                 return Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      width: 16,
-                      height: 16,
+                      width: iconSz,
+                      height: iconSz,
                       decoration: BoxDecoration(
                         color: dotColor,
                         shape: BoxShape.circle,
@@ -1222,13 +1447,15 @@ class _new_calender_screenState extends State<new_calender_screen> {
                             : null,
                       ),
                     ),
-                    SizedBox(width: 6),
-                    Icon(config['icon'] as IconData, size: 16, color: dotColor),
-                    SizedBox(width: 4),
+                    SizedBox(width: ResponsiveUtils.spacing(context, base: 6)),
+                    Icon(config['icon'] as IconData,
+                        size: iconSz, color: dotColor),
+                    SizedBox(width: ResponsiveUtils.spacing(context, base: 4)),
                     Text(
                       config['label'] as String,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize:
+                            ResponsiveUtils.responsiveFontSize(context, 12),
                         color: labelColor,
                         fontWeight: FontWeight.w500,
                       ),
@@ -1319,10 +1546,11 @@ class _new_calender_screenState extends State<new_calender_screen> {
     }
 
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: ResponsiveUtils.padding(context),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(
+            ResponsiveUtils.responsiveRadius(context, 12)),
         border: Border.all(
           color: colorScheme.outline.withOpacity(0.2),
           width: 1,
@@ -1331,14 +1559,16 @@ class _new_calender_screenState extends State<new_calender_screen> {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(ResponsiveUtils.spacing(context, base: 8)),
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(
+                  ResponsiveUtils.responsiveRadius(context, 10)),
             ),
-            child: Icon(icon, color: color, size: 24),
+            child: Icon(icon, color: color,
+                size: ResponsiveUtils.responsiveIconSize(context, 24)),
           ),
-          SizedBox(width: 12),
+          SizedBox(width: ResponsiveUtils.spacing(context, base: 12)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1346,7 +1576,8 @@ class _new_calender_screenState extends State<new_calender_screen> {
                 Text(
                   label,
                   style: GoogleFonts.poppins(
-                    fontSize: 12,
+                    fontSize:
+                        ResponsiveUtils.responsiveFontSize(context, 12),
                     fontWeight: FontWeight.w500,
                     color: colorScheme.onSurface.withOpacity(0.7),
                   ),
@@ -1356,7 +1587,8 @@ class _new_calender_screenState extends State<new_calender_screen> {
                 Text(
                   formatTime(time),
                   style: GoogleFonts.poppins(
-                    fontSize: 16,
+                    fontSize:
+                        ResponsiveUtils.responsiveFontSize(context, 16),
                     fontWeight: FontWeight.bold,
                     color: colorScheme.onSurface,
                   ),
@@ -1399,7 +1631,7 @@ class _new_calender_screenState extends State<new_calender_screen> {
             title: Text(
               'Attendance',
               style: GoogleFonts.poppins(
-                fontSize: 20,
+                fontSize: ResponsiveUtils.responsiveFontSize(context, 20),
                 fontWeight: FontWeight.bold,
                 color: colorScheme.onSurface,
               ),
@@ -1407,13 +1639,17 @@ class _new_calender_screenState extends State<new_calender_screen> {
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: _buildCalendar(dateWiseData, holidayList),
+              padding: ResponsiveUtils.padding(context),
+              child: _buildCalendar(
+                dateWiseData,
+                holidayList,
+                joiningDate: user?.joiningDate,
+              ),
             ),
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: ResponsiveUtils.paddingHorizontal(context),
               child: _selectedDay != null
                   ? _buildDayDetails(_selectedDay!)
                   : const SizedBox(),
@@ -1421,7 +1657,7 @@ class _new_calender_screenState extends State<new_calender_screen> {
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: ResponsiveUtils.padding(context),
               child: _buildCalendarLegend(),
             ),
           ), // Extra padding for nav bar

@@ -8,6 +8,7 @@ import 'package:quantum_dashboard/screens/leaves_screen.dart';
 import 'package:quantum_dashboard/screens/new_payslip_screen.dart';
 import 'package:quantum_dashboard/screens/holidays_screen.dart';
 import 'package:quantum_dashboard/new_Screens/settings_page.dart';
+import 'package:quantum_dashboard/theme/app_design_system.dart';
 
 class new_search_screen extends StatefulWidget {
   const new_search_screen({super.key});
@@ -436,28 +437,30 @@ class _new_search_screenState extends State<new_search_screen> {
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: context.responsivePadding,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: context.responsivePadding,
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(service.icon, color: Colors.white, size: 28),
               ),
-              Text(
-                service.title,
-                style: GoogleFonts.poppins(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
+              Expanded(
+                child: Text(
+                  service.title,
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

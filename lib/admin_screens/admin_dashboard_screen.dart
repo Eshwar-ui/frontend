@@ -12,6 +12,8 @@ import 'package:intl/intl.dart';
 import 'package:quantum_dashboard/services/department_service.dart';
 import 'package:quantum_dashboard/utils/responsive_utils.dart';
 import 'package:quantum_dashboard/admin_screens/admin_compoff_screen.dart';
+import 'package:quantum_dashboard/theme/app_design_system.dart';
+import 'package:quantum_dashboard/utils/string_extensions.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -39,7 +41,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       final deptService = DepartmentService();
       _departments = await deptService.getDepartments();
     } catch (e) {
-      print('Error loading departments: $e');
+      debugPrint('Error loading departments: $e');
     }
   }
 
@@ -50,17 +52,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildHeader(),
-            _buildStatsGrid(),
-            _buildManagementSection(),
-            _buildChartsSection(),
-            SizedBox(
-              height: (ResponsiveUtils.spacing(context, base: 80) + 40)
-                  .clamp(100, 140),
-            ), // Extra padding for nav bar
-          ],
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: context.maxContentWidth,
+            ),
+            child: Column(
+              children: [
+                _buildHeader(),
+                _buildStatsGrid(),
+                _buildManagementSection(),
+                _buildChartsSection(),
+                SizedBox(
+                  height: (ResponsiveUtils.spacing(context, base: 80) + 40)
+                      .clamp(100, 140),
+                ), // Extra padding for nav bar
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -81,7 +90,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Hello $firstName',
+                  'Hello ${firstName.toTitleCase()}',
                   style: GoogleFonts.poppins(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -815,7 +824,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         if (monthlyLeaves.containsKey(key)) {
           monthlyLeaves[key] = (monthlyLeaves[key] ?? 0) + 1;
         }
-      } catch (e) {}
+      } catch (_) {
+        // Skip invalid leave entries
+      }
     }
 
     final entries = monthlyLeaves.entries.toList();

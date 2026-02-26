@@ -46,11 +46,22 @@ class ApiService {
 
   // Handle API response
   dynamic handleResponse(http.Response response) {
+    final contentType = response.headers['content-type']?.toLowerCase() ?? '';
+    final isHtmlResponse =
+        contentType.contains('text/html') ||
+        response.body.trimLeft().startsWith('<!DOCTYPE html') ||
+        response.body.trimLeft().startsWith('<html');
+
     AppLogger.debug('API Response received', {
       'statusCode': response.statusCode,
       'url': response.request?.url.toString(),
     });
-    AppLogger.trace('API Response Body', response.body);
+    AppLogger.trace(
+      'API Response Body',
+      response.body.length > 1000
+          ? '${response.body.substring(0, 1000)}... [truncated]'
+          : response.body,
+    );
     AppLogger.trace('API Response Headers', response.headers);
 
     // Handle empty body responses
@@ -69,6 +80,15 @@ class ApiService {
     // Check for error status codes
     if (response.statusCode >= 400) {
       String errorMessage = 'An error occurred';
+
+      if (isHtmlResponse) {
+        errorMessage = getDefaultErrorMessage(response.statusCode);
+        AppLogger.error(
+          'API returned ${response.statusCode} HTML error page',
+          null,
+        );
+        throw ServerErrorException(errorMessage, statusCode: response.statusCode);
+      }
 
       // Try to parse error message from response
       try {

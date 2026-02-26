@@ -9,6 +9,9 @@ import 'package:quantum_dashboard/providers/leave_provider.dart';
 import 'package:quantum_dashboard/providers/notification_provider.dart';
 import 'package:quantum_dashboard/providers/employee_provider.dart';
 import 'package:quantum_dashboard/utils/text_styles.dart';
+import 'package:quantum_dashboard/theme/app_design_system.dart';
+import 'package:quantum_dashboard/utils/responsive_utils.dart';
+import 'package:quantum_dashboard/utils/string_extensions.dart';
 
 class AdminLeaveRequestsScreen extends StatefulWidget {
   @override
@@ -17,9 +20,11 @@ class AdminLeaveRequestsScreen extends StatefulWidget {
 }
 
 class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
+  final TextEditingController _searchController = TextEditingController();
   String _selectedStatus = 'all';
   DateTime? _dateFrom;
   DateTime? _dateTo;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -30,8 +35,192 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
     });
   }
 
+  Widget _buildFiltersRow(
+    BuildContext context,
+    ColorScheme colorScheme, {
+    required bool isNarrow,
+  }) {
+    final spacingSmall = context.responsiveSpacing(8);
+    final spacingMedium = context.responsiveSpacing(12);
+
+    // Shared status dropdown content (used with or without Expanded)
+    final statusFilterContent = Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: context.responsiveSpacing(16),
+        vertical: context.responsiveSpacing(4),
+      ),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(context.responsiveRadius(12)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true,
+          value: _selectedStatus,
+          dropdownColor: colorScheme.surfaceContainerHighest,
+          hint: const Text('Filter by status'),
+          items: const [
+            DropdownMenuItem(value: 'all', child: Text('All Requests')),
+            DropdownMenuItem(value: 'new', child: Text('New')),
+            DropdownMenuItem(value: 'pending', child: Text('Pending')),
+            DropdownMenuItem(value: 'approved', child: Text('Approved')),
+            DropdownMenuItem(value: 'rejected', child: Text('Rejected')),
+          ],
+          onChanged: (value) {
+            setState(() {
+              _selectedStatus = value!;
+            });
+          },
+        ),
+      ),
+    );
+
+    Widget buildDateField({
+      required String placeholder,
+      required DateTime? value,
+      required VoidCallback onTap,
+    }) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(context.responsiveRadius(12)),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: context.responsiveSpacing(12),
+            vertical: context.responsiveSpacing(12),
+          ),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(context.responsiveRadius(12)),
+            border: Border.all(color: colorScheme.outline.withOpacity(0.3)),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.calendar_today,
+                size: context.responsiveIconSize(18),
+                color: colorScheme.primary,
+              ),
+              SizedBox(width: context.responsiveSpacing(8)),
+              Expanded(
+                child: Text(
+                  value != null
+                      ? DateFormat('dd/MM/yy').format(value)
+                      : placeholder,
+                  style: GoogleFonts.poppins(
+                    fontSize: context.responsiveFontSize(13),
+                    color: value != null
+                        ? colorScheme.onSurface
+                        : colorScheme.onSurface.withOpacity(0.6),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final fromField = Expanded(
+      child: buildDateField(
+        placeholder: 'From',
+        value: _dateFrom,
+        onTap: () async {
+          final picked = await showDatePicker(
+            context: context,
+            initialDate: _dateFrom ?? DateTime.now(),
+            firstDate: DateTime(2020),
+            lastDate: DateTime.now().add(const Duration(days: 365)),
+          );
+          if (picked != null) {
+            setState(() {
+              _dateFrom = picked;
+              if (_dateTo != null && _dateTo!.isBefore(picked)) {
+                _dateTo = picked;
+              }
+            });
+          }
+        },
+      ),
+    );
+
+    final toField = Expanded(
+      child: buildDateField(
+        placeholder: 'To',
+        value: _dateTo,
+        onTap: () async {
+          final picked = await showDatePicker(
+            context: context,
+            initialDate: _dateTo ?? _dateFrom ?? DateTime.now(),
+            firstDate: _dateFrom ?? DateTime(2020),
+            lastDate: DateTime.now().add(const Duration(days: 365)),
+          );
+          if (picked != null) {
+            setState(() => _dateTo = picked);
+          }
+        },
+      ),
+    );
+
+    final clearButtonVisible = _dateFrom != null || _dateTo != null;
+    final Widget clearButton = clearButtonVisible
+        ? Padding(
+            padding: EdgeInsets.only(left: spacingSmall),
+            child: IconButton(
+              onPressed: () {
+                setState(() {
+                  _dateFrom = null;
+                  _dateTo = null;
+                });
+              },
+              icon: Icon(
+                Icons.clear,
+                color: colorScheme.primary,
+                size: context.responsiveIconSize(20),
+              ),
+              tooltip: 'Clear date filter',
+            ),
+          )
+        : const SizedBox.shrink();
+
+    if (isNarrow) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          statusFilterContent,
+          SizedBox(height: spacingMedium),
+          Row(
+            children: [
+              fromField,
+              SizedBox(width: spacingSmall),
+              toField,
+            ],
+          ),
+          if (clearButtonVisible) clearButton,
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(flex: 2, child: statusFilterContent),
+        SizedBox(width: spacingMedium),
+        fromField,
+        SizedBox(width: spacingSmall),
+        toField,
+        clearButton,
+      ],
+    );
+  }
+
   void _refreshLeaveRequests() {
     Provider.of<LeaveProvider>(context, listen: false).getAllLeaves();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   List<Leave> _filterLeaveRequests(List<Leave> leaves) {
@@ -66,9 +255,40 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
       final rangeEnd = DateTime(to.year, to.month, to.day, 23, 59, 59);
 
       filtered = filtered.where((leave) {
-        final leaveStart = DateTime(leave.from.year, leave.from.month, leave.from.day);
-        final leaveEnd = DateTime(leave.to.year, leave.to.month, leave.to.day, 23, 59, 59);
+        final leaveStart = DateTime(
+          leave.from.year,
+          leave.from.month,
+          leave.from.day,
+        );
+        final leaveEnd = DateTime(
+          leave.to.year,
+          leave.to.month,
+          leave.to.day,
+          23,
+          59,
+          59,
+        );
         return !leaveStart.isAfter(rangeEnd) && !leaveEnd.isBefore(rangeStart);
+      }).toList();
+    }
+
+    // Smart text search across multiple leave fields.
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isNotEmpty) {
+      final tokens = query.split(RegExp(r'\s+')).where((t) => t.isNotEmpty);
+      filtered = filtered.where((leave) {
+        final employeeName = _getEmployeeName(leave).toLowerCase();
+        final searchable = [
+          employeeName,
+          leave.employeeId.toLowerCase(),
+          leave.leaveType.toLowerCase(),
+          leave.status.toLowerCase(),
+          leave.reason.toLowerCase(),
+          leave.action.toLowerCase(),
+          DateFormat.yMMMd().format(leave.fromDate).toLowerCase(),
+          DateFormat.yMMMd().format(leave.toDate).toLowerCase(),
+        ].join(' ');
+        return tokens.every(searchable.contains);
       }).toList();
     }
 
@@ -115,6 +335,7 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isXSmall = ResponsiveUtils.isXSmall(context);
 
     // Check if user is admin
     if (!authProvider.isAdmin) {
@@ -122,7 +343,7 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.lock, size: 64, color: Colors.grey),
+            Icon(Icons.lock, size: 64, color: colorScheme.onSurfaceVariant),
             SizedBox(height: 16),
             Text('Access Denied', style: AppTextStyles.subheading),
             SizedBox(height: 8),
@@ -140,209 +361,130 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
       children: [
         // Header
         Container(
-          padding: EdgeInsets.fromLTRB(24, 24, 24, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+          padding: EdgeInsets.fromLTRB(
+            context.responsivePaddingHorizontal.left,
+            context.responsiveSpacing(24),
+            context.responsivePaddingHorizontal.right,
+            context.responsiveSpacing(12),
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 480 || isXSmall;
+              final titleSection = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Leave Requests',
+                    style: GoogleFonts.poppins(
+                      fontSize: context.responsiveFontSize(28),
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  Text(
+                    'Manage employee leaves',
+                    style: GoogleFonts.poppins(
+                      fontSize: context.responsiveFontSize(14),
+                      fontWeight: FontWeight.w400,
+                      color: colorScheme.onSurface.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              );
+
+              final refreshButton = IconButton(
+                onPressed: _refreshLeaveRequests,
+                icon: Icon(
+                  Icons.refresh,
+                  color: colorScheme.primary,
+                  size: context.responsiveIconSize(24),
+                ),
+              );
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Leave Requests',
-                        style: GoogleFonts.poppins(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.onSurface,
+                  if (isNarrow)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+
+                      children: [
+                        titleSection,
+                        // SizedBox(height: context.responsiveSpacing(8)),
+                        Spacer(),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: refreshButton,
                         ),
+                      ],
+                    )
+                  else
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Flexible(child: titleSection),
+                        refreshButton,
+                      ],
+                    ),
+                  SizedBox(height: context.responsiveSpacing(16)),
+                  // Search box
+                  Container(
+                    height: context.scaleDimension(48).clamp(44.0, 56.0),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(
+                        context.responsiveRadius(12),
                       ),
-                      Text(
-                        'Manage employee leaves',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                          color: colorScheme.onSurface.withOpacity(0.7),
-                        ),
-                      ),
-                    ],
-                  ),
-                  IconButton(
-                    onPressed: _refreshLeaveRequests,
-                    icon: Icon(Icons.refresh, color: colorScheme.primary),
-                  ),
-                ],
-              ),
-              SizedBox(height: 16),
-              // Filters row
-              Row(
-                children: [
-                  // Status filter
-                  Expanded(
-                    flex: 2,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          isExpanded: true,
-                          value: _selectedStatus,
-                          dropdownColor: colorScheme.surfaceContainerHighest,
-                          hint: Text('Filter by status'),
-                          items: [
-                            DropdownMenuItem(
-                              value: 'all',
-                              child: Text('All Requests'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'new',
-                              child: Text('New'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'pending',
-                              child: Text('Pending'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'approved',
-                              child: Text('Approved'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'rejected',
-                              child: Text('Rejected'),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedStatus = value!;
-                            });
-                          },
-                        ),
+                      border: Border.all(
+                        color: colorScheme.outline.withOpacity(0.2),
                       ),
                     ),
-                  ),
-                  SizedBox(width: 12),
-                  // Date filter - From
-                  Expanded(
-                    child: InkWell(
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: _dateFrom ?? DateTime.now(),
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime.now().add(Duration(days: 365)),
-                        );
-                        if (picked != null) {
-                          setState(() {
-                            _dateFrom = picked;
-                            if (_dateTo != null && _dateTo!.isBefore(picked)) {
-                              _dateTo = picked;
-                            }
-                          });
-                        }
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: colorScheme.outline.withOpacity(0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.calendar_today,
-                                size: 18, color: colorScheme.primary),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _dateFrom != null
-                                    ? DateFormat('dd/MM/yy').format(_dateFrom!)
-                                    : 'From',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13,
-                                  color: _dateFrom != null
-                                      ? colorScheme.onSurface
-                                      : colorScheme.onSurface.withOpacity(0.6),
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  // Date filter - To
-                  Expanded(
-                    child: InkWell(
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: _dateTo ?? _dateFrom ?? DateTime.now(),
-                          firstDate: _dateFrom ?? DateTime(2020),
-                          lastDate: DateTime.now().add(Duration(days: 365)),
-                        );
-                        if (picked != null) {
-                          setState(() => _dateTo = picked);
-                        }
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: colorScheme.outline.withOpacity(0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.calendar_today,
-                                size: 18, color: colorScheme.primary),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _dateTo != null
-                                    ? DateFormat('dd/MM/yy').format(_dateTo!)
-                                    : 'To',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13,
-                                  color: _dateTo != null
-                                      ? colorScheme.onSurface
-                                      : colorScheme.onSurface.withOpacity(0.6),
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (_dateFrom != null || _dateTo != null) ...[
-                    SizedBox(width: 8),
-                    IconButton(
-                      onPressed: () {
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (value) {
                         setState(() {
-                          _dateFrom = null;
-                          _dateTo = null;
+                          _searchQuery = value;
                         });
                       },
-                      icon: Icon(Icons.clear, color: colorScheme.primary),
-                      tooltip: 'Clear date filter',
+                      decoration: InputDecoration(
+                        hintText:
+                            'Search by employee, ID, leave type, status, reason...',
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: colorScheme.onSurface.withOpacity(0.6),
+                          size: context.responsiveIconSize(20),
+                        ),
+                        suffixIcon: _searchQuery.trim().isNotEmpty
+                            ? IconButton(
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _searchQuery = '';
+                                  });
+                                },
+                                icon: Icon(
+                                  Icons.close,
+                                  color: colorScheme.onSurface.withOpacity(0.6),
+                                  size: context.responsiveIconSize(18),
+                                ),
+                                tooltip: 'Clear search',
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(
+                          vertical: context.responsiveSpacing(8),
+                        ),
+                      ),
                     ),
-                  ],
+                  ),
+                  SizedBox(height: context.responsiveSpacing(12)),
+                  // Filters
+                  _buildFiltersRow(context, colorScheme, isNarrow: isNarrow),
                 ],
-              ),
-            ],
+              );
+            },
           ),
         ),
 
@@ -389,7 +531,7 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
                       Icon(
                         Icons.assignment_outlined,
                         size: 64,
-                        color: Colors.grey,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                       SizedBox(height: 16),
                       Text(
@@ -413,10 +555,16 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.filter_list_off, size: 64, color: Colors.grey),
+                      Icon(
+                        Icons.filter_list_off,
+                        size: 64,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
                       SizedBox(height: 16),
                       Text(
-                        'No ${_selectedStatus == 'all' ? '' : _selectedStatus} requests found',
+                        _searchQuery.trim().isNotEmpty
+                            ? 'No requests found for "${_searchQuery.trim()}"'
+                            : 'No ${_selectedStatus == 'all' ? '' : _selectedStatus} requests found',
                         style: AppTextStyles.subheading,
                       ),
                     ],
@@ -427,7 +575,12 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
               return RefreshIndicator(
                 onRefresh: () async => _refreshLeaveRequests(),
                 child: ListView.builder(
-                  padding: EdgeInsets.fromLTRB(24, 0, 24, 120),
+                  padding: EdgeInsets.fromLTRB(
+                    context.responsivePaddingHorizontal.left,
+                    0,
+                    context.responsivePaddingHorizontal.right,
+                    context.responsiveSpacing(80),
+                  ),
                   itemCount: filteredLeaves.length,
                   itemBuilder: (context, index) {
                     final leave = filteredLeaves[index];
@@ -445,12 +598,13 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
   Widget _buildLeaveRequestCard(Leave leave) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final padding = context.responsiveSpacing(20);
 
     return Container(
-      margin: EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: context.responsiveSpacing(16)),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(context.responsiveRadius(20)),
         boxShadow: [
           BoxShadow(
             color: colorScheme.outline.withValues(
@@ -462,44 +616,46 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
         ],
       ),
       child: Padding(
-        padding: EdgeInsets.all(20),
+        padding: EdgeInsets.all(padding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 CircleAvatar(
-                  radius: 20,
+                  radius: context.responsiveRadius(20),
                   backgroundColor: colorScheme.primary.withOpacity(0.1),
                   child: Text(
                     _getEmployeeName(leave).isNotEmpty
-                        ? _getEmployeeName(leave).substring(0, 1).toUpperCase()
+                        ? _getEmployeeName(leave).toTitleCase().substring(0, 1)
                         : 'U',
                     style: TextStyle(
                       color: colorScheme.primary,
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                      fontSize: context.responsiveFontSize(16),
                     ),
                   ),
                 ),
-                SizedBox(width: 12),
+                SizedBox(width: context.responsiveSpacing(12)),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _getEmployeeName(leave),
+                        _getEmployeeName(leave).toTitleCase(),
                         style: GoogleFonts.poppins(
-                          fontSize: 16,
+                          fontSize: context.responsiveFontSize(16),
                           fontWeight: FontWeight.w600,
                           color: colorScheme.onSurface,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      SizedBox(height: 4),
+                      SizedBox(height: context.responsiveSpacing(4)),
                       Text(
                         'Applied: ${DateFormat.yMMMd().format(leave.appliedDate)}',
                         style: GoogleFonts.poppins(
-                          fontSize: 12,
+                          fontSize: context.responsiveFontSize(12),
                           color: colorScheme.onSurface.withOpacity(0.6),
                         ),
                       ),
@@ -509,9 +665,9 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
                 _buildStatusChip(leave.status),
               ],
             ),
-            SizedBox(height: 16),
+            SizedBox(height: context.responsiveSpacing(16)),
             Divider(color: colorScheme.outline.withOpacity(0.1)),
-            SizedBox(height: 16),
+            SizedBox(height: context.responsiveSpacing(16)),
 
             // Leave Type and Duration
             Row(
@@ -523,7 +679,7 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
                     value: leave.leaveType,
                   ),
                 ),
-                SizedBox(width: 12),
+                SizedBox(width: context.responsiveSpacing(12)),
                 Expanded(
                   child: _buildInfoItem(
                     icon: Icons.schedule_outlined,
@@ -534,7 +690,7 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
                 ),
               ],
             ),
-            SizedBox(height: 12),
+            SizedBox(height: context.responsiveSpacing(12)),
 
             // Leave Dates
             Row(
@@ -564,17 +720,20 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
                 icon: Icons.comment_outlined,
                 label: 'Reason',
                 value: leave.reason,
+                allowMultiLine: true,
               ),
-              SizedBox(height: 16),
+              SizedBox(height: context.responsiveSpacing(16)),
             ],
 
             // Admin Action (if any)
             if (leave.action.isNotEmpty && leave.action != '-') ...[
               Container(
-                padding: EdgeInsets.all(12),
+                padding: EdgeInsets.all(context.responsiveSpacing(12)),
                 decoration: BoxDecoration(
                   color: colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(
+                    context.responsiveRadius(8),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -583,32 +742,32 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
                       children: [
                         Icon(
                           Icons.admin_panel_settings,
-                          size: 16,
+                          size: context.responsiveIconSize(16),
                           color: colorScheme.onSurface.withOpacity(0.7),
                         ),
-                        SizedBox(width: 4),
+                        SizedBox(width: context.responsiveSpacing(4)),
                         Text(
                           'Admin Action',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                            fontSize: context.responsiveFontSize(12),
                             color: colorScheme.onSurface.withOpacity(0.7),
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: 4),
+                    SizedBox(height: context.responsiveSpacing(4)),
                     Text(
                       leave.action,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: context.responsiveFontSize(12),
                         color: colorScheme.onSurface,
                       ),
                     ),
                   ],
                 ),
               ),
-              SizedBox(height: 16),
+              SizedBox(height: context.responsiveSpacing(16)),
             ],
 
             // Action Buttons (only for new or pending requests)
@@ -619,8 +778,15 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => _showStatusUpdateDialog(leave),
-                      icon: Icon(Icons.edit, size: 16),
-                      label: Text('Update Status'),
+                      icon: Icon(
+                        Icons.edit,
+                        size: context.responsiveIconSize(16),
+                      ),
+                      label: Text(
+                        'Update Status',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: colorScheme.primary,
                         side: BorderSide(color: colorScheme.primary),
@@ -630,12 +796,19 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
                       ),
                     ),
                   ),
-                  SizedBox(width: 8),
+                  SizedBox(width: context.responsiveSpacing(8)),
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: () => _quickApprove(leave),
-                      icon: Icon(Icons.check, size: 16),
-                      label: Text('Quick Approve'),
+                      icon: Icon(
+                        Icons.check,
+                        size: context.responsiveIconSize(16),
+                      ),
+                      label: Text(
+                        'Quick Approve',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
@@ -651,8 +824,12 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
               Center(
                 child: TextButton.icon(
                   onPressed: () => _showStatusUpdateDialog(leave),
-                  icon: Icon(Icons.edit, size: 16),
-                  label: Text('Update Status'),
+                  icon: Icon(Icons.edit, size: context.responsiveIconSize(16)),
+                  label: Text(
+                    'Update Status',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   style: TextButton.styleFrom(
                     foregroundColor: colorScheme.primary,
                   ),
@@ -666,6 +843,7 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
   }
 
   Widget _buildStatusChip(String status) {
+    final colorScheme = Theme.of(context).colorScheme;
     Color chipColor;
     switch (status.toLowerCase()) {
       case 'approved':
@@ -681,21 +859,24 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
         chipColor = Colors.blue;
         break;
       default:
-        chipColor = Colors.grey;
+        chipColor = colorScheme.onSurfaceVariant;
     }
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.responsiveSpacing(8),
+        vertical: context.responsiveSpacing(4),
+      ),
       decoration: BoxDecoration(
         color: chipColor.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(context.responsiveRadius(12)),
         border: Border.all(color: chipColor),
       ),
       child: Text(
         status.toUpperCase(),
         style: TextStyle(
           color: chipColor,
-          fontSize: 10,
+          fontSize: context.responsiveFontSize(10),
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -706,6 +887,7 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
     required IconData icon,
     required String label,
     required String value,
+    bool allowMultiLine = false,
   }) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -713,8 +895,12 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 16, color: colorScheme.onSurface.withOpacity(0.5)),
-        SizedBox(width: 8),
+        Icon(
+          icon,
+          size: context.responsiveIconSize(16),
+          color: colorScheme.onSurface.withOpacity(0.5),
+        ),
+        SizedBox(width: context.responsiveSpacing(8)),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -722,7 +908,7 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
               Text(
                 label,
                 style: GoogleFonts.poppins(
-                  fontSize: 10,
+                  fontSize: context.responsiveFontSize(10),
                   color: colorScheme.onSurface.withOpacity(0.5),
                   fontWeight: FontWeight.w500,
                 ),
@@ -730,10 +916,14 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
               Text(
                 value,
                 style: GoogleFonts.poppins(
-                  fontSize: 12,
+                  fontSize: context.responsiveFontSize(12),
                   fontWeight: FontWeight.w500,
                   color: colorScheme.onSurface,
                 ),
+                maxLines: allowMultiLine ? null : 1,
+                overflow: allowMultiLine
+                    ? TextOverflow.visible
+                    : TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -748,7 +938,7 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
       builder: (context) => StatusUpdateDialog(
         leave: leave,
         onStatusUpdated: _refreshLeaveRequests,
-        employeeName: _getEmployeeName(leave),
+        employeeName: _getEmployeeName(leave).toTitleCase(),
       ),
     );
   }
@@ -834,7 +1024,9 @@ class _StatusUpdateDialogState extends State<StatusUpdateDialog> {
   Widget build(BuildContext context) {
     // Reusing similar logic but updating UI for dialog if needed, keeping it standard for now but with rounded corners
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(context.responsiveRadius(20)),
+      ),
       title: Text(
         'Update Leave Status',
         style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
@@ -847,33 +1039,40 @@ class _StatusUpdateDialogState extends State<StatusUpdateDialog> {
           children: [
             // Employee Info
             Container(
-              padding: EdgeInsets.all(12),
+              padding: EdgeInsets.all(context.responsiveSpacing(12)),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(
+                  context.responsiveRadius(12),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     widget.employeeName,
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: context.responsiveFontSize(16),
+                    ),
                   ),
-                  SizedBox(height: 4),
+                  SizedBox(height: context.responsiveSpacing(4)),
                   Text(
                     '${widget.leave.leaveType}',
-                    style: TextStyle(fontSize: 12),
+                    style: TextStyle(fontSize: context.responsiveFontSize(12)),
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 16),
+            SizedBox(height: context.responsiveSpacing(16)),
             DropdownButtonFormField<String>(
               value: _selectedStatus,
               decoration: InputDecoration(
                 labelText: 'Status',
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(
+                    context.responsiveRadius(12),
+                  ),
                 ),
               ),
               items: ['new', 'pending', 'approved', 'rejected']
@@ -886,13 +1085,15 @@ class _StatusUpdateDialogState extends State<StatusUpdateDialog> {
                   .toList(),
               onChanged: (value) => setState(() => _selectedStatus = value!),
             ),
-            SizedBox(height: 16),
+            SizedBox(height: context.responsiveSpacing(16)),
             TextFormField(
               controller: _commentsController,
               decoration: InputDecoration(
                 labelText: 'Comments',
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(
+                    context.responsiveRadius(12),
+                  ),
                 ),
                 hintText: 'Add admin comments',
               ),

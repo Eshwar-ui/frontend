@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/providers/navigation_provider.dart';
 import 'package:quantum_dashboard/services/mobile_access_service.dart';
 import 'package:quantum_dashboard/utils/snackbar_utils.dart';
+import 'package:quantum_dashboard/utils/string_extensions.dart';
 
 enum MobileAccessFilter { all, enabled, disabled }
 
@@ -288,7 +289,7 @@ class _AdminMobileAccessScreenState extends State<AdminMobileAccessScreen> {
                             ),
                           ),
                           title: Text(
-                            employee['fullName'] ?? 'Unknown',
+                            (employee['fullName'] ?? 'Unknown').toString().toTitleCase(),
                             style: GoogleFonts.poppins(
                               fontWeight: FontWeight.w600,
                             ),
@@ -320,7 +321,8 @@ class _AdminMobileAccessScreenState extends State<AdminMobileAccessScreen> {
                                 mobileAccessEnabled,
                               );
                             },
-                            activeColor: colorScheme.primary,
+                            activeTrackColor: colorScheme.primary.withValues(alpha: 0.5),
+                            activeThumbColor: colorScheme.primary,
                           ),
                         ),
                       );
