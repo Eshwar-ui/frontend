@@ -126,7 +126,11 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.lock, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant),
+            Icon(
+              Icons.lock,
+              size: 64,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
             SizedBox(height: 16),
             Text('Access Denied', style: AppTextStyles.subheading),
             SizedBox(height: 8),
@@ -252,7 +256,11 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.people_outline, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      Icon(
+                        Icons.people_outline,
+                        size: 64,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                       SizedBox(height: 16),
                       Text(
                         'No Employees Found',
@@ -285,7 +293,8 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                 employeeProvider.employees,
               );
 
-              bool hasActiveFilters = _searchQuery.isNotEmpty ||
+              bool hasActiveFilters =
+                  _searchQuery.isNotEmpty ||
                   _selectedDepartment != 'all' ||
                   _selectedRole != 'all' ||
                   _selectedDesignation != 'all';
@@ -304,7 +313,13 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.filter_list_off, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                            Icon(
+                              Icons.filter_list_off,
+                              size: 64,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
                             SizedBox(height: 16),
                             Text(
                               'No employees found',
@@ -339,7 +354,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                     colorScheme,
                   ),
                   Expanded(
-                      child: RefreshIndicator(
+                    child: RefreshIndicator(
                       onRefresh: () async => _refreshEmployees(),
                       child: ListView.builder(
                         padding: EdgeInsets.fromLTRB(24, 0, 24, 120),
@@ -447,7 +462,11 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                         _selectedDesignation = 'all';
                       });
                     },
-                    icon: Icon(Icons.clear, color: colorScheme.primary, size: 20),
+                    icon: Icon(
+                      Icons.clear,
+                      color: colorScheme.primary,
+                      size: 20,
+                    ),
                     tooltip: 'Clear filters',
                   ),
                 ],
@@ -472,9 +491,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: colorScheme.outline.withOpacity(0.2),
-        ),
+        border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
@@ -631,15 +648,15 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                   foregroundColor: colorScheme.primary,
                 ),
               ),
-              SizedBox(width: 8),
-              TextButton.icon(
-                onPressed: () => _showResetPasswordDialog(employee),
-                icon: Icon(Icons.lock_reset, size: 16),
-                label: Text('Reset Password'),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.orange.shade700,
-                ),
-              ),
+              // SizedBox(width: 8),
+              // TextButton.icon(
+              //   onPressed: () => _showResetPasswordDialog(employee),
+              //   icon: Icon(Icons.lock_reset, size: 16),
+              //   label: Text('Reset Password'),
+              //   style: TextButton.styleFrom(
+              //     foregroundColor: Colors.orange.shade700,
+              //   ),
+              // ),
               SizedBox(width: 8),
               TextButton.icon(
                 onPressed: () => _confirmDeleteEmployee(employee),

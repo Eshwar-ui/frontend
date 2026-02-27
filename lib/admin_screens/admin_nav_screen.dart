@@ -330,7 +330,7 @@ class _AdminNavScreenState extends State<AdminNavScreen> {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
         padding: EdgeInsets.symmetric(
-          horizontal: isSelected ? 20 : 16,
+          horizontal: isSelected ? 16 : 16,
           vertical: 12,
         ),
         decoration: BoxDecoration(
