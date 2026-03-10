@@ -24,6 +24,12 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   List<Department> _departments = [];
+  static const List<String> _employeeStatuses = [
+    'active',
+    'inactive',
+    'hold',
+    'terminated',
+  ];
 
   @override
   void initState() {
@@ -45,6 +51,242 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
+  Future<void> _showEmployeeStatusPopup() async {
+    final employeeProvider = Provider.of<EmployeeProvider>(
+      context,
+      listen: false,
+    );
+    final navigationProvider = Provider.of<NavigationProvider>(
+      context,
+      listen: false,
+    );
+
+    if (employeeProvider.employees.isEmpty) {
+      await employeeProvider.getAllEmployees();
+    }
+
+    if (!mounted) return;
+
+    final employees = employeeProvider.employees;
+    final counts = <String, int>{
+      for (final status in _employeeStatuses) status: 0,
+    };
+
+    for (final employee in employees) {
+      final status = employee.status.trim().toLowerCase();
+      if (counts.containsKey(status)) {
+        counts[status] = (counts[status] ?? 0) + 1;
+      }
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        final colorScheme = theme.colorScheme;
+        final isDark = theme.brightness == Brightness.dark;
+
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 24,
+          ),
+          backgroundColor: colorScheme.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDesignSystem.radiusXl),
+            side: BorderSide(
+              color: isDark
+                  ? Colors.white.withOpacity(0.06)
+                  : colorScheme.outline.withOpacity(0.12),
+            ),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Padding(
+              padding: const EdgeInsets.all(AppDesignSystem.spacingLg),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Employee Status Overview',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: AppDesignSystem.spacingMd),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppDesignSystem.spacingMd),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest.withOpacity(
+                        isDark ? 0.35 : 0.7,
+                      ),
+                      borderRadius: BorderRadius.circular(
+                        AppDesignSystem.radiusMd,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.people_alt_rounded,
+                          size: 18,
+                          color: colorScheme.primary,
+                        ),
+                        const SizedBox(width: AppDesignSystem.spacingSm),
+                        Text(
+                          'Total Employees: ${employees.length}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppDesignSystem.spacingMd),
+                  ..._employeeStatuses.map((status) {
+                    final count = counts[status] ?? 0;
+                    final label =
+                        '${status[0].toUpperCase()}${status.substring(1)}';
+                    final statusColors = _statusColors(status, colorScheme);
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          key: Key('employee-status-row-$status'),
+                          borderRadius: BorderRadius.circular(
+                            AppDesignSystem.radiusMd,
+                          ),
+                          onTap: () {
+                            navigationProvider
+                                .setPendingAdminEmployeeStatusFilter(status);
+                            navigationProvider.setCurrentPage(
+                              NavigationPage.AdminEmployees,
+                            );
+                            Navigator.of(dialogContext).pop();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppDesignSystem.spacingMd,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colorScheme.surfaceContainerHighest
+                                  .withOpacity(isDark ? 0.25 : 0.5),
+                              borderRadius: BorderRadius.circular(
+                                AppDesignSystem.radiusMd,
+                              ),
+                              border: Border.all(
+                                color: colorScheme.outline.withOpacity(
+                                  isDark ? 0.2 : 0.1,
+                                ),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    color: statusColors.$1,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(
+                                  width: AppDesignSystem.spacingSm,
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    label,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ),
+                                TextButton(
+                                  key: Key('employee-status-count-$status'),
+                                  style: TextButton.styleFrom(
+                                    backgroundColor: statusColors.$1
+                                        .withOpacity(isDark ? 0.2 : 0.12),
+                                    foregroundColor: statusColors.$2,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        AppDesignSystem.radiusSm,
+                                      ),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    minimumSize: const Size(0, 0),
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  onPressed: () {
+                                    navigationProvider
+                                        .setPendingAdminEmployeeStatusFilter(
+                                          status,
+                                        );
+                                    navigationProvider.setCurrentPage(
+                                      NavigationPage.AdminEmployees,
+                                    );
+                                    Navigator.of(dialogContext).pop();
+                                  },
+                                  child: Text(
+                                    count.toString(),
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: AppDesignSystem.spacingSm),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      child: const Text('Close'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  (Color, Color) _statusColors(String status, ColorScheme colorScheme) {
+    switch (status) {
+      case 'active':
+        return (Colors.green.shade500, Colors.green.shade800);
+      case 'inactive':
+        return (Colors.grey.shade500, Colors.grey.shade800);
+      case 'hold':
+        return (Colors.amber.shade700, Colors.amber.shade900);
+      case 'terminated':
+        return (Colors.red.shade500, Colors.red.shade800);
+      default:
+        return (colorScheme.primary, colorScheme.onSurface);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -54,9 +296,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       body: SingleChildScrollView(
         child: Center(
           child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: context.maxContentWidth,
-            ),
+            constraints: BoxConstraints(maxWidth: context.maxContentWidth),
             child: Column(
               children: [
                 _buildHeader(),
@@ -83,51 +323,54 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     return Container(
       padding: ResponsiveUtils.padding(context),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Hello ${firstName.toTitleCase()}',
-                  style: GoogleFonts.poppins(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onSurface,
+      child: SizedBox(
+        height: 64,
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Hello ${firstName.toTitleCase()}',
+                    style: GoogleFonts.poppins(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
-                Text(
-                  'Admin Dashboard Overview',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: colorScheme.onSurface.withOpacity(0.7),
+                  Text(
+                    'Admin Dashboard Overview',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: colorScheme.onSurface.withOpacity(0.7),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Spacer(),
-          SizedBox(width: 12),
-          IconButton(
-            icon: Icon(Icons.send),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => SendNotificationScreen(),
-                ),
-              );
-            },
-            tooltip: 'Send Notification',
-          ),
-          SizedBox(width: 8),
-          NotificationIconWidget(),
-        ],
+            SizedBox(width: 12),
+            IconButton(
+              icon: Icon(Icons.send),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => SendNotificationScreen(),
+                  ),
+                );
+              },
+              tooltip: 'Send Notification',
+            ),
+            SizedBox(width: 8),
+            NotificationIconWidget(),
+          ],
+        ),
       ),
     );
   }
@@ -160,6 +403,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         employeeCount.toString(),
                         Icons.people_alt_rounded,
                         const Color(0xFF6366F1),
+                        onTap: _showEmployeeStatusPopup,
+                        cardKey: const Key('total-employees-stat-card'),
                       ),
                       _buildStatCard(
                         'Departments',
@@ -188,13 +433,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     String title,
     String value,
     IconData icon,
-    Color color,
-  ) {
+    Color color, {
+    VoidCallback? onTap,
+    Key? cardKey,
+  }) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    return Container(
+    final cardContent = Container(
+      key: cardKey,
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
@@ -215,7 +463,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          // Decorative background element
           Positioned(
             right: -20,
             top: -20,
@@ -229,16 +476,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(16), // Reduced padding
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center, // Better alignment
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(8), // Reduced padding
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: color.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(12),
@@ -254,13 +501,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
                 const SizedBox(height: 12),
                 Expanded(
-                  // Use expanded to allow text to fit but not overflow
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       FittedBox(
-                        // Ensure large numbers scale down if needed
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
                         child: Text(
@@ -293,6 +538,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
           ),
         ],
+      ),
+    );
+
+    if (onTap == null) {
+      return cardContent;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onTap,
+        child: cardContent,
       ),
     );
   }
@@ -1122,11 +1380,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               final page = item['page'] as NavigationPage?;
               final VoidCallback onTap = page == NavigationPage.AdminCompoff
                   ? () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AdminCompoffScreen(),
-                        ),
-                      )
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AdminCompoffScreen(),
+                      ),
+                    )
                   : () => navigationProvider.setCurrentPage(page!);
               return _buildManagementCard(
                 item['title'],

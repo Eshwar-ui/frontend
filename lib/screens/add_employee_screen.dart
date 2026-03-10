@@ -34,6 +34,7 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
   final _gradeController = TextEditingController();
   final _reportController = TextEditingController();
   String _selectedRole = 'employee';
+  String _selectedStatus = 'active';
   DateTime _joiningDate = DateTime.now();
 
   // Address
@@ -99,6 +100,7 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
         'dateOfBirth': _dateOfBirth.toIso8601String(),
         'joiningDate': _joiningDate.toIso8601String(),
         'role': _selectedRole,
+        'status': _selectedStatus,
         'department': _departmentController.text.trim(),
         'designation': _designationController.text.trim(),
         'grade': _gradeController.text.trim(),
@@ -332,6 +334,27 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                               setState(() => _selectedRole = val!),
                         ),
                       ]),
+                      _buildDropdown<String>(
+                        label: 'Status',
+                        value: _selectedStatus,
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'active',
+                            child: Text('ACTIVE'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'inactive',
+                            child: Text('INACTIVE'),
+                          ),
+                          DropdownMenuItem(value: 'hold', child: Text('HOLD')),
+                          DropdownMenuItem(
+                            value: 'terminated',
+                            child: Text('TERMINATED'),
+                          ),
+                        ],
+                        onChanged: (val) =>
+                            setState(() => _selectedStatus = val!),
+                      ),
                       _buildRow([
                         _buildTextField(
                           controller: _departmentController,
@@ -601,16 +624,11 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(
-                color: colorScheme.primary,
-                width: 2,
-              ),
+              borderSide: BorderSide(color: colorScheme.primary, width: 2),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(
-                color: colorScheme.error,
-              ),
+              borderSide: BorderSide(color: colorScheme.error),
             ),
           ),
           validator: validator,
@@ -667,10 +685,7 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(
-                color: colorScheme.primary,
-                width: 2,
-              ),
+              borderSide: BorderSide(color: colorScheme.primary, width: 2),
             ),
           ),
         ),
@@ -705,9 +720,7 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
             decoration: BoxDecoration(
               color: colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: colorScheme.outline.withOpacity(0.2),
-              ),
+              border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
             ),
             child: Row(
               children: [

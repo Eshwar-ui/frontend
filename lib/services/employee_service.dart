@@ -28,11 +28,13 @@ class EmployeeService extends ApiService {
     String? employeeId,
     String? employeeName,
     String? designation,
+    String? status,
   }) async {
     final queryParams = <String, String>{};
     if (employeeId != null) queryParams['employeeId'] = employeeId;
     if (employeeName != null) queryParams['employeeName'] = employeeName;
     if (designation != null) queryParams['designation'] = designation;
+    if (status != null) queryParams['status'] = status;
 
     final uri = Uri.parse(
       '${ApiService.baseUrl}/api/all-employees',
@@ -148,11 +150,7 @@ class EmployeeService extends ApiService {
 
     Future<http.Response> makeRequest() {
       return sendRequest(
-        http.post(
-          uri,
-          headers: headers,
-          body: json.encode(payload),
-        ),
+        http.post(uri, headers: headers, body: json.encode(payload)),
         timeout: const Duration(seconds: 75),
       );
     }

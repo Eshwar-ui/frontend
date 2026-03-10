@@ -12,49 +12,52 @@ class NotificationIconWidget extends StatelessWidget {
       builder: (context, notificationProvider, child) {
         final unreadCount = notificationProvider.unreadCount;
 
-        return Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Center(
-              child: IconButton(
-                icon: Icon(Icons.notifications_outlined),
-                iconSize: 32,
-                
-            
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => NotificationsScreen(),
-                    ),
-                  );
-                },
-                tooltip: 'Notifications',
-              ),
-            ),
-            if (unreadCount > 0)
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
-                  padding: EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  constraints: BoxConstraints(minWidth: 16, minHeight: 16),
-                  child: Text(
-                    unreadCount > 99 ? '99+' : unreadCount.toString(),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
+        return SizedBox(
+          width: 40,
+          height: 40,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned.fill(
+                child: IconButton(
+                  icon: Icon(Icons.notifications_outlined),
+                  iconSize: 28,
+                  padding: EdgeInsets.zero,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => NotificationsScreen(),
+                      ),
+                    );
+                  },
+                  tooltip: 'Notifications',
                 ),
               ),
-          ],
+              if (unreadCount > 0)
+                Positioned(
+                  right: -2,
+                  top: -2,
+                  child: Container(
+                    padding: EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: BoxConstraints(minWidth: 16, minHeight: 16),
+                    child: Text(
+                      unreadCount > 99 ? '99+' : unreadCount.toString(),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         );
       },
     );

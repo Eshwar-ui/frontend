@@ -1,6 +1,13 @@
 import 'package:quantum_dashboard/utils/app_logger.dart';
 
 class Employee {
+  static const List<String> validStatuses = [
+    'active',
+    'inactive',
+    'hold',
+    'terminated',
+  ];
+
   final String id;
   final String employeeId;
   final String firstName;
@@ -26,6 +33,7 @@ class Employee {
   final String? ESIno;
   final String? fathername;
   final bool? mobileAccessEnabled;
+  final String status;
 
   Employee({
     required this.id,
@@ -53,6 +61,7 @@ class Employee {
     this.ESIno,
     this.fathername,
     this.mobileAccessEnabled,
+    this.status = 'active',
   });
 
   Employee copyWith({
@@ -81,6 +90,7 @@ class Employee {
     String? ESIno,
     String? fathername,
     bool? mobileAccessEnabled,
+    String? status,
   }) {
     return Employee(
       id: id ?? this.id,
@@ -108,6 +118,7 @@ class Employee {
       ESIno: ESIno ?? this.ESIno,
       fathername: fathername ?? this.fathername,
       mobileAccessEnabled: mobileAccessEnabled ?? this.mobileAccessEnabled,
+      status: status ?? this.status,
     );
   }
 
@@ -138,6 +149,11 @@ class Employee {
     final ESIno = json['ESIno'] as String?;
     final fathername = json['fathername'] as String?;
     final mobileAccessEnabled = json['mobileAccessEnabled'] as bool?;
+    final statusRaw = json['status'] as String?;
+    final normalizedStatus = (statusRaw ?? '').trim().toLowerCase();
+    final status = validStatuses.contains(normalizedStatus)
+        ? normalizedStatus
+        : 'active';
 
     return Employee(
       id: id ?? '',
@@ -169,6 +185,7 @@ class Employee {
       ESIno: ESIno,
       fathername: fathername,
       mobileAccessEnabled: mobileAccessEnabled,
+      status: status,
     );
   }
 
@@ -199,6 +216,7 @@ class Employee {
       'ESIno': ESIno,
       'fathername': fathername,
       'mobileAccessEnabled': mobileAccessEnabled,
+      'status': status,
     };
   }
 

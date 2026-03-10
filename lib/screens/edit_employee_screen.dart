@@ -41,6 +41,7 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
   late TextEditingController _fathernameController;
 
   late String _selectedRole;
+  late String _selectedStatus;
   late String? _selectedGender;
   late DateTime _dateOfBirth;
   late DateTime _joiningDate;
@@ -50,22 +51,41 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
   @override
   void initState() {
     super.initState();
-    _firstNameController = TextEditingController(text: widget.employee.firstName.toTitleCase());
-    _lastNameController = TextEditingController(text: widget.employee.lastName.toTitleCase());
+    _firstNameController = TextEditingController(
+      text: widget.employee.firstName.toTitleCase(),
+    );
+    _lastNameController = TextEditingController(
+      text: widget.employee.lastName.toTitleCase(),
+    );
     _emailController = TextEditingController(text: widget.employee.email);
     _phoneController = TextEditingController(text: widget.employee.mobile);
-    _addressController = TextEditingController(text: widget.employee.address ?? '');
-    _departmentController = TextEditingController(text: widget.employee.department ?? '');
-    _designationController = TextEditingController(text: widget.employee.designation ?? '');
+    _addressController = TextEditingController(
+      text: widget.employee.address ?? '',
+    );
+    _departmentController = TextEditingController(
+      text: widget.employee.department ?? '',
+    );
+    _designationController = TextEditingController(
+      text: widget.employee.designation ?? '',
+    );
     _gradeController = TextEditingController(text: widget.employee.grade ?? '');
-    _banknameController = TextEditingController(text: widget.employee.bankname ?? '');
-    _accountnumberController = TextEditingController(text: widget.employee.accountnumber ?? '');
-    _ifsccodeController = TextEditingController(text: widget.employee.ifsccode ?? '');
+    _banknameController = TextEditingController(
+      text: widget.employee.bankname ?? '',
+    );
+    _accountnumberController = TextEditingController(
+      text: widget.employee.accountnumber ?? '',
+    );
+    _ifsccodeController = TextEditingController(
+      text: widget.employee.ifsccode ?? '',
+    );
     _PANnoController = TextEditingController(text: widget.employee.PANno ?? '');
     _UANnoController = TextEditingController(text: widget.employee.UANno ?? '');
     _ESInoController = TextEditingController(text: widget.employee.ESIno ?? '');
-    _fathernameController = TextEditingController(text: widget.employee.fathername ?? '');
+    _fathernameController = TextEditingController(
+      text: widget.employee.fathername ?? '',
+    );
     _selectedRole = (widget.employee.role ?? 'employee').toLowerCase();
+    _selectedStatus = widget.employee.status.toLowerCase();
     _selectedGender = widget.employee.gender;
     _dateOfBirth = widget.employee.dateOfBirth;
     _joiningDate = widget.employee.joiningDate;
@@ -98,7 +118,10 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final employeeProvider = Provider.of<EmployeeProvider>(context, listen: false);
+      final employeeProvider = Provider.of<EmployeeProvider>(
+        context,
+        listen: false,
+      );
       final employeeData = {
         'firstName': _firstNameController.text.trim(),
         'lastName': _lastNameController.text.trim(),
@@ -107,6 +130,7 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
         'department': _departmentController.text.trim(),
         'designation': _designationController.text.trim(),
         'role': _selectedRole,
+        'status': _selectedStatus,
         'gender': _selectedGender,
         'grade': _gradeController.text.trim(),
         'dateOfBirth': _dateOfBirth.toIso8601String(),
@@ -122,7 +146,9 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
         'mobileAccessEnabled': _mobileAccessEnabled,
       };
 
-      final id = widget.employee.id.isNotEmpty ? widget.employee.id : widget.employee.employeeId;
+      final id = widget.employee.id.isNotEmpty
+          ? widget.employee.id
+          : widget.employee.employeeId;
       final result = await employeeProvider.updateEmployee(id, employeeData);
 
       if (!mounted) return;
@@ -199,7 +225,8 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
                           label: 'First Name',
                           hint: 'John',
                           mandatory: true,
-                          validator: (v) => (v?.trim().isEmpty ?? true) ? 'Required' : null,
+                          validator: (v) =>
+                              (v?.trim().isEmpty ?? true) ? 'Required' : null,
                         ),
                         _buildTextField(
                           context,
@@ -207,7 +234,8 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
                           label: 'Last Name',
                           hint: 'Doe',
                           mandatory: true,
-                          validator: (v) => (v?.trim().isEmpty ?? true) ? 'Required' : null,
+                          validator: (v) =>
+                              (v?.trim().isEmpty ?? true) ? 'Required' : null,
                         ),
                       ]),
                       _buildTextField(
@@ -217,7 +245,8 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
                         hint: 'john.doe@example.com',
                         keyboardType: TextInputType.emailAddress,
                         mandatory: true,
-                        validator: (v) => (v?.trim().isEmpty ?? true) ? 'Required' : null,
+                        validator: (v) =>
+                            (v?.trim().isEmpty ?? true) ? 'Required' : null,
                       ),
                       _buildTextField(
                         context,
@@ -238,12 +267,25 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
                           label: 'Gender',
                           value: _selectedGender,
                           items: [
-                            DropdownMenuItem(value: null, child: Text('Not Specified')),
-                            DropdownMenuItem(value: 'Male', child: Text('Male')),
-                            DropdownMenuItem(value: 'Female', child: Text('Female')),
-                            DropdownMenuItem(value: 'Other', child: Text('Other')),
+                            DropdownMenuItem(
+                              value: null,
+                              child: Text('Not Specified'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Male',
+                              child: Text('Male'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Female',
+                              child: Text('Female'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Other',
+                              child: Text('Other'),
+                            ),
                           ],
-                          onChanged: (val) => setState(() => _selectedGender = val),
+                          onChanged: (val) =>
+                              setState(() => _selectedGender = val),
                         ),
                         _buildDatePicker(
                           context,
@@ -256,7 +298,8 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
                               firstDate: DateTime(1950),
                               lastDate: DateTime.now(),
                             );
-                            if (picked != null) setState(() => _dateOfBirth = picked);
+                            if (picked != null)
+                              setState(() => _dateOfBirth = picked);
                           },
                         ),
                       ]),
@@ -264,7 +307,11 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
                     SizedBox(height: 24),
                     _buildSectionHeader(context, 'Professional Information'),
                     _buildCard(context, [
-                      _buildReadOnlyField(context, 'Employee ID', widget.employee.employeeId),
+                      _buildReadOnlyField(
+                        context,
+                        'Employee ID',
+                        widget.employee.employeeId,
+                      ),
                       _buildRow(context, [
                         _buildTextField(
                           context,
@@ -285,17 +332,48 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
                           label: 'Role',
                           value: _selectedRole,
                           items: ['employee', 'admin', 'hr']
-                              .map((r) => DropdownMenuItem(value: r, child: Text(r.toUpperCase())))
+                              .map(
+                                (r) => DropdownMenuItem(
+                                  value: r,
+                                  child: Text(r.toUpperCase()),
+                                ),
+                              )
                               .toList(),
-                          onChanged: (val) => setState(() => _selectedRole = val!),
+                          onChanged: (val) =>
+                              setState(() => _selectedRole = val!),
                         ),
-                        _buildTextField(
-                          context,
-                          controller: _gradeController,
-                          label: 'Grade',
-                          hint: 'L2',
+                        _buildDropdown<String>(
+                          context: context,
+                          label: 'Status',
+                          value: _selectedStatus,
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'active',
+                              child: Text('ACTIVE'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'inactive',
+                              child: Text('INACTIVE'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'hold',
+                              child: Text('HOLD'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'terminated',
+                              child: Text('TERMINATED'),
+                            ),
+                          ],
+                          onChanged: (val) =>
+                              setState(() => _selectedStatus = val!),
                         ),
                       ]),
+                      _buildTextField(
+                        context,
+                        controller: _gradeController,
+                        label: 'Grade',
+                        hint: 'L2',
+                      ),
                       _buildDatePicker(
                         context,
                         label: 'Joining Date',
@@ -307,7 +385,8 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
                             firstDate: DateTime(2000),
                             lastDate: DateTime.now(),
                           );
-                          if (picked != null) setState(() => _joiningDate = picked);
+                          if (picked != null)
+                            setState(() => _joiningDate = picked);
                         },
                       ),
                     ]),
@@ -378,21 +457,28 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
                         contentPadding: EdgeInsets.zero,
                         title: Text(
                           'Enable Mobile Access',
-                          style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500),
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                         subtitle: Text(
                           'Allow employee to log in via mobile app',
                           style: GoogleFonts.poppins(fontSize: 12),
                         ),
                         value: _mobileAccessEnabled,
-                        onChanged: (val) => setState(() => _mobileAccessEnabled = val),
+                        onChanged: (val) =>
+                            setState(() => _mobileAccessEnabled = val),
                         secondary: Container(
                           padding: EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: colorScheme.primary.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Icon(Icons.phone_android, color: colorScheme.primary),
+                          child: Icon(
+                            Icons.phone_android,
+                            color: colorScheme.primary,
+                          ),
                         ),
                       ),
                     ]),
@@ -411,7 +497,10 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
                         ),
                         child: Text(
                           'Update Employee',
-                          style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -457,7 +546,8 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: children.expand((w) => [w, SizedBox(height: 16)]).toList()..removeLast(),
+        children: children.expand((w) => [w, SizedBox(height: 16)]).toList()
+          ..removeLast(),
       ),
     );
   }
@@ -488,7 +578,13 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
               ),
             ),
             if (mandatory)
-              Text(' *', style: TextStyle(color: colorScheme.error, fontWeight: FontWeight.bold)),
+              Text(
+                ' *',
+                style: TextStyle(
+                  color: colorScheme.error,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
           ],
         ),
         SizedBox(height: 6),
@@ -496,7 +592,10 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
           controller: controller,
           keyboardType: keyboardType,
           maxLines: maxLines,
-          style: GoogleFonts.poppins(fontSize: 14, color: colorScheme.onSurface),
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: colorScheme.onSurface,
+          ),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(
@@ -508,11 +607,15 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
             contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: colorScheme.outline.withOpacity(0.3)),
+              borderSide: BorderSide(
+                color: colorScheme.outline.withOpacity(0.3),
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: colorScheme.outline.withOpacity(0.2)),
+              borderSide: BorderSide(
+                color: colorScheme.outline.withOpacity(0.2),
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
@@ -552,7 +655,10 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
           ),
           child: Text(
             value,
-            style: GoogleFonts.poppins(fontSize: 14, color: colorScheme.onSurface.withOpacity(0.8)),
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: colorScheme.onSurface.withOpacity(0.8),
+            ),
           ),
         ),
       ],
@@ -583,7 +689,10 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
           value: value,
           items: items,
           onChanged: onChanged,
-          style: GoogleFonts.poppins(fontSize: 14, color: colorScheme.onSurface),
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            color: colorScheme.onSurface,
+          ),
           dropdownColor: colorScheme.surfaceContainerHighest,
           decoration: InputDecoration(
             filled: true,
@@ -591,11 +700,15 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
             contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: colorScheme.outline.withOpacity(0.3)),
+              borderSide: BorderSide(
+                color: colorScheme.outline.withOpacity(0.3),
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: colorScheme.outline.withOpacity(0.2)),
+              borderSide: BorderSide(
+                color: colorScheme.outline.withOpacity(0.2),
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
@@ -640,10 +753,17 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
                 Expanded(
                   child: Text(
                     DateFormat('dd-MM-yyyy').format(value),
-                    style: GoogleFonts.poppins(fontSize: 14, color: colorScheme.onSurface),
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: colorScheme.onSurface,
+                    ),
                   ),
                 ),
-                Icon(Icons.calendar_today, size: 18, color: colorScheme.onSurface.withOpacity(0.6)),
+                Icon(
+                  Icons.calendar_today,
+                  size: 18,
+                  color: colorScheme.onSurface.withOpacity(0.6),
+                ),
               ],
             ),
           ),
@@ -655,10 +775,11 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
   Widget _buildRow(BuildContext context, List<Widget> children) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: children
-          .expand((w) => [Expanded(child: w), SizedBox(width: 12)])
-          .toList()
-        ..removeLast(),
+      children:
+          children
+              .expand((w) => [Expanded(child: w), SizedBox(width: 12)])
+              .toList()
+            ..removeLast(),
     );
   }
 }

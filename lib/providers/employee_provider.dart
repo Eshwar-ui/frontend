@@ -39,6 +39,7 @@ class EmployeeProvider with ChangeNotifier {
     String? employeeId,
     String? employeeName,
     String? designation,
+    String? status,
   }) async {
     _isLoading = true;
     _error = null;
@@ -49,6 +50,7 @@ class EmployeeProvider with ChangeNotifier {
         employeeId: employeeId,
         employeeName: employeeName,
         designation: designation,
+        status: status,
       );
     } catch (e) {
       print("Error in EmployeeProvider.getAllEmployees: $e");

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/providers/employee_provider.dart';
+import 'package:quantum_dashboard/providers/navigation_provider.dart';
 import 'package:quantum_dashboard/utils/text_styles.dart';
 import 'package:quantum_dashboard/utils/error_handler.dart';
 import 'package:quantum_dashboard/widgets/error_widget.dart';
@@ -18,6 +19,12 @@ class AdminEmployeesScreen extends StatefulWidget {
 }
 
 class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
+  static const Set<String> _validStatuses = {
+    'active',
+    'inactive',
+    'hold',
+    'terminated',
+  };
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   final Map<String, bool> _expandedTiles = {};
@@ -25,6 +32,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
   String _selectedDepartment = 'all';
   String _selectedRole = 'all';
   String _selectedDesignation = 'all';
+  String _selectedStatus = 'all';
 
   @override
   void initState() {
@@ -32,6 +40,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
     _searchController.addListener(_onSearchChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<EmployeeProvider>(context, listen: false).getAllEmployees();
+      _consumePendingStatusFilterIfAny();
     });
   }
 
@@ -50,6 +59,24 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
 
   void _refreshEmployees() {
     Provider.of<EmployeeProvider>(context, listen: false).getAllEmployees();
+  }
+
+  void _consumePendingStatusFilterIfAny() {
+    final navigationProvider = Provider.of<NavigationProvider>(
+      context,
+      listen: false,
+    );
+    final pendingStatus = navigationProvider
+        .consumePendingAdminEmployeeStatusFilter();
+    if (pendingStatus == null || !_validStatuses.contains(pendingStatus)) {
+      return;
+    }
+
+    if (_selectedStatus != pendingStatus) {
+      setState(() {
+        _selectedStatus = pendingStatus;
+      });
+    }
   }
 
   List<Employee> _filterEmployees(List<Employee> employees) {
@@ -79,6 +106,11 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
         if (_selectedDesignation == 'none') return des.isEmpty;
         return des.toLowerCase() == _selectedDesignation.toLowerCase();
       }).toList();
+    }
+
+    // Employee status filter
+    if (_selectedStatus != 'all') {
+      filtered = filtered.where((e) => e.status == _selectedStatus).toList();
     }
 
     // Search filter
@@ -297,7 +329,8 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                   _searchQuery.isNotEmpty ||
                   _selectedDepartment != 'all' ||
                   _selectedRole != 'all' ||
-                  _selectedDesignation != 'all';
+                  _selectedDesignation != 'all' ||
+                  _selectedStatus != 'all';
 
               if (filteredEmployees.isEmpty && hasActiveFilters) {
                 return Column(
@@ -450,9 +483,26 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                   onChanged: (v) => setState(() => _selectedDesignation = v!),
                   colorScheme: colorScheme,
                 ),
+                SizedBox(width: 12),
+                // Status filter
+                _buildFilterDropdown(
+                  label: 'Status',
+                  value: _selectedStatus,
+                  items: ['all', 'active', 'inactive', 'hold', 'terminated'],
+                  displayValues: {
+                    'all': 'All Statuses',
+                    'active': 'Active',
+                    'inactive': 'Inactive',
+                    'hold': 'Hold',
+                    'terminated': 'Terminated',
+                  },
+                  onChanged: (v) => setState(() => _selectedStatus = v!),
+                  colorScheme: colorScheme,
+                ),
                 if (_selectedDepartment != 'all' ||
                     _selectedRole != 'all' ||
-                    _selectedDesignation != 'all') ...[
+                    _selectedDesignation != 'all' ||
+                    _selectedStatus != 'all') ...[
                   SizedBox(width: 8),
                   IconButton(
                     onPressed: () {
@@ -460,6 +510,7 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                         _selectedDepartment = 'all';
                         _selectedRole = 'all';
                         _selectedDesignation = 'all';
+                        _selectedStatus = 'all';
                       });
                     },
                     icon: Icon(
@@ -562,13 +613,21 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
             ),
           ),
         ),
-        title: Text(
-          employee.fullName.toTitleCase(),
-          style: GoogleFonts.poppins(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: colorScheme.onSurface,
-          ),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                employee.fullName.toTitleCase(),
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+            ),
+            SizedBox(width: 8),
+            _buildStatusBadge(employee.status, colorScheme),
+          ],
         ),
         subtitle: Text(
           employee.designation ?? 'No Designation',
@@ -718,6 +777,55 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildStatusBadge(String status, ColorScheme colorScheme) {
+    final normalized = status.trim().toLowerCase();
+    final Color backgroundColor;
+    final Color textColor;
+
+    switch (normalized) {
+      case 'active':
+        backgroundColor = Colors.green.shade100;
+        textColor = Colors.green.shade800;
+        break;
+      case 'inactive':
+        backgroundColor = Colors.grey.shade300;
+        textColor = Colors.grey.shade800;
+        break;
+      case 'hold':
+        backgroundColor = Colors.amber.shade100;
+        textColor = Colors.amber.shade900;
+        break;
+      case 'terminated':
+        backgroundColor = Colors.red.shade100;
+        textColor = Colors.red.shade900;
+        break;
+      default:
+        backgroundColor = colorScheme.surfaceContainerHighest;
+        textColor = colorScheme.onSurface;
+    }
+
+    final label = normalized.isEmpty
+        ? 'ACTIVE'
+        : normalized.substring(0, 1).toUpperCase() +
+              normalized.substring(1).toLowerCase();
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.poppins(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: textColor,
+        ),
+      ),
     );
   }
 
