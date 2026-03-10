@@ -39,6 +39,7 @@ class Leave {
     }
     return 'Unknown Employee';
   }
+
   DateTime get fromDate => from;
   DateTime get toDate => to;
   DateTime get appliedDate => from; // Using from date as applied date
@@ -52,7 +53,8 @@ class Leave {
       try {
         final employeeJson = json['employeeId'] as Map<String, dynamic>;
         // Handle different id field names
-        if (!employeeJson.containsKey('id') && employeeJson.containsKey('_id')) {
+        if (!employeeJson.containsKey('id') &&
+            employeeJson.containsKey('_id')) {
           employeeJson['id'] = employeeJson['_id'];
         }
         employee = Employee.fromJson(employeeJson);
@@ -64,15 +66,17 @@ class Leave {
 
     return Leave(
       id: json['_id'] ?? json['id'] ?? '',
-      employeeId: json['employeeId'] is String 
-          ? json['employeeId'] 
-          : (json['employeeId'] is Map ? json['employeeId']['_id'] ?? json['employeeId']['id'] : ''),
+      employeeId: json['employeeId'] is String
+          ? json['employeeId']
+          : (json['employeeId'] is Map
+                ? json['employeeId']['_id'] ?? json['employeeId']['id']
+                : ''),
       type: json['type'] ?? '',
       from: _parseDate(json['from']),
       to: _parseDate(json['to']),
       reason: json['reason'] ?? '',
       status: json['status'] ?? 'New',
-      days: json['days'] ?? 0,
+      days: json['days'] != null ? (json['days'] as num).toInt() : 0,
       actionBy: json['actionBy'] ?? 'HR',
       action: json['action'] ?? '-',
       employee: employee,
@@ -87,10 +91,12 @@ class Leave {
     try {
       // If it's already a DateTime object, return it
       if (dateValue is DateTime) {
-        AppLogger.debug('LeaveModel: Date is already DateTime, returning as-is');
+        AppLogger.debug(
+          'LeaveModel: Date is already DateTime, returning as-is',
+        );
         return dateValue;
       }
-      
+
       // If it's a String, try to parse it
       if (dateValue is String) {
         AppLogger.debug('LeaveModel: Date is String, attempting to parse');
@@ -115,7 +121,7 @@ class Leave {
           }
         }
       }
-      
+
       // If it's neither DateTime nor String, return current date
       AppLogger.warning(
         'Unexpected date type: ${dateValue.runtimeType}, using current date as fallback',
