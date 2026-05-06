@@ -7,7 +7,6 @@ import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/utils/text_styles.dart';
 import 'package:quantum_dashboard/utils/string_extensions.dart';
 import 'package:quantum_dashboard/widgets/custom_floating_container.dart';
-import 'package:quantum_dashboard/widgets/photo_upload_widget.dart';
 import 'package:intl/intl.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -39,44 +38,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             expandedHeight: 300,
             floating: false,
             pinned: true,
-            actions: [
-              IconButton(
-                icon: Icon(Icons.edit),
-                onPressed: () {
-                  showModalBottomSheet(
-                    useSafeArea: true,
-                    context: context,
-                    isScrollControlled: false,
-                    backgroundColor: Colors.transparent,
-                    builder: (ctx) {
-                      return Container(
-                        width: double.infinity,
-                        height: 300,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(16),
-                            topRight: Radius.circular(16),
-                          ),
-                        ),
-                        padding: EdgeInsets.all(16),
-                        child: PhotoUploadWidget(
-                          employee: user,
-                          size: 200,
-                          onPhotoUploaded: (updatedEmployee) {
-                            Provider.of<AuthProvider>(
-                              context,
-                              listen: false,
-                            ).setUser(updatedEmployee);
-                            Navigator.of(ctx).pop();
-                          },
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ],
             flexibleSpace: FlexibleSpaceBar(
               titlePadding: EdgeInsets.zero,
               centerTitle: true,
@@ -151,16 +112,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Container(
                     margin: EdgeInsets.only(top: 100),
                     child: Center(
-                      child: PhotoUploadWidget(
-                        employee: user,
-                        size: 150,
-                        onPhotoUploaded: (updatedEmployee) {
-                          // Update auth provider with new user data
-                          Provider.of<AuthProvider>(
-                            context,
-                            listen: false,
-                          ).setUser(updatedEmployee);
-                        },
+                      child: CircleAvatar(
+                        radius: 75,
+                        backgroundColor: Colors.blue.shade700,
+                        child: Text(
+                          user.firstName.isNotEmpty
+                              ? user.firstName[0].toUpperCase()
+                              : 'Q',
+                          style: AppTextStyles.heading.copyWith(
+                            color: Colors.white,
+                            fontSize: 42,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
                   ),

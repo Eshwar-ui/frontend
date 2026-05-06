@@ -16,6 +16,7 @@ class AddEmployeeScreen extends StatefulWidget {
 
 class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
   final _formKey = GlobalKey<FormState>();
+  final RegExp _timeRegex = RegExp(r'^([01]\d|2[0-3]):([0-5]\d)$');
 
   // Personal Info
   final _firstNameController = TextEditingController();
@@ -33,6 +34,8 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
   final _designationController = TextEditingController();
   final _gradeController = TextEditingController();
   final _reportController = TextEditingController();
+  final _shiftStartController = TextEditingController();
+  final _shiftEndController = TextEditingController();
   String _selectedRole = 'employee';
   String _selectedStatus = 'active';
   DateTime _joiningDate = DateTime.now();
@@ -47,6 +50,7 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
 
   // Gov IDs
   final _PANnoController = TextEditingController();
+  final _PFnoController = TextEditingController();
   final _UANnoController = TextEditingController();
   final _ESInoController = TextEditingController();
 
@@ -67,11 +71,14 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
     _designationController.dispose();
     _gradeController.dispose();
     _reportController.dispose();
+    _shiftStartController.dispose();
+    _shiftEndController.dispose();
     _addressController.dispose();
     _banknameController.dispose();
     _accountnumberController.dispose();
     _ifsccodeController.dispose();
     _PANnoController.dispose();
+    _PFnoController.dispose();
     _UANnoController.dispose();
     _ESInoController.dispose();
     super.dispose();
@@ -79,6 +86,16 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
 
   Future<void> _saveEmployee() async {
     if (!_formKey.currentState!.validate()) return;
+    final shiftStart = _shiftStartController.text.trim();
+    final shiftEnd = _shiftEndController.text.trim();
+    if ((shiftStart.isEmpty && shiftEnd.isNotEmpty) ||
+        (shiftStart.isNotEmpty && shiftEnd.isEmpty)) {
+      SnackbarUtils.showWarning(
+        context,
+        'Please provide both shift start and shift end in HH:mm format.',
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -105,11 +122,14 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
         'designation': _designationController.text.trim(),
         'grade': _gradeController.text.trim(),
         'report': _reportController.text.trim(),
+        'shiftStartTime': shiftStart,
+        'shiftEndTime': shiftEnd,
         'address': _addressController.text.trim(),
         'bankname': _banknameController.text.trim(),
         'accountnumber': _accountnumberController.text.trim(),
         'ifsccode': _ifsccodeController.text.trim(),
         'PANno': _PANnoController.text.trim(),
+        'PFno': _PFnoController.text.trim(),
         'UANno': _UANnoController.text.trim(),
         'ESIno': _ESInoController.text.trim(),
         'mobileAccessEnabled': _mobileAccessEnabled,
@@ -342,14 +362,14 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                             value: 'active',
                             child: Text('ACTIVE'),
                           ),
-                          DropdownMenuItem(
-                            value: 'inactive',
-                            child: Text('INACTIVE'),
-                          ),
                           DropdownMenuItem(value: 'hold', child: Text('HOLD')),
                           DropdownMenuItem(
                             value: 'terminated',
                             child: Text('TERMINATED'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'resigned',
+                            child: Text('RESIGNED'),
                           ),
                         ],
                         onChanged: (val) =>
@@ -394,6 +414,34 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                         label: 'Reporting To',
                         hint: 'Manager Name',
                       ),
+                      _buildRow([
+                        _buildTextField(
+                          controller: _shiftStartController,
+                          label: 'Shift Start (HH:mm)',
+                          hint: '09:30',
+                          validator: (value) {
+                            final v = value?.trim() ?? '';
+                            if (v.isEmpty) return null;
+                            if (!_timeRegex.hasMatch(v)) {
+                              return 'Use HH:mm';
+                            }
+                            return null;
+                          },
+                        ),
+                        _buildTextField(
+                          controller: _shiftEndController,
+                          label: 'Shift End (HH:mm)',
+                          hint: '18:30',
+                          validator: (value) {
+                            final v = value?.trim() ?? '';
+                            if (v.isEmpty) return null;
+                            if (!_timeRegex.hasMatch(v)) {
+                              return 'Use HH:mm';
+                            }
+                            return null;
+                          },
+                        ),
+                      ]),
                     ]),
                     SizedBox(height: 24),
                     _buildSectionHeader('Address'),
@@ -435,11 +483,18 @@ class _AddEmployeeScreenState extends State<AddEmployeeScreen> {
                       ),
                       _buildRow([
                         _buildTextField(
+                          controller: _PFnoController,
+                          label: 'PF Number',
+                          hint: 'PF1234567890',
+                        ),
+                        _buildTextField(
                           controller: _UANnoController,
                           label: 'UAN Number',
                           hint: '100123456789',
                           keyboardType: TextInputType.number,
                         ),
+                      ]),
+                      _buildRow([
                         _buildTextField(
                           controller: _ESInoController,
                           label: 'ESI Number',

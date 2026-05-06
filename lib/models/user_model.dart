@@ -3,9 +3,9 @@ import 'package:quantum_dashboard/utils/app_logger.dart';
 class Employee {
   static const List<String> validStatuses = [
     'active',
-    'inactive',
     'hold',
     'terminated',
+    'resigned',
   ];
 
   final String id;
@@ -29,11 +29,14 @@ class Employee {
   final String? accountnumber;
   final String? ifsccode;
   final String? PANno;
+  final String? PFno;
   final String? UANno;
   final String? ESIno;
   final String? fathername;
   final bool? mobileAccessEnabled;
   final String status;
+  final String? shiftStartTime;
+  final String? shiftEndTime;
 
   Employee({
     required this.id,
@@ -57,11 +60,14 @@ class Employee {
     this.accountnumber,
     this.ifsccode,
     this.PANno,
+    this.PFno,
     this.UANno,
     this.ESIno,
     this.fathername,
     this.mobileAccessEnabled,
     this.status = 'active',
+    this.shiftStartTime,
+    this.shiftEndTime,
   });
 
   Employee copyWith({
@@ -86,11 +92,14 @@ class Employee {
     String? accountnumber,
     String? ifsccode,
     String? PANno,
+    String? PFno,
     String? UANno,
     String? ESIno,
     String? fathername,
     bool? mobileAccessEnabled,
     String? status,
+    String? shiftStartTime,
+    String? shiftEndTime,
   }) {
     return Employee(
       id: id ?? this.id,
@@ -114,11 +123,14 @@ class Employee {
       accountnumber: accountnumber ?? this.accountnumber,
       ifsccode: ifsccode ?? this.ifsccode,
       PANno: PANno ?? this.PANno,
+      PFno: PFno ?? this.PFno,
       UANno: UANno ?? this.UANno,
       ESIno: ESIno ?? this.ESIno,
       fathername: fathername ?? this.fathername,
       mobileAccessEnabled: mobileAccessEnabled ?? this.mobileAccessEnabled,
       status: status ?? this.status,
+      shiftStartTime: shiftStartTime ?? this.shiftStartTime,
+      shiftEndTime: shiftEndTime ?? this.shiftEndTime,
     );
   }
 
@@ -145,14 +157,20 @@ class Employee {
     final accountnumber = json['accountnumber'] as String?;
     final ifsccode = json['ifsccode'] as String?;
     final PANno = json['PANno'] as String?;
+    final PFno = (json['PFno'] ?? json['pfNo']) as String?;
     final UANno = json['UANno'] as String?;
     final ESIno = json['ESIno'] as String?;
     final fathername = json['fathername'] as String?;
     final mobileAccessEnabled = json['mobileAccessEnabled'] as bool?;
     final statusRaw = json['status'] as String?;
+    final shiftStartTime = json['shiftStartTime'] as String?;
+    final shiftEndTime = json['shiftEndTime'] as String?;
     final normalizedStatus = (statusRaw ?? '').trim().toLowerCase();
-    final status = validStatuses.contains(normalizedStatus)
-        ? normalizedStatus
+    final mappedStatus = normalizedStatus == 'inactive'
+        ? 'resigned'
+        : normalizedStatus;
+    final status = validStatuses.contains(mappedStatus)
+        ? mappedStatus
         : 'active';
 
     return Employee(
@@ -181,11 +199,14 @@ class Employee {
       accountnumber: accountnumber,
       ifsccode: ifsccode,
       PANno: PANno,
+      PFno: PFno,
       UANno: UANno,
       ESIno: ESIno,
       fathername: fathername,
       mobileAccessEnabled: mobileAccessEnabled,
       status: status,
+      shiftStartTime: shiftStartTime,
+      shiftEndTime: shiftEndTime,
     );
   }
 
@@ -212,11 +233,14 @@ class Employee {
       'accountnumber': accountnumber,
       'ifsccode': ifsccode,
       'PANno': PANno,
+      'PFno': PFno,
       'UANno': UANno,
       'ESIno': ESIno,
       'fathername': fathername,
       'mobileAccessEnabled': mobileAccessEnabled,
       'status': status,
+      'shiftStartTime': shiftStartTime,
+      'shiftEndTime': shiftEndTime,
     };
   }
 

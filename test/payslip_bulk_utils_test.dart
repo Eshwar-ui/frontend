@@ -1,11 +1,92 @@
 import 'dart:convert';
+import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:excel/excel.dart' as xls;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:quantum_dashboard/utils/payslip_bulk_utils.dart';
 
 void main() {
+  group('PayslipBulkUtils.exportTemplateXlsx', () {
+    test(
+      'saves xlsx file and marks opened when file viewer succeeds',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp(
+          'payslip_template_test',
+        );
+        addTearDown(() async {
+          if (tempDir.existsSync()) {
+            await tempDir.delete(recursive: true);
+          }
+        });
+
+        final result = await PayslipBulkUtils.exportTemplateXlsx(
+          baseDirectory: tempDir,
+          openFile: (_) async => OpenResult(type: ResultType.done),
+        );
+
+        final file = File(result.filePath);
+        expect(result.opened, isTrue);
+        expect(result.openMessage, isNull);
+        expect(await file.exists(), isTrue);
+        expect(await file.length(), greaterThan(0));
+
+        final workbook = xls.Excel.decodeBytes(await file.readAsBytes());
+        expect(workbook.tables.keys, isNotEmpty);
+      },
+    );
+
+    test(
+      'returns saved-only result with message when viewer cannot open file',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp(
+          'payslip_template_test',
+        );
+        addTearDown(() async {
+          if (tempDir.existsSync()) {
+            await tempDir.delete(recursive: true);
+          }
+        });
+
+        final result = await PayslipBulkUtils.exportTemplateXlsx(
+          baseDirectory: tempDir,
+          openFile: (_) async => OpenResult(
+            type: ResultType.noAppToOpen,
+            message: 'No app found to open this file.',
+          ),
+        );
+
+        expect(result.opened, isFalse);
+        expect(result.openMessage, 'No app found to open this file.');
+        expect(await File(result.filePath).exists(), isTrue);
+      },
+    );
+
+    test('propagates file system errors while saving template', () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'payslip_template_test',
+      );
+      addTearDown(() async {
+        if (tempDir.existsSync()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+
+      final blockingFile = File('${tempDir.path}/not_a_directory');
+      await blockingFile.writeAsString('block writes');
+
+      await expectLater(
+        PayslipBulkUtils.exportTemplateXlsx(
+          baseDirectory: Directory(blockingFile.path),
+          openFile: (_) async => OpenResult(type: ResultType.done),
+        ),
+        throwsA(isA<FileSystemException>()),
+      );
+    });
+  });
+
   group('PayslipBulkUtils.parseFileBytes', () {
     test('parses valid CSV row', () {
       const csv =
@@ -34,7 +115,10 @@ void main() {
       expect(result.issues, hasLength(1));
       expect(result.issues.first.rowNumber, 2);
       expect(result.issues.first.message, contains('empId is required'));
-      expect(result.issues.first.message, contains('month must be between 1 and 12'));
+      expect(
+        result.issues.first.message,
+        contains('month must be between 1 and 12'),
+      );
     });
 
     test('parses xlsx rows with header aliases', () {
@@ -59,7 +143,9 @@ void main() {
       for (var i = 0; i < headers.length; i++) {
         sheet
             .cell(xls.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0))
-            .value = xls.TextCellValue(headers[i]);
+            .value = xls.TextCellValue(
+          headers[i],
+        );
       }
       final values = [
         'QWIT-1010',
@@ -80,7 +166,9 @@ void main() {
       for (var i = 0; i < values.length; i++) {
         sheet
             .cell(xls.CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 1))
-            .value = xls.TextCellValue(values[i]);
+            .value = xls.TextCellValue(
+          values[i],
+        );
       }
 
       final bytes = Uint8List.fromList(excel.encode()!);
@@ -93,23 +181,32 @@ void main() {
       expect(result.validRows.first['lopDays'], 1);
     });
 
-    test('returns parse issues for unsupported extension and malformed xlsx', () {
-      final unsupported = PayslipBulkUtils.parseFileBytes(
-        Uint8List.fromList(utf8.encode('a,b\n1,2')),
-        'bulk.txt',
-      );
-      final malformedXlsx = PayslipBulkUtils.parseFileBytes(
-        Uint8List.fromList([1, 2, 3, 4]),
-        'bad.xlsx',
-      );
+    test(
+      'returns parse issues for unsupported extension and malformed xlsx',
+      () {
+        final unsupported = PayslipBulkUtils.parseFileBytes(
+          Uint8List.fromList(utf8.encode('a,b\n1,2')),
+          'bulk.txt',
+        );
+        final malformedXlsx = PayslipBulkUtils.parseFileBytes(
+          Uint8List.fromList([1, 2, 3, 4]),
+          'bad.xlsx',
+        );
 
-      expect(unsupported.validRows, isEmpty);
-      expect(unsupported.issues, hasLength(1));
-      expect(unsupported.issues.first.message, contains('Unsupported file format'));
+        expect(unsupported.validRows, isEmpty);
+        expect(unsupported.issues, hasLength(1));
+        expect(
+          unsupported.issues.first.message,
+          contains('Unsupported file format'),
+        );
 
-      expect(malformedXlsx.validRows, isEmpty);
-      expect(malformedXlsx.issues, hasLength(1));
-      expect(malformedXlsx.issues.first.message, contains('Unable to parse Excel file'));
-    });
+        expect(malformedXlsx.validRows, isEmpty);
+        expect(malformedXlsx.issues, hasLength(1));
+        expect(
+          malformedXlsx.issues.first.message,
+          contains('Unable to parse Excel file'),
+        );
+      },
+    );
   });
 }

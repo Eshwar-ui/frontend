@@ -24,6 +24,9 @@ void main() {
       MaterialApp(home: GeneratePayslipScreen(employees: employees)),
     );
 
+    expect(find.text('PF'), findsOneWidget);
+    expect(find.text('ESI'), findsOneWidget);
+
     await tester.tap(find.widgetWithText(ElevatedButton, 'Generate Payslip'));
     await tester.pumpAndSettle();
 

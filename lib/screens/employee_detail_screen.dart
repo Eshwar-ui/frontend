@@ -415,7 +415,7 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
           labelColor: colorScheme.onPrimary,
           unselectedLabelColor: colorScheme.onPrimary.withOpacity(0.7),
           tabs: [
-            Tab(icon: Icon(Icons.person), text: 'Details',),
+            Tab(icon: Icon(Icons.person), text: 'Details'),
             Tab(icon: Icon(Icons.calendar_today), text: 'Attendance'),
           ],
         ),
@@ -441,228 +441,247 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-          // Personal Information
-          _buildSectionCard(
-            context: context,
-            title: 'Personal Information',
-            icon: Icons.person_outline,
-            colorScheme: colorScheme,
-            children: [
-              _buildInfoRow(
-                icon: Icons.person,
-                label: 'Full Name',
-                value: _employee.fullName.toTitleCase(),
-                colorScheme: colorScheme,
-              ),
-              _buildInfoRow(
-                icon: Icons.badge,
-                label: 'Employee ID',
-                value: _employee.employeeId,
-                colorScheme: colorScheme,
-              ),
-              _buildInfoRow(
-                icon: Icons.person_outline,
-                label: 'First Name',
-                value: _employee.firstName.toTitleCase(),
-                colorScheme: colorScheme,
-              ),
-              _buildInfoRow(
-                icon: Icons.person_outline,
-                label: 'Last Name',
-                value: _employee.lastName.toTitleCase(),
-                colorScheme: colorScheme,
-              ),
-              if (_employee.gender != null)
-                _buildInfoRow(
-                  icon: Icons.wc,
-                  label: 'Gender',
-                  value: _employee.gender!,
-                  colorScheme: colorScheme,
-                ),
-              _buildInfoRow(
-                icon: Icons.cake,
-                label: 'Date of Birth',
-                value: DateFormat('dd MMMM yyyy').format(_employee.dateOfBirth),
-                colorScheme: colorScheme,
-                isLast: _employee.fathername == null,
-              ),
-              if (_employee.fathername != null)
-                _buildInfoRow(
-                  icon: Icons.family_restroom,
-                  label: 'Father\'s Name',
-                  value: _employee.fathername!,
-                  colorScheme: colorScheme,
-                  isLast: true,
-                ),
-            ],
-          ),
-          SizedBox(height: 16),
-
-          // Work Information
-          _buildSectionCard(
-            context: context,
-            title: 'Work Information',
-            icon: Icons.work_outline,
-            colorScheme: colorScheme,
-            children: [
-              if (_employee.department != null)
-                _buildInfoRow(
-                  icon: Icons.business,
-                  label: 'Department',
-                  value: _employee.department!,
-                  colorScheme: colorScheme,
-                ),
-              if (_employee.designation != null)
-                _buildInfoRow(
-                  icon: Icons.stars,
-                  label: 'Designation',
-                  value: _employee.designation!,
-                  colorScheme: colorScheme,
-                ),
-              if (_employee.grade != null)
-                _buildInfoRow(
-                  icon: Icons.grade,
-                  label: 'Grade',
-                  value: _employee.grade!,
-                  colorScheme: colorScheme,
-                ),
-              if (_employee.role != null)
-                _buildInfoRow(
-                  icon: Icons.admin_panel_settings,
-                  label: 'Role',
-                  value: _employee.role!,
-                  colorScheme: colorScheme,
-                ),
-              if (_employee.report != null)
-                _buildInfoRow(
-                  icon: Icons.supervisor_account,
-                  label: 'Reports To',
-                  value: _employee.report!,
-                  colorScheme: colorScheme,
-                ),
-              _buildInfoRow(
-                icon: Icons.calendar_today,
-                label: 'Joining Date',
-                value: DateFormat('dd MMMM yyyy').format(_employee.joiningDate),
-                colorScheme: colorScheme,
-                isLast: true,
-              ),
-            ],
-          ),
-          SizedBox(height: 16),
-
-          // Contact Information
-          _buildSectionCard(
-            context: context,
-            title: 'Contact Information',
-            icon: Icons.contact_phone,
-            colorScheme: colorScheme,
-            children: [
-              _buildInfoRow(
-                icon: Icons.email,
-                label: 'Email',
-                value: _employee.email,
-                colorScheme: colorScheme,
-                copyable: true,
-              ),
-              _buildInfoRow(
-                icon: Icons.phone,
-                label: 'Mobile',
-                value: _employee.mobile,
-                colorScheme: colorScheme,
-                copyable: true,
-                isLast: _employee.address == null,
-              ),
-              if (_employee.address != null)
-                _buildInfoRow(
-                  icon: Icons.location_on,
-                  label: 'Address',
-                  value: _employee.address!,
-                  colorScheme: colorScheme,
-                  isLast: true,
-                ),
-            ],
-          ),
-          SizedBox(height: 16),
-
-          // Banking Information (if available)
-          if (_employee.bankname != null ||
-              _employee.accountnumber != null ||
-              _employee.ifsccode != null)
+            // Personal Information
             _buildSectionCard(
               context: context,
-              title: 'Banking Information',
-              icon: Icons.account_balance,
+              title: 'Personal Information',
+              icon: Icons.person_outline,
               colorScheme: colorScheme,
               children: [
-                if (_employee.bankname != null)
+                _buildInfoRow(
+                  icon: Icons.person,
+                  label: 'Full Name',
+                  value: _employee.fullName.toTitleCase(),
+                  colorScheme: colorScheme,
+                ),
+                _buildInfoRow(
+                  icon: Icons.badge,
+                  label: 'Employee ID',
+                  value: _employee.employeeId,
+                  colorScheme: colorScheme,
+                ),
+                _buildInfoRow(
+                  icon: Icons.person_outline,
+                  label: 'First Name',
+                  value: _employee.firstName.toTitleCase(),
+                  colorScheme: colorScheme,
+                ),
+                _buildInfoRow(
+                  icon: Icons.person_outline,
+                  label: 'Last Name',
+                  value: _employee.lastName.toTitleCase(),
+                  colorScheme: colorScheme,
+                ),
+                if (_employee.gender != null)
                   _buildInfoRow(
-                    icon: Icons.account_balance,
-                    label: 'Bank Name',
-                    value: _employee.bankname!,
+                    icon: Icons.wc,
+                    label: 'Gender',
+                    value: _employee.gender!,
                     colorScheme: colorScheme,
-                    isLast: _employee.accountnumber == null && _employee.ifsccode == null,
                   ),
-                if (_employee.accountnumber != null)
+                _buildInfoRow(
+                  icon: Icons.cake,
+                  label: 'Date of Birth',
+                  value: DateFormat(
+                    'dd MMMM yyyy',
+                  ).format(_employee.dateOfBirth),
+                  colorScheme: colorScheme,
+                  isLast: _employee.fathername == null,
+                ),
+                if (_employee.fathername != null)
                   _buildInfoRow(
-                    icon: Icons.account_box,
-                    label: 'Account Number',
-                    value: _employee.accountnumber!,
-                    colorScheme: colorScheme,
-                    isLast: _employee.ifsccode == null,
-                  ),
-                if (_employee.ifsccode != null)
-                  _buildInfoRow(
-                    icon: Icons.code,
-                    label: 'IFSC Code',
-                    value: _employee.ifsccode!,
+                    icon: Icons.family_restroom,
+                    label: 'Father\'s Name',
+                    value: _employee.fathername!,
                     colorScheme: colorScheme,
                     isLast: true,
                   ),
               ],
             ),
-          SizedBox(height: 16),
+            SizedBox(height: 16),
 
-          // Government Information (if available)
-          if (_employee.PANno != null ||
-              _employee.UANno != null ||
-              _employee.ESIno != null)
+            // Work Information
             _buildSectionCard(
               context: context,
-              title: 'Government Information',
-              icon: Icons.description,
+              title: 'Work Information',
+              icon: Icons.work_outline,
               colorScheme: colorScheme,
               children: [
-                if (_employee.PANno != null)
+                if (_employee.department != null)
                   _buildInfoRow(
-                    icon: Icons.badge,
-                    label: 'PAN Number',
-                    value: _employee.PANno!,
+                    icon: Icons.business,
+                    label: 'Department',
+                    value: _employee.department!,
                     colorScheme: colorScheme,
-                    isLast: _employee.UANno == null && _employee.ESIno == null,
                   ),
-                if (_employee.UANno != null)
+                if (_employee.designation != null)
                   _buildInfoRow(
-                    icon: Icons.badge,
-                    label: 'UAN Number',
-                    value: _employee.UANno!,
+                    icon: Icons.stars,
+                    label: 'Designation',
+                    value: _employee.designation!,
                     colorScheme: colorScheme,
-                    isLast: _employee.ESIno == null,
                   ),
-                if (_employee.ESIno != null)
+                if (_employee.grade != null)
                   _buildInfoRow(
-                    icon: Icons.badge,
-                    label: 'ESI Number',
-                    value: _employee.ESIno!,
+                    icon: Icons.grade,
+                    label: 'Grade',
+                    value: _employee.grade!,
+                    colorScheme: colorScheme,
+                  ),
+                if (_employee.role != null)
+                  _buildInfoRow(
+                    icon: Icons.admin_panel_settings,
+                    label: 'Role',
+                    value: _employee.role!,
+                    colorScheme: colorScheme,
+                  ),
+                if (_employee.report != null)
+                  _buildInfoRow(
+                    icon: Icons.supervisor_account,
+                    label: 'Reports To',
+                    value: _employee.report!,
+                    colorScheme: colorScheme,
+                  ),
+                _buildInfoRow(
+                  icon: Icons.calendar_today,
+                  label: 'Joining Date',
+                  value: DateFormat(
+                    'dd MMMM yyyy',
+                  ).format(_employee.joiningDate),
+                  colorScheme: colorScheme,
+                  isLast: true,
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+
+            // Contact Information
+            _buildSectionCard(
+              context: context,
+              title: 'Contact Information',
+              icon: Icons.contact_phone,
+              colorScheme: colorScheme,
+              children: [
+                _buildInfoRow(
+                  icon: Icons.email,
+                  label: 'Email',
+                  value: _employee.email,
+                  colorScheme: colorScheme,
+                  copyable: true,
+                ),
+                _buildInfoRow(
+                  icon: Icons.phone,
+                  label: 'Mobile',
+                  value: _employee.mobile,
+                  colorScheme: colorScheme,
+                  copyable: true,
+                  isLast: _employee.address == null,
+                ),
+                if (_employee.address != null)
+                  _buildInfoRow(
+                    icon: Icons.location_on,
+                    label: 'Address',
+                    value: _employee.address!,
                     colorScheme: colorScheme,
                     isLast: true,
                   ),
               ],
             ),
-          SizedBox(height: 32),
-        ],
+            SizedBox(height: 16),
+
+            // Banking Information (if available)
+            if (_employee.bankname != null ||
+                _employee.accountnumber != null ||
+                _employee.ifsccode != null)
+              _buildSectionCard(
+                context: context,
+                title: 'Banking Information',
+                icon: Icons.account_balance,
+                colorScheme: colorScheme,
+                children: [
+                  if (_employee.bankname != null)
+                    _buildInfoRow(
+                      icon: Icons.account_balance,
+                      label: 'Bank Name',
+                      value: _employee.bankname!,
+                      colorScheme: colorScheme,
+                      isLast:
+                          _employee.accountnumber == null &&
+                          _employee.ifsccode == null,
+                    ),
+                  if (_employee.accountnumber != null)
+                    _buildInfoRow(
+                      icon: Icons.account_box,
+                      label: 'Account Number',
+                      value: _employee.accountnumber!,
+                      colorScheme: colorScheme,
+                      isLast: _employee.ifsccode == null,
+                    ),
+                  if (_employee.ifsccode != null)
+                    _buildInfoRow(
+                      icon: Icons.code,
+                      label: 'IFSC Code',
+                      value: _employee.ifsccode!,
+                      colorScheme: colorScheme,
+                      isLast: true,
+                    ),
+                ],
+              ),
+            SizedBox(height: 16),
+
+            // Government Information (if available)
+            if (_employee.PANno != null ||
+                _employee.PFno != null ||
+                _employee.UANno != null ||
+                _employee.ESIno != null)
+              _buildSectionCard(
+                context: context,
+                title: 'Government Information',
+                icon: Icons.description,
+                colorScheme: colorScheme,
+                children: [
+                  if (_employee.PANno != null)
+                    _buildInfoRow(
+                      icon: Icons.badge,
+                      label: 'PAN Number',
+                      value: _employee.PANno!,
+                      colorScheme: colorScheme,
+                      isLast:
+                          _employee.PFno == null &&
+                          _employee.UANno == null &&
+                          _employee.ESIno == null,
+                    ),
+                  if (_employee.PFno != null)
+                    _buildInfoRow(
+                      icon: Icons.badge,
+                      label: 'PF Number',
+                      value: _employee.PFno!,
+                      colorScheme: colorScheme,
+                      isLast:
+                          _employee.UANno == null && _employee.ESIno == null,
+                    ),
+                  if (_employee.UANno != null)
+                    _buildInfoRow(
+                      icon: Icons.badge,
+                      label: 'UAN Number',
+                      value: _employee.UANno!,
+                      colorScheme: colorScheme,
+                      isLast: _employee.ESIno == null,
+                    ),
+                  if (_employee.ESIno != null)
+                    _buildInfoRow(
+                      icon: Icons.badge,
+                      label: 'ESI Number',
+                      value: _employee.ESIno!,
+                      colorScheme: colorScheme,
+                      isLast: true,
+                    ),
+                ],
+              ),
+            SizedBox(height: 32),
+          ],
+        ),
       ),
-    ),
     );
   }
 
@@ -1336,7 +1355,14 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
   Widget _buildAppBarTitle(ColorScheme colorScheme) {
     return Row(
       children: [
-        _buildCompactAvatar(_employee),
+        Tooltip(
+          message: 'View profile image',
+          child: InkWell(
+            onTap: () => _showProfileImagePreview(_employee),
+            customBorder: const CircleBorder(),
+            child: _buildCompactAvatar(_employee),
+          ),
+        ),
         SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -1352,11 +1378,80 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
-              
             ],
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _showProfileImagePreview(Employee employee) async {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    await showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.85),
+      builder: (dialogContext) {
+        final size = MediaQuery.of(dialogContext).size;
+        final previewSize =
+            (size.width < size.height ? size.width : size.height) * 0.72;
+
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 32,
+          ),
+          backgroundColor: Colors.transparent,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      employee.fullName.toTitleCase(),
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    tooltip: 'Close',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: previewSize,
+                height: previewSize,
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.18),
+                  ),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: InteractiveViewer(
+                  minScale: 1,
+                  maxScale: 4,
+                  child: _buildProfileImagePreview(employee),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Pinch to zoom',
+                style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -1419,6 +1514,62 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
     return _buildPlaceholderAvatar(employee.firstName, size);
   }
 
+  Widget _buildProfileImagePreview(Employee employee) {
+    if (employee.profileImage.isNotEmpty) {
+      if (employee.profileImage.startsWith('data:image')) {
+        try {
+          final String base64String = employee.profileImage.split(',').last;
+          final bytes = base64Decode(base64String);
+          return Image.memory(
+            bytes,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return _buildPreviewPlaceholder(employee);
+            },
+          );
+        } catch (e) {
+          return _buildPreviewPlaceholder(employee);
+        }
+      }
+
+      try {
+        final uri = Uri.tryParse(employee.profileImage);
+        if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
+          return Image.network(
+            employee.profileImage,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return _buildPreviewPlaceholder(employee);
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  value: loadingProgress.expectedTotalBytes == null
+                      ? null
+                      : loadingProgress.cumulativeBytesLoaded /
+                            loadingProgress.expectedTotalBytes!,
+                  color: Colors.white,
+                ),
+              );
+            },
+          );
+        }
+      } catch (e) {
+        return _buildPreviewPlaceholder(employee);
+      }
+    }
+
+    return _buildPreviewPlaceholder(employee);
+  }
+
+  Widget _buildPreviewPlaceholder(Employee employee) {
+    return Container(
+      color: Theme.of(context).colorScheme.primary,
+      child: _buildPlaceholderAvatar(employee.firstName, 180),
+    );
+  }
+
   Widget _buildPlaceholderAvatar(String firstName, [double size = 80]) {
     if (firstName.isEmpty) firstName = '?';
     return Center(
@@ -1452,7 +1603,9 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
         ),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.outline.withValues(alpha: theme.brightness == Brightness.dark ? 0.12 : 0.06),
+            color: colorScheme.outline.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.12 : 0.06,
+            ),
             blurRadius: 12,
             offset: Offset(0, 4),
           ),
@@ -1551,7 +1704,10 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen>
               ),
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: value));
-                SnackbarUtils.showSuccess(context, '$label copied to clipboard');
+                SnackbarUtils.showSuccess(
+                  context,
+                  '$label copied to clipboard',
+                );
               },
             ),
         ],

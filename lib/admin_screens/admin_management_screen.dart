@@ -11,9 +11,17 @@ import 'package:quantum_dashboard/admin_screens/admin_locations_screen.dart';
 import 'package:quantum_dashboard/admin_screens/admin_company_locations_screen.dart';
 import 'package:quantum_dashboard/admin_screens/admin_employee_locations_screen.dart';
 import 'package:quantum_dashboard/admin_screens/admin_compoff_screen.dart';
+import 'package:quantum_dashboard/providers/auth_provider.dart';
+import 'package:quantum_dashboard/services/attendance_settings_service.dart';
+import 'package:quantum_dashboard/utils/payslip_access_utils.dart';
 
 class AdminManagementScreen extends StatelessWidget {
-  const AdminManagementScreen({super.key});
+  final Future<AttendanceSettings>? payslipAccessFuture;
+
+  const AdminManagementScreen({
+    super.key,
+    this.payslipAccessFuture,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +68,10 @@ class AdminManagementScreen extends StatelessWidget {
       context,
       listen: false,
     );
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final accessFuture =
+        payslipAccessFuture ??
+        AttendanceSettingsService().getAttendanceSettings();
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -88,7 +100,7 @@ class AdminManagementScreen extends StatelessWidget {
               ),
               SizedBox(height: 8),
               Text(
-                'Manage holidays, departments, leave types, and payslips',
+                'Manage holidays, departments, leave types, and access tools',
                 style: GoogleFonts.poppins(
                   fontSize: 14,
                   color: colorScheme.onSurface.withOpacity(0.7),
@@ -150,15 +162,31 @@ class AdminManagementScreen extends StatelessWidget {
                 },
               ),
               SizedBox(height: 16),
-              _buildManagementCard(
-                context,
-                'Payslips',
-                'Generate and manage employee payslips',
-                Icons.receipt_long,
-                Colors.green,
-                () {
-                  navigationProvider.setCurrentPage(
-                    NavigationPage.AdminPayslips,
+              FutureBuilder<AttendanceSettings>(
+                future: accessFuture,
+                builder: (context, snapshot) {
+                  final canAccess =
+                      snapshot.hasData &&
+                      canManageAdminPayslips(
+                        authProvider.user,
+                        snapshot.data!,
+                      );
+
+                  if (!canAccess) {
+                    return const SizedBox.shrink();
+                  }
+
+                  return _buildManagementCard(
+                    context,
+                    'Payslips',
+                    'Generate and manage employee payslips',
+                    Icons.receipt_long,
+                    Colors.green,
+                    () {
+                      navigationProvider.setCurrentPage(
+                        NavigationPage.AdminPayslips,
+                      );
+                    },
                   );
                 },
               ),

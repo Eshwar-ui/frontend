@@ -15,6 +15,7 @@ class NotificationProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   Timer? _pollingTimer;
+  Future<void>? _notificationSetupFuture;
 
   List<models.Notification> get notifications => _notifications;
   int get unreadCount => _unreadCount;
@@ -32,6 +33,11 @@ class NotificationProvider with ChangeNotifier {
 
   // Initialize local notifications
   Future<void> initializeLocalNotifications() async {
+    _notificationSetupFuture ??= _initializeLocalNotificationsInternal();
+    await _notificationSetupFuture;
+  }
+
+  Future<void> _initializeLocalNotificationsInternal() async {
     await _localNotification.initialize();
     await _localNotification.requestPermissions();
   }
@@ -113,19 +119,26 @@ class NotificationProvider with ChangeNotifier {
     _unreadCount = _notifications.where((n) => !n.isRead).length;
   }
 
-  // Start polling for new notifications
+  // Start polling for new notifications.
+  // This is not push delivery: fresh notifications only appear while the
+  // app process is alive and able to poll the backend.
   void startPolling({Duration interval = const Duration(seconds: 30)}) {
     // Stop existing timer if any
     stopPolling();
 
-    // Initialize local notifications if not already done
-    initializeLocalNotifications();
+    _startPollingAfterNotificationSetup(interval);
+  }
 
-    // Load immediately
-    loadNotifications();
-    loadUnreadCount();
+  Future<void> _startPollingAfterNotificationSetup(Duration interval) async {
+    await initializeLocalNotifications();
 
-    // Start periodic polling
+    // Load immediately only after notification setup is ready so new
+    // notifications can be surfaced locally on the first polling cycle.
+    await loadNotifications();
+    await loadUnreadCount();
+
+    // Replace any timer that may have been started by a racing caller.
+    _pollingTimer?.cancel();
     _pollingTimer = Timer.periodic(interval, (timer) {
       loadNotifications();
       loadUnreadCount();

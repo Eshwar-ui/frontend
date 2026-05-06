@@ -29,6 +29,7 @@ class HolidayService extends ApiService {
           holidays.add(Holiday.fromJson(item));
         }
       }
+      holidays.sort((a, b) => a.date.compareTo(b.date));
       AppLogger.debug('HolidayService: Successfully parsed holidays', {
         'count': holidays.length,
       });

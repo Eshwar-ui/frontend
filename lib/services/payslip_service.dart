@@ -61,9 +61,9 @@ class PayslipService extends ApiService {
     required double da,
     required double conveyanceAllowance,
     required double total,
-    required double employeesContributionPF,
-    required double employersContributionPF,
+    required double pf,
     required double professionalTAX,
+    required double esi,
     required double totalDeductions,
     required double netSalary,
     required int paidDays,
@@ -84,9 +84,9 @@ class PayslipService extends ApiService {
           'DA': da,
           'conveyanceAllowance': conveyanceAllowance,
           'total': total,
-          'employeesContributionPF': employeesContributionPF,
-          'employersContributionPF': employersContributionPF,
+          'employeesContributionPF': pf,
           'professionalTAX': professionalTAX,
+          'ESI': esi,
           'totalDeductions': totalDeductions,
           'NetSalary': netSalary,
           'paidDays': paidDays,
@@ -164,6 +164,11 @@ class PayslipService extends ApiService {
 
       return {
         'empId': row['empId'],
+        // Optional metadata (safe to send; backend may ignore)
+        if (row['name'] != null) 'name': row['name'],
+        if (row['pfNo'] != null) 'pfNo': row['pfNo'],
+        if (row['uan'] != null) 'uan': row['uan'],
+        if (row['esiNo'] != null) 'esiNo': row['esiNo'],
         'month': month is int ? month : int.tryParse(month.toString()) ?? 0,
         'year': year is int ? year : int.tryParse(year.toString()) ?? 0,
         'basicSalary': (row['basicSalary'] ?? 0).toDouble(),
@@ -177,6 +182,7 @@ class PayslipService extends ApiService {
         'employersContributionPF': (row['employersContributionPF'] ?? 0)
             .toDouble(),
         'professionalTAX': (row['professionalTAX'] ?? 0).toDouble(),
+        'ESI': (row['esi'] ?? 0).toDouble(),
         'totalDeductions': (row['totalDeductions'] ?? 0).toDouble(),
         'NetSalary': (row['netSalary'] ?? 0).toDouble(),
         'paidDays': paidDays is int

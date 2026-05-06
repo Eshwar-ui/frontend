@@ -7,10 +7,11 @@ import 'dart:convert';
 import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
 import 'package:quantum_dashboard/providers/theme_provider.dart';
-import 'package:quantum_dashboard/widgets/photo_upload_widget.dart';
 import 'package:quantum_dashboard/new_Screens/settings_page.dart';
 import 'package:quantum_dashboard/admin_screens/admin_offer_letters_screen.dart';
 import 'package:quantum_dashboard/providers/navigation_provider.dart';
+import 'package:quantum_dashboard/services/attendance_settings_service.dart';
+import 'package:quantum_dashboard/utils/payslip_access_utils.dart';
 import 'package:quantum_dashboard/utils/string_extensions.dart';
 
 class NewProfilePage extends StatefulWidget {
@@ -123,51 +124,21 @@ class _NewProfilePageState extends State<NewProfilePage> {
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
         child: Column(
           children: [
-            // Profile Image
-            GestureDetector(
-              onTap: () => _showPhotoUploadModal(user),
-              child: Stack(
-                children: [
-                  Container(
-                    width: 120,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 4),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 12,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: ClipOval(child: _buildProfileImage(user)),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      padding: EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.camera_alt,
-                        size: 20,
-                        color: Color(0xFF1976D2),
-                      ),
-                    ),
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 4),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 12,
+                    offset: Offset(0, 4),
                   ),
                 ],
               ),
+              child: ClipOval(child: _buildProfileImage(user)),
             ),
             const SizedBox(height: 16),
             // Name
@@ -289,77 +260,6 @@ class _NewProfilePageState extends State<NewProfilePage> {
           ),
         ),
       ),
-    );
-  }
-
-  void _showPhotoUploadModal(Employee user) {
-    if (!mounted || _theme == null) return;
-    final theme = _theme!;
-    final colorScheme = theme.colorScheme;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          decoration: BoxDecoration(
-            color: theme.cardColor,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(24),
-              topRight: Radius.circular(24),
-            ),
-          ),
-          padding: EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: colorScheme.onSurface.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              SizedBox(height: 20),
-              Text(
-                'Update Profile Photo',
-                style: GoogleFonts.poppins(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurface,
-                ),
-              ),
-              SizedBox(height: 20),
-              PhotoUploadWidget(
-                employee: user,
-                size: 200,
-                onPhotoUploaded: (updatedEmployee) {
-                  if (!mounted || _authProvider == null) return;
-
-                  // Evict the old image from the cache before updating the state.
-                  // This is crucial for data URLs that don't change their "URL" but change content.
-                  if (user.profileImage.isNotEmpty &&
-                      user.profileImage.startsWith('data:image')) {
-                    MemoryImage(
-                      base64Decode(user.profileImage.split(',').last),
-                    ).evict();
-                  }
-
-                  _authProvider?.setUser(updatedEmployee);
-                  Navigator.of(ctx).pop();
-                  _scaffoldMessenger!.showSnackBar(
-                    SnackBar(
-                      content: Text('Profile photo updated successfully'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 
@@ -726,6 +626,7 @@ class _NewProfilePageState extends State<NewProfilePage> {
   }
 
   Widget _buildAdminSettingsSection(NavigationProvider navigationProvider) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     return _buildSection(
       title: 'Admin Settings',
       icon: Icons.admin_panel_settings,
@@ -746,16 +647,29 @@ class _NewProfilePageState extends State<NewProfilePage> {
           () =>
               navigationProvider.setCurrentPage(NavigationPage.AdminLeaveTypes),
         ),
-        _buildAdminSettingsTile(
-          Icons.description_outlined,
-          'Offer Letters',
-          'Create candidates and send secure offer emails',
-          () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const AdminOfferLettersScreen(),
-              ),
+        FutureBuilder<AttendanceSettings>(
+          future: AttendanceSettingsService().getAttendanceSettings(),
+          builder: (context, snapshot) {
+            final canAccess =
+                snapshot.hasData &&
+                canManageAdminOffers(authProvider.user, snapshot.data!);
+
+            if (!canAccess) {
+              return const SizedBox.shrink();
+            }
+
+            return _buildAdminSettingsTile(
+              Icons.description_outlined,
+              'Offer Letters',
+              'Create candidates and send secure offer emails',
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AdminOfferLettersScreen(),
+                  ),
+                );
+              },
             );
           },
         ),

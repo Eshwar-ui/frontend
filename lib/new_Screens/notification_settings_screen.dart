@@ -50,7 +50,7 @@ class NotificationSettingsScreen extends StatelessWidget {
                     return _buildNotificationToggle(
                       context,
                       'Enable Notifications',
-                      'Receive push notifications from the app',
+                      'Show local alerts for notifications detected during app polling',
                       settingsProvider.notificationsEnabled,
                       (value) async {
                         await settingsProvider.setNotificationsEnabled(value);
@@ -498,7 +498,7 @@ class NotificationSettingsScreen extends StatelessWidget {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        'Check for new notifications every $currentInterval seconds',
+                        'Poll the server for new notifications every $currentInterval seconds while the app is running',
                         style: GoogleFonts.poppins(
                           fontSize: 12,
                           color: colorScheme.onSurface.withOpacity(0.6),

@@ -11,6 +11,7 @@ import 'package:quantum_dashboard/widgets/error_widget.dart';
 import 'package:quantum_dashboard/screens/employee_detail_screen.dart';
 import 'package:quantum_dashboard/screens/add_employee_screen.dart';
 import 'package:quantum_dashboard/screens/edit_employee_screen.dart';
+import 'package:quantum_dashboard/utils/excel_export_utils.dart';
 import 'package:quantum_dashboard/utils/string_extensions.dart';
 
 class AdminEmployeesScreen extends StatefulWidget {
@@ -21,13 +22,14 @@ class AdminEmployeesScreen extends StatefulWidget {
 class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
   static const Set<String> _validStatuses = {
     'active',
-    'inactive',
     'hold',
     'terminated',
+    'resigned',
   };
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   final Map<String, bool> _expandedTiles = {};
+  bool _isExportingEmployees = false;
 
   String _selectedDepartment = 'all';
   String _selectedRole = 'all';
@@ -185,43 +187,91 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
             children: [
               Row(
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Employees',
-                        style: GoogleFonts.poppins(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.onSurface,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Employees',
+                          style: GoogleFonts.poppins(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface,
+                          ),
                         ),
-                      ),
-                      Text(
-                        'Manage your team',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                          color: colorScheme.onSurface.withOpacity(0.7),
+                        Text(
+                          'Manage your team',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: colorScheme.onSurface.withOpacity(0.7),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  Spacer(),
-                  ElevatedButton.icon(
-                    onPressed: () => _showAddEmployeeScreen(),
-                    icon: Icon(Icons.add, size: 20),
-                    label: Text('Add'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colorScheme.primary,
-                      foregroundColor: colorScheme.onPrimary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
+                      ],
                     ),
+                  ),
+                  SizedBox(width: 12),
+                  Consumer<EmployeeProvider>(
+                    builder: (context, employeeProvider, child) {
+                      return Row(
+                        children: [
+                          SizedBox.square(
+                            dimension: 44,
+                            child: Tooltip(
+                              message: 'Download employee details',
+                              child: OutlinedButton(
+                                onPressed:
+                                    _isExportingEmployees ||
+                                        employeeProvider.isLoading ||
+                                        employeeProvider.employees.isEmpty
+                                    ? null
+                                    : () => _exportEmployees(
+                                        employeeProvider.employees,
+                                      ),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: colorScheme.primary,
+                                  side: BorderSide(color: colorScheme.primary),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: Size.square(44),
+                                  fixedSize: Size.square(44),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: _isExportingEmployees
+                                    ? SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : Icon(Icons.download, size: 20),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 10),
+                          ElevatedButton.icon(
+                            onPressed: () => _showAddEmployeeScreen(),
+                            icon: Icon(Icons.add, size: 20),
+                            label: Text('Add'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: colorScheme.primary,
+                              foregroundColor: colorScheme.onPrimary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
@@ -488,13 +538,13 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
                 _buildFilterDropdown(
                   label: 'Status',
                   value: _selectedStatus,
-                  items: ['all', 'active', 'inactive', 'hold', 'terminated'],
+                  items: ['all', 'active', 'hold', 'terminated', 'resigned'],
                   displayValues: {
                     'all': 'All Statuses',
                     'active': 'Active',
-                    'inactive': 'Inactive',
                     'hold': 'Hold',
                     'terminated': 'Terminated',
+                    'resigned': 'Resigned',
                   },
                   onChanged: (v) => setState(() => _selectedStatus = v!),
                   colorScheme: colorScheme,
@@ -790,10 +840,6 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
         backgroundColor = Colors.green.shade100;
         textColor = Colors.green.shade800;
         break;
-      case 'inactive':
-        backgroundColor = Colors.grey.shade300;
-        textColor = Colors.grey.shade800;
-        break;
       case 'hold':
         backgroundColor = Colors.amber.shade100;
         textColor = Colors.amber.shade900;
@@ -801,6 +847,10 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
       case 'terminated':
         backgroundColor = Colors.red.shade100;
         textColor = Colors.red.shade900;
+        break;
+      case 'resigned':
+        backgroundColor = Colors.grey.shade300;
+        textColor = Colors.grey.shade800;
         break;
       default:
         backgroundColor = colorScheme.surfaceContainerHighest;
@@ -848,6 +898,29 @@ class _AdminEmployeesScreenState extends State<AdminEmployeesScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _exportEmployees(List<Employee> employees) async {
+    if (_isExportingEmployees) {
+      return;
+    }
+
+    setState(() {
+      _isExportingEmployees = true;
+    });
+
+    await ExcelExportUtils.exportEmployeesToExcel(
+      employees: employees,
+      context: context,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isExportingEmployees = false;
+    });
   }
 
   void _showResetPasswordDialog(Employee employee) {

@@ -7,6 +7,21 @@ import 'package:excel/excel.dart' as xls;
 import 'package:intl/intl.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:quantum_dashboard/utils/download_saver.dart';
+
+class TemplateExportResult {
+  final String filePath;
+  final bool opened;
+  final String? openMessage;
+  final SavedDownload? download;
+
+  const TemplateExportResult({
+    required this.filePath,
+    required this.opened,
+    this.openMessage,
+    this.download,
+  });
+}
 
 class BulkPayslipParseIssue {
   final int rowNumber;
@@ -23,29 +38,41 @@ class BulkPayslipParseResult {
 }
 
 class PayslipBulkUtils {
+  // These are the headers we export in the template file. The parser is flexible
+  // and will accept common variants/spellings via `_buildHeaderIndex`.
+  //
+  // Note: Month/Year are required by the backend generation endpoint.
   static const List<String> templateHeaders = [
-    'empId',
-    'month',
-    'year',
-    'basicSalary',
+    'Emp Id',
+    'Name',
+    'PF Number',
+    'UAN Number',
+    'ESI Number',
+    'Month',
+    'Year',
+    'Basic Salary',
     'HRA',
     'TA',
     'DA',
-    'conveyanceAllowance',
-    'total',
-    'employeesContributionPF',
-    'employersContributionPF',
-    'professionalTAX',
-    'totalDeductions',
-    'NetSalary',
-    'paidDays',
-    'LOPDays',
-    'arrear',
+    'CA',
+    'Arrear',
+    'Total',
+    'Paid Days',
+    'LOP Days',
+    'PF',
+    'Professional TAX',
+    'ESI',
+    'Total Deductions',
+    'NET Salary',
   ];
 
   static const List<List<String>> sampleRows = [
     [
       'QWIT-1002',
+      'Employee Name',
+      'PF-000000',
+      'UAN-000000',
+      'ESI-000000',
       '1',
       '2026',
       '35000',
@@ -53,18 +80,22 @@ class PayslipBulkUtils {
       '2500',
       '1800',
       '1500',
+      '0',
       '52800',
-      '4200',
-      '4200',
-      '200',
-      '8600',
-      '44200',
       '30',
       '0',
+      '4200',
+      '200',
       '0',
+      '4400',
+      '48400',
     ],
     [
       'QWIT-1010',
+      'Employee Name',
+      'PF-000000',
+      'UAN-000000',
+      'ESI-000000',
       '1',
       '2026',
       '42000',
@@ -72,33 +103,86 @@ class PayslipBulkUtils {
       '3000',
       '2200',
       '1800',
-      '64000',
-      '5040',
-      '5040',
-      '200',
-      '10280',
-      '53720',
+      '500',
+      '64500',
       '29',
       '1',
-      '500',
+      '5040',
+      '200',
+      '0',
+      '5240',
+      '59260',
     ],
   ];
 
-  static Future<String> exportTemplateXlsx() async {
-    Directory directory;
-    if (Platform.isAndroid) {
-      directory =
-          await getExternalStorageDirectory() ??
-          await getApplicationDocumentsDirectory();
-    } else {
-      directory = await getApplicationDocumentsDirectory();
+  static Future<TemplateExportResult> exportTemplateXlsx({
+    Directory? baseDirectory,
+    Future<OpenResult> Function(String filePath)? openFile,
+  }) async {
+    final bytes = _buildTemplateXlsxBytes();
+    if (bytes == null || bytes.isEmpty) {
+      throw Exception('Failed to generate template file');
     }
 
+    final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+    final fileName = 'payslip_bulk_template_$timestamp.xlsx';
+
+    if (baseDirectory == null && openFile == null) {
+      final download = await DownloadSaver.saveBytesToDownloads(
+        bytes: Uint8List.fromList(bytes),
+        fileName: fileName,
+        mimeType:
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      return TemplateExportResult(
+        filePath: download.displayPath,
+        opened: false,
+        download: download,
+      );
+    }
+
+    final directory = baseDirectory ?? await _resolveExportBaseDirectory();
     final templateDir = Directory('${directory.path}/bulk_payslip_templates');
     if (!templateDir.existsSync()) {
       templateDir.createSync(recursive: true);
     }
 
+    final filePath = '${templateDir.path}/$fileName';
+    final file = File(filePath);
+    await file.writeAsBytes(bytes, flush: true);
+
+    final openFileCallback = openFile ?? OpenFilex.open;
+    try {
+      final openResult = await openFileCallback(filePath);
+      if (openResult.type == ResultType.done) {
+        return TemplateExportResult(filePath: filePath, opened: true);
+      }
+
+      return TemplateExportResult(
+        filePath: filePath,
+        opened: false,
+        openMessage: openResult.message.trim().isEmpty
+            ? null
+            : openResult.message,
+      );
+    } catch (e) {
+      return TemplateExportResult(
+        filePath: filePath,
+        opened: false,
+        openMessage: e.toString(),
+      );
+    }
+  }
+
+  static Future<Directory> _resolveExportBaseDirectory() async {
+    if (Platform.isAndroid) {
+      return await getExternalStorageDirectory() ??
+          await getApplicationDocumentsDirectory();
+    }
+    return await getApplicationDocumentsDirectory();
+  }
+
+  static List<int>? _buildTemplateXlsxBytes() {
     final excel = xls.Excel.createExcel();
     final sheetName = excel.getDefaultSheet() ?? 'Sheet1';
     final sheet = excel[sheetName];
@@ -127,23 +211,7 @@ class PayslipBulkUtils {
       }
     }
 
-    final bytes = excel.encode();
-    if (bytes == null || bytes.isEmpty) {
-      throw Exception('Failed to generate template file');
-    }
-
-    final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-    final filePath =
-        '${templateDir.path}/payslip_bulk_template_$timestamp.xlsx';
-
-    final file = File(filePath);
-    await file.writeAsBytes(bytes, flush: true);
-    try {
-      await OpenFilex.open(filePath);
-    } catch (_) {
-      // Non-blocking: returning the saved path is enough for manual access.
-    }
-    return filePath;
+    return excel.encode();
   }
 
   static BulkPayslipParseResult parseFileBytes(
@@ -304,6 +372,17 @@ class PayslipBulkUtils {
       }
       normalized['empId'] = empId;
 
+      // Optional metadata fields (kept for traceability; backend uses employee
+      // master data for these today, but we accept them in the sheet).
+      final name = readText('name');
+      if (name.isNotEmpty) normalized['name'] = name;
+      final pfNo = readText('pfNo');
+      if (pfNo.isNotEmpty) normalized['pfNo'] = pfNo;
+      final uan = readText('uan');
+      if (uan.isNotEmpty) normalized['uan'] = uan;
+      final esiNo = readText('esiNo');
+      if (esiNo.isNotEmpty) normalized['esiNo'] = esiNo;
+
       final month = readInt('month', required: true) ?? 0;
       final year = readInt('year', required: true) ?? 0;
       final paidDays = readInt('paidDays', required: true) ?? 0;
@@ -335,6 +414,7 @@ class PayslipBulkUtils {
       final employeesContributionPF = readDouble('employeesContributionPF');
       final employersContributionPF = readDouble('employersContributionPF');
       final professionalTAX = readDouble('professionalTAX');
+      final esi = readDouble('esi');
       final arrear = readDouble('arrear');
 
       if (basicSalary <= 0) {
@@ -350,7 +430,10 @@ class PayslipBulkUtils {
           : basicSalary + hra + ta + da + conveyanceAllowance;
       final totalDeductions = totalDeductionsFromInput.isNotEmpty
           ? readDouble('totalDeductions')
-          : employeesContributionPF + employersContributionPF + professionalTAX;
+          : employeesContributionPF +
+                employersContributionPF +
+                professionalTAX +
+                esi;
       final netSalary = netSalaryFromInput.isNotEmpty
           ? readDouble('netSalary')
           : total - totalDeductions;
@@ -363,6 +446,7 @@ class PayslipBulkUtils {
       normalized['employeesContributionPF'] = employeesContributionPF;
       normalized['employersContributionPF'] = employersContributionPF;
       normalized['professionalTAX'] = professionalTAX;
+      normalized['esi'] = esi;
       normalized['total'] = total;
       normalized['totalDeductions'] = totalDeductions;
       normalized['netSalary'] = netSalary;
@@ -393,19 +477,31 @@ class PayslipBulkUtils {
 
     final aliases = <String, List<String>>{
       'empId': ['empid', 'employeeid'],
+      'name': ['name', 'employeename', 'employee'],
+      'pfNo': ['pfno', 'pfnumber', 'pfn'],
+      'uan': ['uan', 'uannumber'],
+      'esiNo': ['esino', 'esinumber'],
       'month': ['month'],
       'year': ['year'],
       'basicSalary': ['basicsalary'],
       'hra': ['hra', 'houserentallowance'],
       'ta': ['ta', 'travelallowance'],
       'da': ['da', 'dearnessallowance'],
-      'conveyanceAllowance': ['conveyanceallowance'],
+      'conveyanceAllowance': ['conveyanceallowance', 'ca'],
       'total': ['total', 'totalearnings'],
-      'employeesContributionPF': ['employeescontributionpf', 'employeepf'],
+      // Common bulk sheets tend to have a single PF column. We treat it as the
+      // employee PF deduction (the PDF template currently uses only employee PF).
+      'employeesContributionPF': [
+        'employeescontributionpf',
+        'employeepf',
+        'pf',
+      ],
       'employersContributionPF': ['employerscontributionpf', 'employerpf'],
-      'professionalTAX': ['professionaltax', 'pt'],
+      'professionalTAX': ['professionaltax', 'pt', 'professionaltaxamount'],
+      // ESI deduction amount is accepted in the sheet; backend currently ignores it.
+      'esi': ['esi', 'esiamount', 'esideduction'],
       'totalDeductions': ['totaldeductions'],
-      'netSalary': ['netsalary', 'netpay'],
+      'netSalary': ['netsalary', 'netpay', 'netsalaryamount'],
       'paidDays': ['paiddays'],
       'lopDays': ['lopdays', 'lossofpaydays'],
       'arrear': ['arrear'],

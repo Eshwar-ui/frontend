@@ -40,6 +40,20 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen>
   final FocusNode _employeeSearchFocusNode = FocusNode();
 
   bool _locationPunchInEnabled = true;
+  final TextEditingController _timezoneController = TextEditingController(
+    text: 'Asia/Kolkata',
+  );
+  final TextEditingController _defaultShiftStartController =
+      TextEditingController(text: '09:30');
+  final TextEditingController _defaultShiftEndController =
+      TextEditingController(text: '18:30');
+  final TextEditingController _punchInGraceController = TextEditingController(
+    text: '15',
+  );
+  final TextEditingController _punchOutGraceController = TextEditingController(
+    text: '15',
+  );
+  final RegExp _timeRegex = RegExp(r'^([01]\d|2[0-3]):([0-5]\d)$');
   bool _isSettingsLoading = false;
 
   @override
@@ -61,6 +75,11 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen>
     _employeeSearchController.dispose();
     _employeeSearchFocusNode.removeListener(_onEmployeeSearchFocusChange);
     _employeeSearchFocusNode.dispose();
+    _timezoneController.dispose();
+    _defaultShiftStartController.dispose();
+    _defaultShiftEndController.dispose();
+    _punchInGraceController.dispose();
+    _punchOutGraceController.dispose();
     _tabController.dispose();
     super.dispose();
   }
@@ -73,11 +92,18 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen>
     if (!mounted) return;
     setState(() => _isSettingsLoading = true);
     try {
-      final enabled =
-          await _attendanceSettingsService.getLocationPunchInEnabled();
+      final settings =
+          await _attendanceSettingsService.getAttendanceSettings();
       if (mounted) {
         setState(() {
-          _locationPunchInEnabled = enabled;
+          _locationPunchInEnabled = settings.locationPunchInEnabled;
+          _timezoneController.text = settings.attendanceTimezone;
+          _defaultShiftStartController.text = settings.defaultShiftStartTime;
+          _defaultShiftEndController.text = settings.defaultShiftEndTime;
+          _punchInGraceController.text = settings.punchInGraceMinutes
+              .toString();
+          _punchOutGraceController.text = settings.punchOutGraceMinutes
+              .toString();
           _isSettingsLoading = false;
         });
       }
@@ -96,16 +122,17 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen>
     if (!mounted) return;
     setState(() => _isSettingsLoading = true);
     try {
-      final enabled =
-          await _attendanceSettingsService.updateLocationPunchInEnabled(value);
+      final settings = await _attendanceSettingsService.updateAttendanceSettings(
+        locationPunchInEnabled: value,
+      );
       if (mounted) {
         setState(() {
-          _locationPunchInEnabled = enabled;
+          _locationPunchInEnabled = settings.locationPunchInEnabled;
           _isSettingsLoading = false;
         });
         SnackbarUtils.showSuccess(
           context,
-          enabled
+          settings.locationPunchInEnabled
               ? 'Location-based punch enabled'
               : 'Location-based punch disabled',
         );
@@ -116,6 +143,55 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen>
         SnackbarUtils.showError(
           context,
           'Failed to update setting: ${e.toString()}',
+        );
+      }
+    }
+  }
+
+  Future<void> _saveAttendancePolicy() async {
+    final timezone = _timezoneController.text.trim();
+    final startTime = _defaultShiftStartController.text.trim();
+    final endTime = _defaultShiftEndController.text.trim();
+    final punchInGrace = int.tryParse(_punchInGraceController.text.trim());
+    final punchOutGrace = int.tryParse(_punchOutGraceController.text.trim());
+
+    if (timezone.isEmpty) {
+      SnackbarUtils.showError(context, 'Attendance timezone is required');
+      return;
+    }
+    if (!_timeRegex.hasMatch(startTime) || !_timeRegex.hasMatch(endTime)) {
+      SnackbarUtils.showError(context, 'Shift times must be in HH:mm format');
+      return;
+    }
+    if (punchInGrace == null || punchInGrace < 0) {
+      SnackbarUtils.showError(context, 'Punch in grace must be a non-negative integer');
+      return;
+    }
+    if (punchOutGrace == null || punchOutGrace < 0) {
+      SnackbarUtils.showError(context, 'Punch out grace must be a non-negative integer');
+      return;
+    }
+
+    setState(() => _isSettingsLoading = true);
+    try {
+      await _attendanceSettingsService.updateAttendanceSettings(
+        locationPunchInEnabled: _locationPunchInEnabled,
+        attendanceTimezone: timezone,
+        defaultShiftStartTime: startTime,
+        defaultShiftEndTime: endTime,
+        punchInGraceMinutes: punchInGrace,
+        punchOutGraceMinutes: punchOutGrace,
+      );
+      if (mounted) {
+        setState(() => _isSettingsLoading = false);
+        SnackbarUtils.showSuccess(context, 'Attendance policy saved');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSettingsLoading = false);
+        SnackbarUtils.showError(
+          context,
+          'Failed to save attendance policy: ${e.toString()}',
         );
       }
     }
@@ -670,6 +746,83 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen>
                         activeTrackColor: colorScheme.primary.withValues(alpha: 0.5),
                         activeThumbColor: colorScheme.primary,
                       ),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: colorScheme.outline.withOpacity(0.1)),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildDialogField(
+                            _timezoneController,
+                            'Attendance Timezone',
+                            'Asia/Kolkata',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildDialogField(
+                            _defaultShiftStartController,
+                            'Default Shift Start',
+                            '09:30',
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildDialogField(
+                            _defaultShiftEndController,
+                            'Default Shift End',
+                            '18:30',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildDialogField(
+                            _punchInGraceController,
+                            'Punch In Grace (min)',
+                            '15',
+                            isNumeric: true,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildDialogField(
+                            _punchOutGraceController,
+                            'Punch Out Grace (min)',
+                            '15',
+                            isNumeric: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _isSettingsLoading ? null : _saveAttendancePolicy,
+                        icon: const Icon(Icons.save),
+                        label: const Text('Save Attendance Policy'),
+                      ),
+                    ),
                   ],
                 ),
               ),

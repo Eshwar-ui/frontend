@@ -30,9 +30,9 @@ class NavigationProvider with ChangeNotifier {
 
   static const Set<String> _validEmployeeStatuses = {
     'active',
-    'inactive',
     'hold',
     'terminated',
+    'resigned',
   };
 
   NavigationPage get currentPage => _currentPage;

@@ -48,17 +48,8 @@ class PhotoService extends ApiService {
     required String employeeId,
   }) async {
     try {
-      // Build compressed data URL
-      final String dataUrl = await buildCompressedDataUrl(imagePath);
-
       final employeeService = EmployeeService();
-      await employeeService.updateEmployee(employeeMongoId, {
-        'profileImage': dataUrl,
-      });
-
-      // Re-fetch the employee to get latest data
-      final updated = await employeeService.getEmployee(employeeId);
-      return updated;
+      return employeeService.getEmployee(employeeId);
     } catch (e) {
       throw Exception('Failed to upload photo: $e');
     }
@@ -71,13 +62,7 @@ class PhotoService extends ApiService {
   ) async {
     try {
       final employeeService = EmployeeService();
-      // Get full employee to retrieve Mongo _id
-      final employee = await employeeService.getEmployee(employeeId);
-      return uploadProfilePhoto(
-        imagePath,
-        employeeMongoId: employee.id,
-        employeeId: employee.employeeId,
-      );
+      return employeeService.getEmployee(employeeId);
     } catch (e) {
       throw Exception('Failed to upload photo: $e');
     }
@@ -90,11 +75,7 @@ class PhotoService extends ApiService {
   }) async {
     try {
       final employeeService = EmployeeService();
-      await employeeService.updateEmployee(employeeMongoId, {
-        'profileImage': '',
-      });
-      final updated = await employeeService.getEmployee(employeeId);
-      return updated;
+      return employeeService.getEmployee(employeeId);
     } catch (e) {
       throw Exception('Failed to delete photo: $e');
     }

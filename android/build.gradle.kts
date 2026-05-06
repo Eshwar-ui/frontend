@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.compile.JavaCompile
+
 allprojects {
     repositories {
         google()
@@ -14,6 +16,16 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+}
+
+gradle.projectsEvaluated {
+    subprojects {
+        tasks.withType<JavaCompile>().configureEach {
+            if ("-Xlint:-options" !in options.compilerArgs) {
+                options.compilerArgs.add("-Xlint:-options")
+            }
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {

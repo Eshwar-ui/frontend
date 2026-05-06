@@ -12,20 +12,27 @@ import 'package:quantum_dashboard/providers/notification_provider.dart';
 import 'package:quantum_dashboard/models/payslip_model.dart';
 import 'package:quantum_dashboard/models/user_model.dart';
 import 'package:quantum_dashboard/screens/generate_payslip_screen.dart';
+import 'package:quantum_dashboard/services/attendance_settings_service.dart';
+import 'package:quantum_dashboard/utils/download_saver.dart';
+import 'package:quantum_dashboard/utils/payslip_access_utils.dart';
 import 'package:quantum_dashboard/utils/payslip_bulk_utils.dart';
 import 'package:quantum_dashboard/utils/snackbar_utils.dart';
 import 'package:intl/intl.dart';
 import 'package:quantum_dashboard/utils/string_extensions.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:quantum_dashboard/widgets/error_widget.dart';
 
 class AdminPayslipsScreen extends StatefulWidget {
-  const AdminPayslipsScreen({super.key});
+  final Future<AttendanceSettings>? payslipAccessFuture;
+
+  const AdminPayslipsScreen({super.key, this.payslipAccessFuture});
 
   @override
   State<AdminPayslipsScreen> createState() => _AdminPayslipsScreenState();
 }
 
 class _AdminPayslipsScreenState extends State<AdminPayslipsScreen> {
+  late final Future<AttendanceSettings> _payslipAccessFuture;
   String? _selectedEmployeeId;
   int? _selectedMonth;
   int? _selectedYear;
@@ -42,13 +49,15 @@ class _AdminPayslipsScreenState extends State<AdminPayslipsScreen> {
   @override
   void initState() {
     super.initState();
+    _payslipAccessFuture =
+        widget.payslipAccessFuture ??
+        AttendanceSettingsService().getAttendanceSettings();
     _selectedYear = DateTime.now().year;
     _selectedMonth = DateTime.now().month;
     _employeeSearchFocusNode.addListener(_onEmployeeSearchFocusChange);
     _employeeSearchController.addListener(_onEmployeeSearchFocusChange);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<EmployeeProvider>(context, listen: false).getAllEmployees();
-      _loadPayslips();
+      _bootstrapData();
     });
   }
 
@@ -63,6 +72,26 @@ class _AdminPayslipsScreenState extends State<AdminPayslipsScreen> {
 
   void _onEmployeeSearchFocusChange() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _bootstrapData() async {
+    try {
+      final settings = await _payslipAccessFuture;
+      if (!mounted) return;
+
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (!canManageAdminPayslips(authProvider.user, settings)) {
+        return;
+      }
+
+      await Provider.of<EmployeeProvider>(
+        context,
+        listen: false,
+      ).getAllEmployees();
+      await _loadPayslips();
+    } catch (_) {
+      // Rendering handles access verification failures.
+    }
   }
 
   Future<void> _loadPayslips() async {
@@ -115,9 +144,9 @@ class _AdminPayslipsScreenState extends State<AdminPayslipsScreen> {
           da: result['da'] as double,
           conveyanceAllowance: result['conveyanceAllowance'] as double,
           total: result['total'] as double,
-          employeesContributionPF: result['employeesContributionPF'] as double,
-          employersContributionPF: result['employersContributionPF'] as double,
+          pf: result['pf'] as double,
           professionalTAX: result['professionalTAX'] as double,
+          esi: result['esi'] as double,
           totalDeductions: result['totalDeductions'] as double,
           netSalary: result['netSalary'] as double,
           paidDays: result['paidDays'] as int,
@@ -166,9 +195,27 @@ class _AdminPayslipsScreenState extends State<AdminPayslipsScreen> {
 
   Future<void> _downloadBulkTemplate() async {
     try {
-      final path = await PayslipBulkUtils.exportTemplateXlsx();
+      final result = await PayslipBulkUtils.exportTemplateXlsx();
       if (!mounted) return;
-      SnackbarUtils.showSuccess(context, 'Template downloaded: $path');
+      if (result.download != null) {
+        DownloadSaver.showSavedSnackBar(
+          context: context,
+          download: result.download!,
+          message: 'Template downloaded successfully',
+        );
+        return;
+      }
+
+      if (result.opened) {
+        SnackbarUtils.showSuccess(context, 'Template downloaded and opened.');
+        return;
+      }
+
+      final details = result.openMessage?.trim();
+      final warningMessage = details != null && details.isNotEmpty
+          ? 'Template saved, but it could not be opened automatically.\n$details\nPath: ${result.filePath}'
+          : 'Template saved, but it could not be opened automatically.\nPath: ${result.filePath}';
+      SnackbarUtils.showWarning(context, warningMessage);
     } catch (e) {
       if (!mounted) return;
       SnackbarUtils.showError(
@@ -526,45 +573,51 @@ class _AdminPayslipsScreenState extends State<AdminPayslipsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    return FutureBuilder<AttendanceSettings>(
+      future: _payslipAccessFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return const Scaffold(
+            body: ErrorStateWidget(
+              title: 'Unable to verify payslip access',
+              message:
+                  'Please refresh the app or contact an administrator if this keeps happening.',
+            ),
+          );
+        }
+
+        final settings = snapshot.data;
+        final canAccess =
+            settings != null &&
+            canManageAdminPayslips(authProvider.user, settings);
+
+        if (!canAccess) {
+          return const Scaffold(
+            body: ErrorStateWidget(
+              title: 'Payslip access denied',
+              message: 'Your account is not allowed to manage admin payslips.',
+              icon: Icons.lock_outline,
+            ),
+          );
+        }
+
+        return _buildAllowedScreen(context);
+      },
+    );
+  }
+
+  Widget _buildAllowedScreen(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    final authProvider = Provider.of<AuthProvider>(context);
     final employeeProvider = Provider.of<EmployeeProvider>(context);
-
-    if (!authProvider.isAdmin) {
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.lock,
-                size: 64,
-                color: colorScheme.onSurface.withOpacity(0.5),
-              ),
-              SizedBox(height: 16),
-              Text(
-                'Access Denied',
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: colorScheme.onSurface,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Only administrators can access this page.',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: colorScheme.onSurface.withOpacity(0.7),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,

@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:quantum_dashboard/providers/auth_provider.dart';
+import 'package:quantum_dashboard/services/attendance_settings_service.dart';
 import 'package:quantum_dashboard/services/employee_service.dart';
+import 'package:quantum_dashboard/utils/payslip_access_utils.dart';
 import 'package:quantum_dashboard/utils/snackbar_utils.dart';
+import 'package:quantum_dashboard/widgets/error_widget.dart';
 
 class AdminOfferTemplateScreen extends StatefulWidget {
-  const AdminOfferTemplateScreen({super.key});
+  final Future<AttendanceSettings>? offerAccessFuture;
+
+  const AdminOfferTemplateScreen({
+    super.key,
+    this.offerAccessFuture,
+  });
 
   @override
   State<AdminOfferTemplateScreen> createState() => _AdminOfferTemplateScreenState();
@@ -13,6 +23,7 @@ class AdminOfferTemplateScreen extends StatefulWidget {
 
 class _AdminOfferTemplateScreenState extends State<AdminOfferTemplateScreen> {
   final EmployeeService _employeeService = EmployeeService();
+  late final Future<AttendanceSettings> _offerAccessFuture;
   final TextEditingController _subjectController = TextEditingController();
   final TextEditingController _ccController = TextEditingController();
   final TextEditingController _bccController = TextEditingController();
@@ -25,7 +36,20 @@ class _AdminOfferTemplateScreenState extends State<AdminOfferTemplateScreen> {
   @override
   void initState() {
     super.initState();
-    _loadOfferTemplate();
+    _offerAccessFuture =
+        widget.offerAccessFuture ??
+        AttendanceSettingsService().getAttendanceSettings();
+    _bootstrapTemplate();
+  }
+
+  Future<void> _bootstrapTemplate() async {
+    try {
+      final settings = await _offerAccessFuture;
+      if (!mounted) return;
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (!canManageAdminOffers(authProvider.user, settings)) return;
+      await _loadOfferTemplate();
+    } catch (_) {}
   }
 
   @override
@@ -287,6 +311,48 @@ class _AdminOfferTemplateScreenState extends State<AdminOfferTemplateScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    return FutureBuilder<AttendanceSettings>(
+      future: _offerAccessFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return const Scaffold(
+            body: ErrorStateWidget(
+              title: 'Unable to verify offer access',
+              message:
+                  'Please refresh the app or contact an administrator if this keeps happening.',
+            ),
+          );
+        }
+
+        final settings = snapshot.data;
+        final canAccess =
+            settings != null &&
+            canManageAdminOffers(authProvider.user, settings);
+
+        if (!canAccess) {
+          return const Scaffold(
+            body: ErrorStateWidget(
+              title: 'Offer access denied',
+              message:
+                  'Your account is not allowed to manage offer letters.',
+              icon: Icons.lock_outline,
+            ),
+          );
+        }
+
+        return _buildAllowedScreen(context);
+      },
+    );
+  }
+
+  Widget _buildAllowedScreen(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -399,4 +465,3 @@ class _AdminOfferTemplateScreenState extends State<AdminOfferTemplateScreen> {
     );
   }
 }
-

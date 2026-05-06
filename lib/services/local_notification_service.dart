@@ -55,6 +55,16 @@ class LocalNotificationService {
 
   // Request permissions (iOS)
   Future<bool> requestPermissions() async {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final androidImplementation = _notifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      final granted =
+          await androidImplementation?.requestNotificationsPermission();
+      return granted ?? true;
+    }
+
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       final result = await _notifications
           .resolvePlatformSpecificImplementation<

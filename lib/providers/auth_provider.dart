@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../utils/app_logger.dart';
-import '../utils/allowed_users.dart';
 import '../utils/server_error_exception.dart';
 
 class AuthProvider with ChangeNotifier {
@@ -33,6 +32,13 @@ class AuthProvider with ChangeNotifier {
       return 'Invalid email or password.';
     }
 
+    if (message.contains('organization')) {
+      return rawMessage
+          .replaceFirst('ServerErrorException: ', '')
+          .replaceFirst(RegExp(r'\s*\(Status:\s*\d+\)\s*$'), '')
+          .trim();
+    }
+
     if (message.contains('timeout') ||
         message.contains('socket') ||
         message.contains('network') ||
@@ -59,59 +65,25 @@ class AuthProvider with ChangeNotifier {
     return 'Login failed. Please try again.';
   }
 
-  Future<bool> login(String email, String password) async {
+  Future<bool> login(
+    String organizationName,
+    String email,
+    String password,
+  ) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
       AppLogger.info('AuthProvider: Attempting login', {'email': email});
-      final result = await _authService.login(email, password);
+      final result = await _authService.login(
+        organizationName,
+        email,
+        password,
+      );
 
       if (result['success']) {
         final user = result['user'] as Employee;
-
-        // Detect if user is an admin
-        bool userIsAdmin =
-            user.employeeId == 'QWIT-1001' ||
-            (user.role?.toLowerCase() == 'admin');
-
-        // 1. Check strict email allowlist or mobile access
-        // Admins and specifically allowed emails OR users with mobile access enabled are allowed
-        final emailLower = user.email.toLowerCase();
-        final isAllowedEmail = AllowedUsers.emails.any(
-          (e) => e.toLowerCase() == emailLower,
-        );
-
-        if (!userIsAdmin &&
-            !isAllowedEmail &&
-            user.mobileAccessEnabled != true) {
-          _error =
-              'Your account is not authorized for mobile app access. Please contact your administrator.';
-          _isLoading = false;
-          AppLogger.warning(
-            'AuthProvider: Access denied (not in allowlist and no mobile access)',
-            {'email': user.email, 'employeeId': user.employeeId},
-          );
-          notifyListeners();
-          return false;
-        }
-
-        // 2. Check for mobile access if on mobile platform (redundant but kept for specific error message)
-        if (!userIsAdmin &&
-            (defaultTargetPlatform == TargetPlatform.android ||
-                defaultTargetPlatform == TargetPlatform.iOS)) {
-          if (user.mobileAccessEnabled != true) {
-            _error =
-                'Your account is not authorized for mobile app access. Please contact your administrator.';
-            _isLoading = false;
-            AppLogger.warning('AuthProvider: Mobile access denied', {
-              'employeeId': user.employeeId,
-            });
-            notifyListeners();
-            return false;
-          }
-        }
 
         _user = user;
         _isLoading = false;
@@ -219,7 +191,11 @@ class AuthProvider with ChangeNotifier {
     } catch (e, stackTrace) {
       _error = e.toString();
       _isLoading = false;
-      AppLogger.error('AuthProvider: Admin password reset error', e, stackTrace);
+      AppLogger.error(
+        'AuthProvider: Admin password reset error',
+        e,
+        stackTrace,
+      );
       notifyListeners();
       return {'success': false, 'message': e.toString()};
     }
@@ -246,15 +222,14 @@ class AuthProvider with ChangeNotifier {
   }
 
   // Check if user has admin role
-  bool get isAdmin =>
-      _user?.employeeId == 'QWIT-1001' || _user?.role?.toLowerCase() == 'admin';
+  bool get isAdmin => _user?.role?.toLowerCase() == 'admin';
 
   bool get isHr => _user?.role?.toLowerCase() == 'hr';
 
   bool get isAdminOrHr => isAdmin || isHr;
 
   // Check if user has employee role
-  bool get isEmployee => _user != null && _user!.employeeId != 'QWIT-1001';
+  bool get isEmployee => _user != null && !isAdmin && !isHr;
 
   // Check if user has admin privileges
   bool get hasAdminPrivileges => isAdmin;

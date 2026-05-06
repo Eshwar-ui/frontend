@@ -35,9 +35,9 @@ class _GeneratePayslipScreenState extends State<GeneratePayslipScreen> {
   final _daController = TextEditingController();
   final _conveyanceAllowanceController = TextEditingController();
 
-  final _employeesContributionPFController = TextEditingController();
-  final _employersContributionPFController = TextEditingController();
+  final _pfController = TextEditingController();
   final _professionalTAXController = TextEditingController();
+  final _esiController = TextEditingController();
 
   final _paidDaysController = TextEditingController();
   final _lopDaysController = TextEditingController();
@@ -64,9 +64,9 @@ class _GeneratePayslipScreenState extends State<GeneratePayslipScreen> {
     _taController.addListener(_calculateTotals);
     _daController.addListener(_calculateTotals);
     _conveyanceAllowanceController.addListener(_calculateTotals);
-    _employeesContributionPFController.addListener(_calculateTotals);
-    _employersContributionPFController.addListener(_calculateTotals);
+    _pfController.addListener(_calculateTotals);
     _professionalTAXController.addListener(_calculateTotals);
+    _esiController.addListener(_calculateTotals);
   }
 
   @override
@@ -76,9 +76,9 @@ class _GeneratePayslipScreenState extends State<GeneratePayslipScreen> {
     _taController.dispose();
     _daController.dispose();
     _conveyanceAllowanceController.dispose();
-    _employeesContributionPFController.dispose();
-    _employersContributionPFController.dispose();
+    _pfController.dispose();
     _professionalTAXController.dispose();
+    _esiController.dispose();
     _paidDaysController.dispose();
     _lopDaysController.dispose();
     _arrearController.dispose();
@@ -95,9 +95,9 @@ class _GeneratePayslipScreenState extends State<GeneratePayslipScreen> {
           _getDoubleValue(_conveyanceAllowanceController.text);
 
       _totalDeductions =
-          _getDoubleValue(_employeesContributionPFController.text) +
-          _getDoubleValue(_employersContributionPFController.text) +
-          _getDoubleValue(_professionalTAXController.text);
+          _getDoubleValue(_pfController.text) +
+          _getDoubleValue(_professionalTAXController.text) +
+          _getDoubleValue(_esiController.text);
 
       _netSalary = _totalEarnings - _totalDeductions;
     });
@@ -121,13 +121,9 @@ class _GeneratePayslipScreenState extends State<GeneratePayslipScreen> {
         _conveyanceAllowanceController.text,
       ),
       'total': _totalEarnings,
-      'employeesContributionPF': _getDoubleValue(
-        _employeesContributionPFController.text,
-      ),
-      'employersContributionPF': _getDoubleValue(
-        _employersContributionPFController.text,
-      ),
+      'pf': _getDoubleValue(_pfController.text),
       'professionalTAX': _getDoubleValue(_professionalTAXController.text),
+      'esi': _getDoubleValue(_esiController.text),
       'totalDeductions': _totalDeductions,
       'netSalary': _netSalary,
       'paidDays': int.tryParse(_paidDaysController.text) ?? 30,
@@ -311,21 +307,21 @@ class _GeneratePayslipScreenState extends State<GeneratePayslipScreen> {
                     ),
                     SizedBox(height: 12),
                     _buildTextField(
-                      controller: _employeesContributionPFController,
-                      label: 'Employee\'s Contribution PF',
+                      controller: _pfController,
+                      label: 'PF',
                       icon: Icons.account_balance,
-                    ),
-                    SizedBox(height: 12),
-                    _buildTextField(
-                      controller: _employersContributionPFController,
-                      label: 'Employer\'s Contribution PF',
-                      icon: Icons.business,
                     ),
                     SizedBox(height: 12),
                     _buildTextField(
                       controller: _professionalTAXController,
                       label: 'Professional Tax',
                       icon: Icons.receipt,
+                    ),
+                    SizedBox(height: 12),
+                    _buildTextField(
+                      controller: _esiController,
+                      label: 'ESI',
+                      icon: Icons.health_and_safety,
                     ),
                     SizedBox(height: 24),
                     Text(

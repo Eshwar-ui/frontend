@@ -13,6 +13,14 @@ val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(keystorePropertiesFile.inputStream())
 }
+val keyAliasValue = (keystoreProperties["keyAlias"] as String?) ?: System.getenv("ANDROID_KEY_ALIAS")
+val keyPasswordValue = (keystoreProperties["keyPassword"] as String?) ?: System.getenv("ANDROID_KEY_PASSWORD")
+val storePasswordValue = (keystoreProperties["storePassword"] as String?) ?: System.getenv("ANDROID_STORE_PASSWORD")
+val storeFilePathValue = (keystoreProperties["storeFile"] as String?) ?: System.getenv("ANDROID_KEYSTORE_PATH")
+val hasReleaseSigning = !keyAliasValue.isNullOrBlank() &&
+        !keyPasswordValue.isNullOrBlank() &&
+        !storePasswordValue.isNullOrBlank() &&
+        !storeFilePathValue.isNullOrBlank()
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
@@ -43,10 +51,12 @@ android {
 
     signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String?
-            keyPassword = keystoreProperties["keyPassword"] as String?
-            storeFile = keystoreProperties["storeFile"]?.let { rootProject.file(it) }
-            storePassword = keystoreProperties["storePassword"] as String?
+            if (hasReleaseSigning) {
+                keyAlias = keyAliasValue
+                keyPassword = keyPasswordValue
+                storeFile = rootProject.file(storeFilePathValue!!)
+                storePassword = storePasswordValue
+            }
         }
     }
 

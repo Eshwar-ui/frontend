@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 class CredentialStorageService {
+  static const String _organizationNameKey = 'saved_organization_name';
   static const String _emailKey = 'saved_email';
   static const String _passwordKey = 'saved_password';
   static const String _rememberMeKey = 'remember_me';
@@ -8,13 +9,15 @@ class CredentialStorageService {
 
   // Save credentials
   static Future<void> saveCredentials({
+    required String organizationName,
     required String email,
     required String password,
     required bool rememberMe,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     if (rememberMe) {
+      await prefs.setString(_organizationNameKey, organizationName);
       await prefs.setString(_emailKey, email);
       await prefs.setString(_passwordKey, password);
       await prefs.setBool(_rememberMeKey, true);
@@ -27,21 +30,26 @@ class CredentialStorageService {
   // Load saved credentials
   static Future<Map<String, dynamic>?> getSavedCredentials() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
+    final organizationName = prefs.getString(_organizationNameKey);
     final email = prefs.getString(_emailKey);
     final password = prefs.getString(_passwordKey);
     final rememberMe = prefs.getBool(_rememberMeKey) ?? false;
     final lastLogin = prefs.getString(_lastLoginKey);
-    
-    if (email != null && password != null && rememberMe) {
+
+    if (organizationName != null &&
+        email != null &&
+        password != null &&
+        rememberMe) {
       return {
+        'organizationName': organizationName,
         'email': email,
         'password': password,
         'rememberMe': rememberMe,
         'lastLogin': lastLogin != null ? DateTime.parse(lastLogin) : null,
       };
     }
-    
+
     return null;
   }
 
@@ -54,6 +62,7 @@ class CredentialStorageService {
   // Clear saved credentials
   static Future<void> clearCredentials() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_organizationNameKey);
     await prefs.remove(_emailKey);
     await prefs.remove(_passwordKey);
     await prefs.remove(_rememberMeKey);
@@ -71,7 +80,7 @@ class CredentialStorageService {
   static Future<bool> areCredentialsRecent() async {
     final lastLogin = await getLastLoginTime();
     if (lastLogin == null) return false;
-    
+
     final now = DateTime.now();
     final difference = now.difference(lastLogin).inDays;
     return difference <= 30; // Credentials are valid for 30 days

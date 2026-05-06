@@ -23,6 +23,7 @@ class EditEmployeeScreen extends StatefulWidget {
 
 class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
   final _formKey = GlobalKey<FormState>();
+  final RegExp _timeRegex = RegExp(r'^([01]\d|2[0-3]):([0-5]\d)$');
 
   late TextEditingController _firstNameController;
   late TextEditingController _lastNameController;
@@ -36,9 +37,12 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
   late TextEditingController _accountnumberController;
   late TextEditingController _ifsccodeController;
   late TextEditingController _PANnoController;
+  late TextEditingController _PFnoController;
   late TextEditingController _UANnoController;
   late TextEditingController _ESInoController;
   late TextEditingController _fathernameController;
+  late TextEditingController _shiftStartController;
+  late TextEditingController _shiftEndController;
 
   late String _selectedRole;
   late String _selectedStatus;
@@ -79,10 +83,17 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
       text: widget.employee.ifsccode ?? '',
     );
     _PANnoController = TextEditingController(text: widget.employee.PANno ?? '');
+    _PFnoController = TextEditingController(text: widget.employee.PFno ?? '');
     _UANnoController = TextEditingController(text: widget.employee.UANno ?? '');
     _ESInoController = TextEditingController(text: widget.employee.ESIno ?? '');
     _fathernameController = TextEditingController(
       text: widget.employee.fathername ?? '',
+    );
+    _shiftStartController = TextEditingController(
+      text: widget.employee.shiftStartTime ?? '',
+    );
+    _shiftEndController = TextEditingController(
+      text: widget.employee.shiftEndTime ?? '',
     );
     _selectedRole = (widget.employee.role ?? 'employee').toLowerCase();
     _selectedStatus = widget.employee.status.toLowerCase();
@@ -106,14 +117,27 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
     _accountnumberController.dispose();
     _ifsccodeController.dispose();
     _PANnoController.dispose();
+    _PFnoController.dispose();
     _UANnoController.dispose();
     _ESInoController.dispose();
     _fathernameController.dispose();
+    _shiftStartController.dispose();
+    _shiftEndController.dispose();
     super.dispose();
   }
 
   Future<void> _updateEmployee() async {
     if (!_formKey.currentState!.validate()) return;
+    final shiftStart = _shiftStartController.text.trim();
+    final shiftEnd = _shiftEndController.text.trim();
+    if ((shiftStart.isEmpty && shiftEnd.isNotEmpty) ||
+        (shiftStart.isNotEmpty && shiftEnd.isEmpty)) {
+      SnackbarUtils.showWarning(
+        context,
+        'Please provide both shift start and shift end in HH:mm format.',
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -140,10 +164,13 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
         'accountnumber': _accountnumberController.text.trim(),
         'ifsccode': _ifsccodeController.text.trim(),
         'PANno': _PANnoController.text.trim(),
+        'PFno': _PFnoController.text.trim(),
         'UANno': _UANnoController.text.trim(),
         'ESIno': _ESInoController.text.trim(),
         'fathername': _fathernameController.text.trim(),
         'mobileAccessEnabled': _mobileAccessEnabled,
+        'shiftStartTime': shiftStart,
+        'shiftEndTime': shiftEnd,
       };
 
       final id = widget.employee.id.isNotEmpty
@@ -352,16 +379,16 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
                               child: Text('ACTIVE'),
                             ),
                             DropdownMenuItem(
-                              value: 'inactive',
-                              child: Text('INACTIVE'),
-                            ),
-                            DropdownMenuItem(
                               value: 'hold',
                               child: Text('HOLD'),
                             ),
                             DropdownMenuItem(
                               value: 'terminated',
                               child: Text('TERMINATED'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'resigned',
+                              child: Text('RESIGNED'),
                             ),
                           ],
                           onChanged: (val) =>
@@ -389,6 +416,36 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
                             setState(() => _joiningDate = picked);
                         },
                       ),
+                      _buildRow(context, [
+                        _buildTextField(
+                          context,
+                          controller: _shiftStartController,
+                          label: 'Shift Start (HH:mm)',
+                          hint: '09:30',
+                          validator: (v) {
+                            final value = v?.trim() ?? '';
+                            if (value.isEmpty) return null;
+                            if (!_timeRegex.hasMatch(value)) {
+                              return 'Use HH:mm';
+                            }
+                            return null;
+                          },
+                        ),
+                        _buildTextField(
+                          context,
+                          controller: _shiftEndController,
+                          label: 'Shift End (HH:mm)',
+                          hint: '18:30',
+                          validator: (v) {
+                            final value = v?.trim() ?? '';
+                            if (value.isEmpty) return null;
+                            if (!_timeRegex.hasMatch(value)) {
+                              return 'Use HH:mm';
+                            }
+                            return null;
+                          },
+                        ),
+                      ]),
                     ]),
                     SizedBox(height: 24),
                     _buildSectionHeader(context, 'Address'),
@@ -436,11 +493,19 @@ class _EditEmployeeScreenState extends State<EditEmployeeScreen> {
                       _buildRow(context, [
                         _buildTextField(
                           context,
+                          controller: _PFnoController,
+                          label: 'PF Number',
+                          hint: 'PF1234567890',
+                        ),
+                        _buildTextField(
+                          context,
                           controller: _UANnoController,
                           label: 'UAN Number',
                           hint: '100123456789',
                           keyboardType: TextInputType.number,
                         ),
+                      ]),
+                      _buildRow(context, [
                         _buildTextField(
                           context,
                           controller: _ESInoController,

@@ -97,12 +97,12 @@ class _NetworkTroubleshootScreenState extends State<NetworkTroubleshootScreen> {
                       color: Colors.amber.shade800,
                     ),
                     SizedBox(width: 8),
-                    // Expanded(
-                    //   child: Text(
-                    //     NetworkConfig.ipConfigWarning,
-                    //     style: TextStyle(color: Colors.amber.shade900),
-                    //   ),
-                    // ),
+                    Expanded(
+                      child: Text(
+                        'Local development mode is active. Confirm your dart-define API settings before testing.',
+                        style: TextStyle(color: Colors.amber.shade900),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -113,7 +113,7 @@ class _NetworkTroubleshootScreenState extends State<NetworkTroubleshootScreen> {
             ),
             _buildDiagnosticItem(
               'Server Connection',
-              canConnect ? 'Connected ✓' : 'Failed to connect ✗',
+              canConnect ? 'Connected' : 'Failed to connect',
               valueColor: canConnect ? Colors.green : Colors.red,
             ),
             SizedBox(height: 8),
@@ -185,12 +185,12 @@ class _NetworkTroubleshootScreenState extends State<NetworkTroubleshootScreen> {
             ),
             _buildTroubleshootingStep(
               '2',
-              'Verify Development Machine IP',
-              'The default IP (192.168.1.100) needs to be changed to your development machine\'s actual IP address in network_config.dart. To find your IP:\n\n'
-                  '• Windows: Open Command Prompt and type "ipconfig"\n'
-                  '• macOS: Open Terminal and type "ifconfig"\n'
-                  '• Linux: Open Terminal and type "ip addr show"\n\n'
-                  'Look for IPv4 Address under your WiFi or Ethernet adapter.',
+              'Verify Development Configuration',
+              'If you are using local development mode, pass API_DEV_MACHINE_IP and optionally API_SERVER_PORT using Flutter dart-defines. The current development IP is ${NetworkConfig.devMachineIp} and the port is ${NetworkConfig.serverPort}. To find your IP:\n\n'
+                  '- Windows: Open Command Prompt and type "ipconfig"\n'
+                  '- macOS: Open Terminal and type "ifconfig"\n'
+                  '- Linux: Open Terminal and type "ip addr show"\n\n'
+                  'Look for the IPv4 address under your WiFi or Ethernet adapter.',
             ),
             _buildTroubleshootingStep(
               '3',
@@ -200,12 +200,12 @@ class _NetworkTroubleshootScreenState extends State<NetworkTroubleshootScreen> {
             _buildTroubleshootingStep(
               '4',
               'Firewall Settings',
-              'Check that your development machine\'s firewall allows incoming connections on port 5000.',
+              'Check that your development machine\'s firewall allows incoming connections on port ${NetworkConfig.serverPort}.',
             ),
             _buildTroubleshootingStep(
               '5',
               'Test Backend Connection',
-              'Try accessing the backend directly in your browser: https://quantum-dashboard-backend.onrender.com',
+              'Try accessing the backend health endpoint directly in your browser: ${NetworkConfig.baseUrl}/health',
             ),
           ],
         ),

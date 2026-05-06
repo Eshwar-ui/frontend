@@ -1,3 +1,5 @@
+import 'network_config.dart';
+
 class ApiEndpoints {
   // Authentication
   static const String login = '/auth/login';
@@ -65,7 +67,8 @@ class ApiEndpoints {
 
   // Helper Methods
   static String getFullUrl(String endpoint, {String? baseUrl}) {
-    final String base = baseUrl ?? 'http://192.168.1.19:4444';
+    final String base =
+        (baseUrl ?? NetworkConfig.baseUrl).replaceAll(RegExp(r'/$'), '');
     return '$base$endpoint';
   }
 

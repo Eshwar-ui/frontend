@@ -1,8 +1,8 @@
 name: quantum_dashboard
 description: "Quantum Works Employee Dashboard"
-publish_to: "none" 
+publish_to: "none"
 
-version: 1.0.5+9 
+version: 1.0.9+15
 
 environment:
   sdk: ^3.8.1
@@ -27,6 +27,7 @@ dependencies:
   permission_handler: ^11.3.1
   open_filex: ^4.7.0
   dio: ^5.9.0
+  device_info_plus: ^11.5.0
   image: ^4.1.7
   google_nav_bar: ^5.0.7
   lottie: ^3.3.0
@@ -56,7 +57,7 @@ flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
   image_path: "assets/app_logo.png"
-  min_sdk_android: 21 
+  min_sdk_android: 21
 
 flutter:
   uses-material-design: true
@@ -68,27 +69,3 @@ flutter:
     - assets/illustrations/changepasswordimage.png
     - assets/illustrations/loading.json
     - shorebird.yaml
-
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  

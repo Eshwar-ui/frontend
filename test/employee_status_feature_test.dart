@@ -137,9 +137,23 @@ void main() {
         'profileImage': '',
         'status': 'pending',
       });
+      final inactive = Employee.fromJson({
+        '_id': '4',
+        'employeeId': 'QWIT-1004',
+        'firstName': 'A',
+        'lastName': 'B',
+        'email': 'a4@b.com',
+        'mobile': '1',
+        'dateOfBirth': '2020-01-01T00:00:00.000Z',
+        'joiningDate': '2020-01-01T00:00:00.000Z',
+        'password': '',
+        'profileImage': '',
+        'status': 'inactive',
+      });
 
       expect(missing.status, 'active');
       expect(invalid.status, 'active');
+      expect(inactive.status, 'resigned');
     });
 
     test('normalizes valid status from JSON', () {
@@ -190,14 +204,14 @@ void main() {
       );
       await tester.tap(find.text('ACTIVE').first);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('TERMINATED').last);
+      await tester.tap(find.text('RESIGNED').last);
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Save').first);
       await tester.pumpAndSettle();
 
       expect(provider.lastAddedPayload, isNotNull);
-      expect(provider.lastAddedPayload!['status'], 'terminated');
+      expect(provider.lastAddedPayload!['status'], 'resigned');
     });
 
     testWidgets('edit employee submits selected status', (tester) async {
@@ -229,7 +243,7 @@ void main() {
       );
       await tester.tap(find.text('ACTIVE').first);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('TERMINATED').last);
+      await tester.tap(find.text('RESIGNED').last);
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Save').first);
@@ -237,7 +251,7 @@ void main() {
 
       expect(provider.lastUpdatedId, 'mongo-id-1');
       expect(provider.lastUpdatedPayload, isNotNull);
-      expect(provider.lastUpdatedPayload!['status'], 'terminated');
+      expect(provider.lastUpdatedPayload!['status'], 'resigned');
     });
 
     testWidgets('admin employee list shows badges and filters by status', (
@@ -295,7 +309,7 @@ void main() {
       await tester.ensureVisible(find.text('All Statuses'));
       await tester.tap(find.text('All Statuses'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Terminated').last);
+      await tester.tap(find.text('Resigned').last);
       await tester.pumpAndSettle();
 
       expect(find.text('Active User'), findsNothing);
@@ -336,8 +350,8 @@ void main() {
           _buildEmployee(
             id: '4',
             employeeId: 'QWIT-3004',
-            firstName: 'Inactive',
-            status: 'inactive',
+            firstName: 'Resigned',
+            status: 'resigned',
           ),
         ],
       );
@@ -407,8 +421,8 @@ void main() {
           _buildEmployee(
             id: '9',
             employeeId: 'QWIT-3999',
-            firstName: 'Terminated',
-            status: 'terminated',
+            firstName: 'Resigned',
+            status: 'resigned',
           ),
         ],
       );

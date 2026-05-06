@@ -9,14 +9,21 @@ import 'package:quantum_dashboard/widgets/notification_icon_widget.dart';
 import 'package:quantum_dashboard/screens/send_notification_screen.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:quantum_dashboard/services/attendance_settings_service.dart';
 import 'package:quantum_dashboard/services/department_service.dart';
 import 'package:quantum_dashboard/utils/responsive_utils.dart';
 import 'package:quantum_dashboard/admin_screens/admin_compoff_screen.dart';
 import 'package:quantum_dashboard/theme/app_design_system.dart';
+import 'package:quantum_dashboard/utils/payslip_access_utils.dart';
 import 'package:quantum_dashboard/utils/string_extensions.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
-  const AdminDashboardScreen({super.key});
+  final Future<AttendanceSettings>? payslipAccessFuture;
+
+  const AdminDashboardScreen({
+    super.key,
+    this.payslipAccessFuture,
+  });
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
@@ -24,16 +31,20 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   List<Department> _departments = [];
+  late final Future<AttendanceSettings> _payslipAccessFuture;
   static const List<String> _employeeStatuses = [
     'active',
-    'inactive',
     'hold',
     'terminated',
+    'resigned',
   ];
 
   @override
   void initState() {
     super.initState();
+    _payslipAccessFuture =
+        widget.payslipAccessFuture ??
+        AttendanceSettingsService().getAttendanceSettings();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Load initial data for stats
       Provider.of<EmployeeProvider>(context, listen: false).getAllEmployees();
@@ -152,7 +163,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     final count = counts[status] ?? 0;
                     final label =
                         '${status[0].toUpperCase()}${status.substring(1)}';
-                    final statusColors = _statusColors(status, colorScheme);
+                    final statusColors = _statusColors(
+                      status,
+                      colorScheme,
+                      isDark,
+                    );
 
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
@@ -272,16 +287,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  (Color, Color) _statusColors(String status, ColorScheme colorScheme) {
+  (Color, Color) _statusColors(
+    String status,
+    ColorScheme colorScheme,
+    bool isDark,
+  ) {
     switch (status) {
       case 'active':
         return (Colors.green.shade500, Colors.green.shade800);
-      case 'inactive':
-        return (Colors.grey.shade500, Colors.grey.shade800);
       case 'hold':
         return (Colors.amber.shade700, Colors.amber.shade900);
       case 'terminated':
         return (Colors.red.shade500, Colors.red.shade800);
+      case 'resigned':
+        return (
+          isDark ? Colors.blueGrey.shade200 : Colors.grey.shade500,
+          isDark ? Colors.blueGrey.shade50 : Colors.grey.shade800,
+        );
       default:
         return (colorScheme.primary, colorScheme.onSurface);
     }
@@ -1316,6 +1338,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         'icon': Icons.receipt_long_rounded,
         'color': Colors.green,
         'page': NavigationPage.AdminPayslips,
+        'requiresPayslipAccess': true,
       },
       {
         'title': 'Locations',
@@ -1340,63 +1363,81 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       },
     ];
 
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return FutureBuilder<AttendanceSettings>(
+      future: _payslipAccessFuture,
+      builder: (context, snapshot) {
+        final canAccessPayslips =
+            snapshot.hasData &&
+            canManageAdminPayslips(
+              Provider.of<AuthProvider>(context, listen: false).user,
+              snapshot.data!,
+            );
+        final visibleItems = managementItems.where((item) {
+          if (item['requiresPayslipAccess'] == true) {
+            return canAccessPayslips;
+          }
+          return true;
+        }).toList();
+
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Management',
-                style: GoogleFonts.poppins(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: colorScheme.onSurface,
-                  letterSpacing: -0.5,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Management',
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onSurface,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  Icon(
+                    Icons.grid_view_rounded,
+                    size: 20,
+                    color: colorScheme.primary.withOpacity(0.5),
+                  ),
+                ],
               ),
-              Icon(
-                Icons.grid_view_rounded,
-                size: 20,
-                color: colorScheme.primary.withOpacity(0.5),
+              SizedBox(height: 16),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 2.1,
+                ),
+                itemCount: visibleItems.length,
+                itemBuilder: (context, index) {
+                  final item = visibleItems[index];
+                  final page = item['page'] as NavigationPage?;
+                  final VoidCallback onTap = page == NavigationPage.AdminCompoff
+                      ? () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AdminCompoffScreen(),
+                          ),
+                        )
+                      : () => navigationProvider.setCurrentPage(page!);
+                  return _buildManagementCard(
+                    item['title'],
+                    item['subtitle'],
+                    item['icon'],
+                    item['color'],
+                    onTap,
+                  );
+                },
               ),
             ],
           ),
-          SizedBox(height: 16),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 2.1,
-            ),
-            itemCount: managementItems.length,
-            itemBuilder: (context, index) {
-              final item = managementItems[index];
-              final page = item['page'] as NavigationPage?;
-              final VoidCallback onTap = page == NavigationPage.AdminCompoff
-                  ? () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AdminCompoffScreen(),
-                      ),
-                    )
-                  : () => navigationProvider.setCurrentPage(page!);
-              return _buildManagementCard(
-                item['title'],
-                item['subtitle'],
-                item['icon'],
-                item['color'],
-                onTap,
-              );
-            },
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 

@@ -8,10 +8,19 @@ import '../utils/app_logger.dart';
 
 class AuthService extends ApiService {
   // Login
-  Future<Map<String, dynamic>> login(String email, String password) async {
+  Future<Map<String, dynamic>> login(
+    String organizationName,
+    String email,
+    String password,
+  ) async {
     try {
       final headers = await getHeaders();
-      final requestBody = json.encode({'email': email, 'password': password});
+      headers['X-Client-Platform'] = 'mobile-app';
+      final requestBody = json.encode({
+        'organizationName': organizationName,
+        'email': email,
+        'password': password,
+      });
 
       final response = await sendRequest(
         http.post(
@@ -39,8 +48,9 @@ class AuthService extends ApiService {
         try {
           // Fetch complete employee data using the individual employee API
           final payload = data['payload'];
-          final employeeId =
-              payload is Map ? payload['employeeId']?.toString() : null;
+          final employeeId = payload is Map
+              ? payload['employeeId']?.toString()
+              : null;
           if (employeeId == null || employeeId.isEmpty) {
             throw Exception(
               'Login succeeded but user payload is missing employee ID.',

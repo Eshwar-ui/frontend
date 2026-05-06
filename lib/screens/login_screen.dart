@@ -20,7 +20,11 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  static const String _requiredOrganizationName =
+      'Quantum Works Private Limited';
+
   final _formKey = GlobalKey<FormState>();
+  final _organizationNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isCheckingConnectivity = false;
@@ -59,9 +63,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
+    _organizationNameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  String _normalizeOrganizationName(String value) {
+    return value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+  }
+
+  bool _isValidOrganizationName(String value) {
+    return _normalizeOrganizationName(value) ==
+        _normalizeOrganizationName(_requiredOrganizationName);
   }
 
   void _clearErrors() {
@@ -90,6 +104,8 @@ class _LoginScreenState extends State<LoginScreen> {
     final credentials = await CredentialStorageService.getSavedCredentials();
     if (credentials != null && mounted) {
       setState(() {
+        _organizationNameController.text =
+            credentials['organizationName'] ?? '';
         _emailController.text = credentials['email'] ?? '';
         _passwordController.text = credentials['password'] ?? '';
         _rememberMe = credentials['rememberMe'] ?? false;
@@ -129,6 +145,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 SizedBox(height: 8),
                 Text(
+                  credentials['organizationName'] ?? '',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
                   credentials['email'] ?? '',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
@@ -156,6 +180,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: () {
                   if (mounted) {
                     setState(() {
+                      _organizationNameController.text =
+                          credentials['organizationName'] ?? '';
                       _emailController.text = credentials['email'] ?? '';
                       _passwordController.text = credentials['password'] ?? '';
                       _rememberMe = true;
@@ -209,10 +235,15 @@ class _LoginScreenState extends State<LoginScreen> {
     _clearErrors();
 
     final email = _emailController.text.trim();
+    final organizationName = _organizationNameController.text.trim();
 
     // No SnackBar for allowed users as per new requirement
 
-    final success = await _authProvider!.login(email, _passwordController.text);
+    final success = await _authProvider!.login(
+      organizationName,
+      email,
+      _passwordController.text,
+    );
 
     if (!mounted) return;
 
@@ -220,6 +251,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // Save credentials if remember me is checked
       try {
         await CredentialStorageService.saveCredentials(
+          organizationName: organizationName,
           email: _emailController.text.trim(),
           password: _passwordController.text,
           rememberMe: _rememberMe,
@@ -380,6 +412,31 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              TextFormField(
+                                controller: _organizationNameController,
+                                keyboardType: TextInputType.text,
+                                textInputAction: TextInputAction.next,
+                                textCapitalization: TextCapitalization.words,
+                                onChanged: (_) => _clearErrors(),
+                                decoration: InputDecoration(
+                                  labelText: 'Organization Name',
+                                  prefixIcon: const Icon(
+                                    Icons.business_outlined,
+                                    size: 20,
+                                  ),
+                                  hintText: _requiredOrganizationName,
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'Please enter your organization name';
+                                  }
+                                  if (!_isValidOrganizationName(value)) {
+                                    return 'Organization name does not match our records';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 20),
                               TextFormField(
                                 controller: _emailController,
                                 keyboardType: TextInputType.emailAddress,

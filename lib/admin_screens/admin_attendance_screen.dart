@@ -509,6 +509,10 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                 _buildLegendItem(Icons.event_available, Colors.teal, "Compoff"),
                 const SizedBox(width: 16),
                 _buildLegendItem(Icons.event_note, Colors.blue, "Leave"),
+                const SizedBox(width: 16),
+                _buildLegendItem(Icons.label_important, Colors.red, "Late In"),
+                const SizedBox(width: 16),
+                _buildLegendItem(Icons.outbound, Colors.deepOrange, "Late Out"),
               ],
             ),
           ),
@@ -533,9 +537,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
         border: Border.all(color: colorScheme.outline.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.outline.withValues(
-              alpha: isDark ? 0.15 : 0.08,
-            ),
+            color: colorScheme.outline.withValues(alpha: isDark ? 0.15 : 0.08),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -582,9 +584,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
         border: Border.all(color: colorScheme.outline.withOpacity(0.1)),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.outline.withValues(
-              alpha: isDark ? 0.15 : 0.08,
-            ),
+            color: colorScheme.outline.withValues(alpha: isDark ? 0.15 : 0.08),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -908,23 +908,33 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
     }
 
     final status = record['attendanceStatus'];
+    final lateCode = _resolveLateCode(record);
+    final hasLate = lateCode.isNotEmpty;
 
     if (status == 'Present') {
-      return Icon(Icons.check_circle, color: Colors.green, size: 20);
+      return _buildStatusWithLateIndicator(
+        child: Icon(Icons.check_circle, color: Colors.green, size: 20),
+        lateCode: lateCode,
+        hasLate: hasLate,
+      );
     } else if (status == 'Half Day') {
-      return Container(
-        padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        decoration: BoxDecoration(
-          color: Colors.orange.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: Colors.orange.withOpacity(0.3)),
-        ),
-        child: Text(
-          'H',
-          style: GoogleFonts.poppins(
-            color: Colors.orange,
-            fontWeight: FontWeight.bold,
-            fontSize: 10,
+      return _buildStatusWithLateIndicator(
+        lateCode: lateCode,
+        hasLate: hasLate,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.orange.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.orange.withOpacity(0.3)),
+          ),
+          child: Text(
+            'H',
+            style: GoogleFonts.poppins(
+              color: Colors.orange,
+              fontWeight: FontWeight.bold,
+              fontSize: 10,
+            ),
           ),
         ),
       );
@@ -967,6 +977,48 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
     }
 
     return SizedBox();
+  }
+
+  String _resolveLateCode(Map<String, dynamic> record) {
+    final code = (record['lateCode'] ?? '').toString().trim().toUpperCase();
+    if (code.isNotEmpty) return code;
+    final isLatePunchIn = record['isLatePunchIn'] == true;
+    final isLatePunchOut = record['isLatePunchOut'] == true;
+    if (isLatePunchIn && isLatePunchOut) return 'LI+LO';
+    if (isLatePunchIn) return 'LI';
+    if (isLatePunchOut) return 'LO';
+    return '';
+  }
+
+  Widget _buildStatusWithLateIndicator({
+    required Widget child,
+    required String lateCode,
+    required bool hasLate,
+  }) {
+    if (!hasLate) return child;
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        child,
+        const SizedBox(height: 2),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+          decoration: BoxDecoration(
+            color: Colors.red.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(3),
+            border: Border.all(color: Colors.red.withOpacity(0.3)),
+          ),
+          child: Text(
+            lateCode,
+            style: GoogleFonts.poppins(
+              color: Colors.red.shade700,
+              fontWeight: FontWeight.w700,
+              fontSize: 8,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildExportButton(ColorScheme colorScheme) {
@@ -1038,7 +1090,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
     setState(() => _isExporting = true);
 
     try {
-      final filePath = await ExcelExportUtils.exportAttendanceToExcel(
+      await ExcelExportUtils.exportAttendanceToExcel(
         attendanceData: _attendanceData,
         month: _selectedMonth,
         year: _selectedYear,
@@ -1047,12 +1099,6 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
 
       if (mounted) {
         setState(() => _isExporting = false);
-        if (filePath != null) {
-          SnackbarUtils.showSuccess(
-            context,
-            'Attendance sheet exported successfully!',
-          );
-        }
       }
     } catch (e) {
       if (mounted) {

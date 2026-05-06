@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../utils/network_config.dart';
 import '../utils/server_error_exception.dart';
 import '../utils/app_logger.dart';
@@ -11,23 +12,43 @@ class ApiService {
   // Get the base URL from NetworkConfig
   static String get baseUrl => NetworkConfig.baseUrl;
   static const Duration _defaultTimeout = Duration(seconds: 30);
+  static const String _tokenKey = 'auth_token';
+  static String? _inMemoryToken;
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
 
   // Get stored token
   Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('token');
+    try {
+      return await _secureStorage.read(key: _tokenKey);
+    } on MissingPluginException {
+      return _inMemoryToken;
+    } on PlatformException {
+      return _inMemoryToken;
+    }
   }
 
   // Store token
   Future<void> storeToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('token', token);
+    try {
+      await _secureStorage.write(key: _tokenKey, value: token);
+    } on MissingPluginException {
+      _inMemoryToken = token;
+    } on PlatformException {
+      _inMemoryToken = token;
+    }
   }
 
   // Remove token
   Future<void> removeToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
+    try {
+      await _secureStorage.delete(key: _tokenKey);
+    } on MissingPluginException {
+      _inMemoryToken = null;
+    } on PlatformException {
+      _inMemoryToken = null;
+    }
   }
 
   // Get headers with authorization

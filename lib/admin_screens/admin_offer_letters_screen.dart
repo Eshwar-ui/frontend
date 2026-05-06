@@ -10,11 +10,17 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:quantum_dashboard/admin_screens/admin_offer_template_screen.dart';
 import 'package:quantum_dashboard/providers/auth_provider.dart';
+import 'package:quantum_dashboard/services/attendance_settings_service.dart';
 import 'package:quantum_dashboard/services/employee_service.dart';
+import 'package:quantum_dashboard/utils/download_saver.dart';
+import 'package:quantum_dashboard/utils/payslip_access_utils.dart';
 import 'package:quantum_dashboard/utils/snackbar_utils.dart';
+import 'package:quantum_dashboard/widgets/error_widget.dart';
 
 class AdminOfferLettersScreen extends StatefulWidget {
-  const AdminOfferLettersScreen({super.key});
+  final Future<AttendanceSettings>? offerAccessFuture;
+
+  const AdminOfferLettersScreen({super.key, this.offerAccessFuture});
 
   @override
   State<AdminOfferLettersScreen> createState() =>
@@ -23,6 +29,7 @@ class AdminOfferLettersScreen extends StatefulWidget {
 
 class _AdminOfferLettersScreenState extends State<AdminOfferLettersScreen> {
   final EmployeeService _employeeService = EmployeeService();
+  late final Future<AttendanceSettings> _offerAccessFuture;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _employeeIdController = TextEditingController();
@@ -47,7 +54,20 @@ class _AdminOfferLettersScreenState extends State<AdminOfferLettersScreen> {
   @override
   void initState() {
     super.initState();
-    _loadOffers();
+    _offerAccessFuture =
+        widget.offerAccessFuture ??
+        AttendanceSettingsService().getAttendanceSettings();
+    _bootstrapOffers();
+  }
+
+  Future<void> _bootstrapOffers() async {
+    try {
+      final settings = await _offerAccessFuture;
+      if (!mounted) return;
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (!canManageAdminOffers(authProvider.user, settings)) return;
+      await _loadOffers();
+    } catch (_) {}
   }
 
   Future<void> _pickPdf() async {
@@ -234,15 +254,22 @@ class _AdminOfferLettersScreenState extends State<AdminOfferLettersScreen> {
       final bytes = await _employeeService.getOfferPdfBytes(offerId);
       if (!mounted) return;
 
-      final tempDir = await getTemporaryDirectory();
       final safeName = candidateName
           .replaceAll(RegExp(r'[^\w\s-]'), '_')
           .trim();
-      final path =
-          '${tempDir.path}/offer_${safeName}_${DateTime.now().millisecondsSinceEpoch}.pdf';
-      final outFile = File(path);
-      await outFile.writeAsBytes(bytes, flush: true);
-      await OpenFilex.open(outFile.path);
+      final download = await DownloadSaver.saveBytesToDownloads(
+        bytes: bytes,
+        fileName:
+            'offer_${safeName}_${DateTime.now().millisecondsSinceEpoch}.pdf',
+        mimeType: 'application/pdf',
+      );
+
+      if (!mounted) return;
+      DownloadSaver.showSavedSnackBar(
+        context: context,
+        download: download,
+        message: 'Offer letter downloaded successfully',
+      );
     } catch (e) {
       if (!mounted) return;
       SnackbarUtils.showError(context, e.toString());
@@ -293,16 +320,49 @@ class _AdminOfferLettersScreenState extends State<AdminOfferLettersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    return FutureBuilder<AttendanceSettings>(
+      future: _offerAccessFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return const Scaffold(
+            body: ErrorStateWidget(
+              title: 'Unable to verify offer access',
+              message:
+                  'Please refresh the app or contact an administrator if this keeps happening.',
+            ),
+          );
+        }
+
+        final settings = snapshot.data;
+        final canAccess =
+            settings != null &&
+            canManageAdminOffers(authProvider.user, settings);
+
+        if (!canAccess) {
+          return const Scaffold(
+            body: ErrorStateWidget(
+              title: 'Offer access denied',
+              message: 'Your account is not allowed to manage offer letters.',
+              icon: Icons.lock_outline,
+            ),
+          );
+        }
+
+        return _buildAllowedScreen(context);
+      },
+    );
+  }
+
+  Widget _buildAllowedScreen(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-
-    if (!authProvider.isAdmin) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Offer Letters')),
-        body: const Center(child: Text('Access denied. Admin only.')),
-      );
-    }
 
     return Scaffold(
       appBar: AppBar(
@@ -317,7 +377,9 @@ class _AdminOfferLettersScreenState extends State<AdminOfferLettersScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const AdminOfferTemplateScreen(),
+                  builder: (context) => AdminOfferTemplateScreen(
+                    offerAccessFuture: _offerAccessFuture,
+                  ),
                 ),
               );
             },
