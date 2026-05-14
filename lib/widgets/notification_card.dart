@@ -63,6 +63,15 @@ class NotificationCard extends StatelessWidget {
     }
   }
 
+  String _getInitials(String name) {
+    if (name.isEmpty) return '?';
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return parts[0][0].toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -76,8 +85,8 @@ class NotificationCard extends StatelessWidget {
       color: notification.isRead
           ? colorScheme.surfaceContainerHighest
           : (isDark
-                ? colorScheme.primaryContainer.withOpacity(0.35)
-                : colorScheme.primary.withOpacity(0.5)),
+              ? colorScheme.primaryContainer.withOpacity(0.35)
+              : colorScheme.primary.withOpacity(0.5)),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -86,17 +95,33 @@ class NotificationCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Icon
+              // Monograph Icon
               Container(
-                padding: EdgeInsets.all(12),
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
                   color: typeColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: typeColor.withOpacity(0.2),
+                    width: 1,
+                  ),
                 ),
-                child: Icon(
-                  _getIconForType(notification.type),
-                  color: typeColor,
-                  size: 24,
+                child: Center(
+                  child: notification.senderName.isNotEmpty
+                      ? Text(
+                          _getInitials(notification.senderName),
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: typeColor,
+                          ),
+                        )
+                      : Icon(
+                          _getIconForType(notification.type),
+                          color: typeColor,
+                          size: 24,
+                        ),
                 ),
               ),
               SizedBox(width: 16),

@@ -260,6 +260,7 @@ class _AdminHolidaysScreenState extends State<AdminHolidaysScreen> {
                 final filteredHolidays = allHolidays
                     .where((holiday) => holiday.year == _selectedYear)
                     .toList();
+                filteredHolidays.sort((a, b) => a.date.compareTo(b.date));
 
                 if (filteredHolidays.isEmpty) {
                   return Center(

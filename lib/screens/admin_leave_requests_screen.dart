@@ -292,6 +292,8 @@ class _AdminLeaveRequestsScreenState extends State<AdminLeaveRequestsScreen> {
       }).toList();
     }
 
+    filtered.sort((a, b) => b.fromDate.compareTo(a.fromDate));
+
     return filtered;
   }
 
