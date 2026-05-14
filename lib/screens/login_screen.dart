@@ -22,6 +22,10 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   static const String _requiredOrganizationName =
       'Quantum Works Private Limited';
+  static const Set<String> _allowedOrganizationKeys = {
+    'quantumworksprivatelimited',
+    'quantumworks',
+  };
 
   final _formKey = GlobalKey<FormState>();
   final _organizationNameController = TextEditingController();
@@ -70,12 +74,11 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   String _normalizeOrganizationName(String value) {
-    return value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+    return value.trim().replaceAll(RegExp(r'\s+'), '').toLowerCase();
   }
 
   bool _isValidOrganizationName(String value) {
-    return _normalizeOrganizationName(value) ==
-        _normalizeOrganizationName(_requiredOrganizationName);
+    return _allowedOrganizationKeys.contains(_normalizeOrganizationName(value));
   }
 
   void _clearErrors() {
